@@ -41,6 +41,7 @@ assert.match(heroSource, /requestAnimationFrame\(finish\)/);
 assert.match(heroSource, /const fittedCards = cards\.filter\(\(card\) => card\.dataset\.position === "main"\);/);
 assert.doesNotMatch(heroSource, /motionEngine|physicalMotion|data-motion-engine|data-transition/);
 for (const style of ['momentum', 'morph', 'parallax']) assert.match(motionCss, new RegExp(`data-motion-style="${style}"`));
+assert.doesNotMatch(motionCss, /data-motion-style="(?:slide|fade|coverflow|3d|stack|perspective|custom)"/);
 assert.match(motionCss, /data-motion-style="morph"[\s\S]*?--hero-motion-scale-x/);
 assert.match(motionCss, /data-motion-style="parallax"[\s\S]*?\.motionArtwork[\s\S]*?translate3d/);
 assert.match(motionCss, /data-dragging="true"[\s\S]*?transition:\s*none/);
