@@ -1,198 +1,139 @@
-.motionRoot {
-  --hero-motion-x: 0px;
-  --hero-motion-y: 0px;
-  --hero-motion-z: 0px;
-  --hero-motion-rotate-x: 0deg;
-  --hero-motion-rotate-y: 0deg;
-  --hero-motion-scale: 1;
-  --hero-motion-opacity: 1;
+.motionRoot,
+.motionRoot[data-motion-style="momentum"] {
+  --hero-motion-duration: 760ms;
+  --hero-motion-easing: cubic-bezier(.16, 1, .3, 1);
+}
+
+.motionRoot[data-motion-style="morph"] {
+  --hero-motion-duration: 820ms;
+  --hero-motion-easing: cubic-bezier(.2, .9, .2, 1);
+}
+
+.motionRoot[data-motion-style="parallax"] {
+  --hero-motion-duration: 900ms;
+  --hero-motion-easing: cubic-bezier(.18, .82, .18, 1);
+}
+
+.motionRoot .motionCard {
+  --hero-motion-scale-x: 1;
+  transition:
+    transform var(--hero-motion-duration) var(--hero-motion-easing),
+    filter var(--hero-motion-duration) var(--hero-motion-easing),
+    opacity var(--hero-motion-duration) var(--hero-motion-easing);
+  will-change: transform, filter, opacity;
 }
 
 .motionFrame {
-  display: contents;
-}
-
-.motionRoot .motionFrame {
   display: block;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
   transform-origin: center;
-  will-change: transform, opacity;
 }
 
-.motionRoot[data-transition="slide"][data-motion-direction="forward"] {
-  --hero-motion-x: 28px;
-  --hero-motion-scale: .992;
-  --hero-motion-opacity: .9;
+.motionArtwork {
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center;
+  transition: transform var(--hero-motion-duration) var(--hero-motion-easing);
+  will-change: transform;
 }
 
-.motionRoot[data-transition="slide"][data-motion-direction="backward"] {
-  --hero-motion-x: -28px;
-  --hero-motion-scale: .992;
-  --hero-motion-opacity: .9;
+/* Morph changes the width perception of the same physical card while it
+ * travels between slots. Nothing remounts or teleports into the main slot. */
+.motionRoot[data-motion-style="morph"] .motionCard[data-position="left1"],
+.motionRoot[data-motion-style="morph"] .motionCard[data-position="right1"] {
+  --hero-motion-scale-x: .9;
 }
 
-.motionRoot[data-transition="coverflow"][data-motion-direction="forward"] {
-  --hero-motion-x: 18px;
-  --hero-motion-z: -46px;
-  --hero-motion-rotate-y: -8deg;
-  --hero-motion-scale: .982;
-  --hero-motion-opacity: .86;
+.motionRoot[data-motion-style="morph"] .motionCard[data-position="left2"],
+.motionRoot[data-motion-style="morph"] .motionCard[data-position="right2"] {
+  --hero-motion-scale-x: .8;
 }
 
-.motionRoot[data-transition="coverflow"][data-motion-direction="backward"] {
-  --hero-motion-x: -18px;
-  --hero-motion-z: -46px;
-  --hero-motion-rotate-y: 8deg;
-  --hero-motion-scale: .982;
-  --hero-motion-opacity: .86;
+/* Parallax Sweep lets the frame and artwork cover different distances. The
+ * frame owns the carousel position; the image settles slightly later. */
+.motionRoot[data-motion-style="parallax"] .motionCard[data-position="left2"] .motionArtwork {
+  transform: translate3d(9%, 0, 0) scale(1.085);
 }
 
-.motionRoot[data-transition="fade"] {
-  --hero-motion-scale: .995;
-  --hero-motion-opacity: .32;
+.motionRoot[data-motion-style="parallax"] .motionCard[data-position="left1"] .motionArtwork {
+  transform: translate3d(4.5%, 0, 0) scale(1.06);
 }
 
-.motionRoot[data-transition="3d"][data-motion-direction="forward"] {
-  --hero-motion-x: 14px;
-  --hero-motion-y: 5px;
-  --hero-motion-z: -82px;
-  --hero-motion-rotate-y: -5deg;
-  --hero-motion-scale: .97;
-  --hero-motion-opacity: .78;
+.motionRoot[data-motion-style="parallax"] .motionCard[data-position="main"] .motionArtwork {
+  transform: translate3d(0, 0, 0) scale(1.035);
 }
 
-.motionRoot[data-transition="3d"][data-motion-direction="backward"] {
-  --hero-motion-x: -14px;
-  --hero-motion-y: 5px;
-  --hero-motion-z: -82px;
-  --hero-motion-rotate-y: 5deg;
-  --hero-motion-scale: .97;
-  --hero-motion-opacity: .78;
+.motionRoot[data-motion-style="parallax"] .motionCard[data-position="right1"] .motionArtwork {
+  transform: translate3d(-4.5%, 0, 0) scale(1.06);
 }
 
-.motionRoot[data-transition="stack"][data-motion-direction="forward"] {
-  --hero-motion-x: 12px;
-  --hero-motion-y: 14px;
-  --hero-motion-z: -108px;
-  --hero-motion-rotate-y: -3deg;
-  --hero-motion-scale: .955;
-  --hero-motion-opacity: .72;
+.motionRoot[data-motion-style="parallax"] .motionCard[data-position="right2"] .motionArtwork {
+  transform: translate3d(-9%, 0, 0) scale(1.085);
 }
 
-.motionRoot[data-transition="stack"][data-motion-direction="backward"] {
-  --hero-motion-x: -12px;
-  --hero-motion-y: 14px;
-  --hero-motion-z: -108px;
-  --hero-motion-rotate-y: 3deg;
-  --hero-motion-scale: .955;
-  --hero-motion-opacity: .72;
+/* In a full five-card loop the far card that wraps to the opposite edge must
+ * not fly across the center. It teleports only at the dim outer edge and fades
+ * in while the other four physical cards keep their continuous trajectory. */
+.motionRoot .motionCard[data-edge-wrap="true"] {
+  transition: none;
+  animation: heroEdgeWrap 170ms ease-out both;
 }
 
-.motionRoot[data-transition="perspective"][data-motion-direction="forward"] {
-  --hero-motion-x: 16px;
-  --hero-motion-z: -92px;
-  --hero-motion-rotate-y: -12deg;
-  --hero-motion-scale: .965;
-  --hero-motion-opacity: .74;
+@keyframes heroEdgeWrap {
+  from { opacity: 0; }
 }
 
-.motionRoot[data-transition="perspective"][data-motion-direction="backward"] {
-  --hero-motion-x: -16px;
-  --hero-motion-z: -92px;
-  --hero-motion-rotate-y: 12deg;
-  --hero-motion-scale: .965;
-  --hero-motion-opacity: .74;
-}
-
-.motionRoot[data-transition="custom"] {
-  --hero-motion-y: 10px;
-  --hero-motion-z: -24px;
-  --hero-motion-scale: .982;
-  --hero-motion-opacity: .82;
-}
-
-.motionRoot[data-motion-sequence="a"] .motionFrame {
-  animation: heroMotionAccentA var(--hero-editor-duration) var(--hero-editor-easing) both;
-}
-
-.motionRoot[data-motion-sequence="b"] .motionFrame {
-  animation: heroMotionAccentB var(--hero-editor-duration) var(--hero-editor-easing) both;
+.motionRoot[data-dragging="true"] .motionCard,
+.motionRoot[data-dragging="true"] .motionArtwork {
+  transition: none;
 }
 
 .contentReveal > * {
-  animation: heroContentReveal var(--hero-editor-duration) var(--hero-editor-easing) both;
+  animation: heroContentSettle 520ms cubic-bezier(.2, .85, .25, 1) both;
 }
 
-.contentReveal > :nth-child(2) {
-  animation-delay: 35ms;
+.contentReveal > :nth-child(2) { animation-delay: 32ms; }
+.contentReveal > :nth-child(3) { animation-delay: 64ms; }
+.contentReveal > :nth-child(4) { animation-delay: 96ms; }
+.contentReveal > :nth-child(5) { animation-delay: 128ms; }
+
+.motionRoot[data-motion-style="parallax"] .contentReveal > * {
+  animation-name: heroParallaxContentSettle;
+  animation-duration: 620ms;
 }
 
-.contentReveal > :nth-child(3) {
-  animation-delay: 70ms;
-}
-
-.contentReveal > :nth-child(4) {
-  animation-delay: 105ms;
-}
-
-.contentReveal > :nth-child(5) {
-  animation-delay: 140ms;
-}
-
-@keyframes heroMotionAccentA {
+@keyframes heroContentSettle {
   from {
-    opacity: var(--hero-motion-opacity);
-    transform:
-      translate3d(var(--hero-motion-x), var(--hero-motion-y), var(--hero-motion-z))
-      rotateX(var(--hero-motion-rotate-x))
-      rotateY(var(--hero-motion-rotate-y))
-      scale(var(--hero-motion-scale));
+    opacity: .35;
+    transform: translate3d(18px, 0, 0);
   }
 }
 
-@keyframes heroMotionAccentB {
+@keyframes heroParallaxContentSettle {
   from {
-    opacity: var(--hero-motion-opacity);
-    transform:
-      translate3d(var(--hero-motion-x), var(--hero-motion-y), var(--hero-motion-z))
-      rotateX(var(--hero-motion-rotate-x))
-      rotateY(var(--hero-motion-rotate-y))
-      scale(var(--hero-motion-scale));
-  }
-}
-
-@keyframes heroContentReveal {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 12px, 0);
+    opacity: .2;
+    transform: translate3d(32px, 0, 0);
   }
 }
 
 @media (max-width: 680px) {
-  .motionRoot[data-transition="slide"][data-motion-direction="forward"] {
-    --hero-motion-x: 18px;
+  .motionRoot {
+    --hero-motion-duration: 620ms;
   }
 
-  .motionRoot[data-transition="slide"][data-motion-direction="backward"] {
-    --hero-motion-x: -18px;
+  .motionRoot[data-motion-style="morph"] {
+    --hero-motion-duration: 680ms;
   }
 
-  .motionRoot[data-transition="coverflow"][data-motion-direction="forward"],
-  .motionRoot[data-transition="perspective"][data-motion-direction="forward"] {
-    --hero-motion-x: 10px;
-  }
-
-  .motionRoot[data-transition="coverflow"][data-motion-direction="backward"],
-  .motionRoot[data-transition="perspective"][data-motion-direction="backward"] {
-    --hero-motion-x: -10px;
+  .motionRoot[data-motion-style="parallax"] {
+    --hero-motion-duration: 720ms;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .motionCard,
-  .motionFrame,
+  .motionRoot .motionCard,
+  .motionArtwork,
   .contentReveal > * {
     animation: none !important;
     transition: none !important;
