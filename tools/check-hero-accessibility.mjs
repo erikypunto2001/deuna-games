@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [source, css, schema, adminControls, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService] = await Promise.all([
+const [source, css, schema, adminControls, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService, browserSmoke] = await Promise.all([
   readFile(new URL('../src/components/home/HeroNavigation.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroNavigation.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/lib/home/hero-schema.ts', import.meta.url), 'utf8'),
@@ -13,6 +13,7 @@ const [source, css, schema, adminControls, heroSource, heroCss, motionCss, liveP
   readFile(new URL('../src/components/admin/HomeHeroSaveBoundary.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/lib/home/hero-device-design.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/lib/admin/home-content-service.ts', import.meta.url), 'utf8'),
+  readFile(new URL('./hero-motion-browser-smoke.mjs', import.meta.url), 'utf8'),
 ]);
 
 assert.match(source, /const announceSlideChanges = isPaused;/);
@@ -57,6 +58,12 @@ assert.match(saveBoundary, /persistHeroRecoveryFields\(fields\);[\s\S]*?catch \(
 assert.doesNotMatch(saveBoundary, /motionEngine|fieldsWithMotionEngine|HeroDraftSaveContext/);
 assert.match(homeContentService, /export async function saveHomeHeroDraft\(/);
 assert.doesNotMatch(homeContentService, /saveHomeHeroMotionEngineDraft/);
+
+// Nodes returned by an iframe live in a different JS realm. The runtime smoke must
+// validate them by capability/geometry instead of comparing against parent-window constructors.
+assert.match(browserSmoke, /typeof viewportNode\.getBoundingClientRect !== 'function'/);
+assert.match(browserSmoke, /vr\.width > 0/);
+assert.doesNotMatch(browserSmoke, /viewportNode instanceof HTMLElement/);
 
 for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);
