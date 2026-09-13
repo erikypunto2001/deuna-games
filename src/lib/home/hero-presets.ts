@@ -2,11 +2,7 @@ import type { HomeHeroPresentation, HomeHeroPositionStyle } from "@/data/home-co
 
 export type PresetName =
   | "Classic"
-  | "Coverflow"
   | "Cinema"
-  | "Stack"
-  | "Arc"
-  | "Perspective"
   | "Minimal"
   | "Spotlight"
   | "Cards"
@@ -33,14 +29,6 @@ function position(
   overrides: Partial<HomeHeroPositionStyle>
 ): HomeHeroPositionStyle {
   return { ...neutralPosition, ...overrides };
-}
-
-export function transitionMotion(
-  transition: HomeHeroPresentation["transition"]
-): HomeHeroPresentation["motion"] {
-  if (transition === "fade") return "fade";
-  if (transition === "slide") return "slide";
-  return "depth";
 }
 
 export function applyPreset(
@@ -72,17 +60,6 @@ export function applyPreset(
       { scale: .69, translateX: 126, translateZ: -170, opacity: 44, blur: 1, brightness: 66, saturation: 72 }
     );
     next.radius = 16;
-    next.transition = "slide";
-    next.composition = "studio";
-  }
-
-  if (name === "Coverflow") {
-    setSides(
-      { scale: .8, rotateY: 28, translateX: 92, translateZ: -120, opacity: 74, brightness: 78 },
-      { scale: .64, rotateY: 36, translateX: 156, translateZ: -220, opacity: 42, blur: 1, brightness: 60 }
-    );
-    next.radius = 14;
-    next.transition = "coverflow";
     next.composition = "studio";
   }
 
@@ -92,38 +69,7 @@ export function applyPreset(
       { scale: .68, rotateY: 22, translateX: 126, translateZ: -180, opacity: 42, blur: 1, brightness: 58, saturation: 68 }
     );
     next.radius = 18;
-    next.transition = "3d";
     next.composition = "cinema";
-  }
-
-  if (name === "Stack") {
-    setSides(
-      { scale: .92, translateX: 34, translateY: 10, translateZ: -150, opacity: 62, brightness: 76 },
-      { scale: .84, translateX: 64, translateY: 20, translateZ: -260, opacity: 34, blur: 1, brightness: 58 }
-    );
-    next.radius = 20;
-    next.transition = "stack";
-    next.composition = "focus";
-  }
-
-  if (name === "Arc") {
-    setSides(
-      { scale: .8, rotateY: 12, translateX: 88, translateY: 18, translateZ: -110, opacity: 72, brightness: 78 },
-      { scale: .65, rotateY: 20, translateX: 150, translateY: 42, translateZ: -210, opacity: 40, blur: 1, brightness: 60 }
-    );
-    next.radius = 18;
-    next.transition = "3d";
-    next.composition = "studio";
-  }
-
-  if (name === "Perspective") {
-    setSides(
-      { scale: .76, rotateY: 34, translateX: 102, translateZ: -170, opacity: 66, brightness: 74 },
-      { scale: .58, rotateY: 42, translateX: 175, translateZ: -300, opacity: 34, blur: 1, brightness: 54 }
-    );
-    next.radius = 14;
-    next.transition = "perspective";
-    next.composition = "studio";
   }
 
   if (name === "Minimal") {
@@ -135,7 +81,6 @@ export function applyPreset(
     next.shadow = 20;
     next.glow = 0;
     next.overlay = 30;
-    next.transition = "fade";
     next.composition = "focus";
   }
 
@@ -146,7 +91,6 @@ export function applyPreset(
     );
     next.glow = 50;
     next.overlay = 62;
-    next.transition = "fade";
     next.composition = "cinema";
   }
 
@@ -156,11 +100,9 @@ export function applyPreset(
       { scale: .72, translateX: 132, translateZ: -150, opacity: 66, brightness: 82, saturation: 88 }
     );
     next.radius = 24;
-    next.transition = "slide";
     next.composition = "studio";
   }
 
-  next.motion = transitionMotion(next.transition);
   next.preset = name.toLowerCase() as HomeHeroPresentation["preset"];
   return next;
 }
@@ -182,8 +124,6 @@ export function applyHeroLayout(layout: typeof carouselLayouts[number]["id"], pr
     settings.visibleCards = layout === "single" ? 1 : layout === "duo" ? 2 : layout === "center" && id === "desktop" ? 5 : 3;
   }
   next.direction = layout === "right" ? "reverse" : "forward";
-  next.transition = layout === "single" ? "fade" : "slide";
-  next.motion = transitionMotion(next.transition);
   next.autoplay = true;
   next.loop = true;
   next.autoplayMs = next.autoplayMs || 6500;
