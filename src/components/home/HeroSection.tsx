@@ -393,6 +393,9 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     seenGames.add(String(game.id));
     return [{ position, game, index }];
   });
+  const previousActiveIndex = games.length
+    ? ((normalizedActiveIndex - motionDelta) % games.length + games.length) % games.length
+    : 0;
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!presentation.keyboard) return;
@@ -495,10 +498,19 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
           {renderedCards.map(({ position, game, index }) => {
             const positionStyle = presentation.positions[position];
             const isMain = position === "main";
-            const fullPhysicalLoop = presentation.loop && renderedCards.length === HOME_HERO_VISUAL_POSITIONS.length;
-            const edgeWrap = fullPhysicalLoop && (
-              (motionDelta > 0 && (position === "right2" || (Math.abs(motionDelta) > 1 && position === "right1"))) ||
-              (motionDelta < 0 && (position === "left2" || (Math.abs(motionDelta) > 1 && position === "left1")))
+            const previousPosition = presentation.loop && motionDelta !== 0
+              ? visiblePositions.find((candidate) => {
+                  const previousIndex = ((previousActiveIndex + homeHeroPositionOffset(candidate)) % games.length + games.length) % games.length;
+                  return previousIndex === index;
+                })
+              : undefined;
+            const edgeWrap = Boolean(
+              presentation.loop &&
+              motionDelta !== 0 &&
+              (
+                !previousPosition ||
+                homeHeroPositionOffset(position) - homeHeroPositionOffset(previousPosition) !== -motionDelta
+              )
             );
             return (
               <article key={game.id} className={`${styles.heroCard} ${motionStyles.motionCard}`} data-position={position} data-main={isMain || undefined} data-edge-wrap={edgeWrap || undefined} onClick={onSelectPosition ? () => onSelectPosition(position) : undefined} role="group" aria-roledescription="slide" aria-label={`${index + 1} de ${games.length}: ${game.title}`} style={{ opacity: positionStyle.opacity / 100, filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`, transform: homeHeroPositionTransform(positionStyle) }}>
