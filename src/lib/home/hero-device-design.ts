@@ -161,11 +161,16 @@ export function updateHeroDeviceDesign(
   };
 
   if (scope !== "all") {
+    const updated = cleanUpdate(resolveHeroDeviceDesign(presentation, scope));
     return {
       ...presentation,
+      // Movement is revision-level even when the rest of this edit is scoped
+      // to one viewport. Persist it on the base contract that every device
+      // resolves from instead of leaving an ignored value inside an override.
+      motionStyle: updated.motionStyle,
       deviceOverrides: {
         ...presentation.deviceOverrides,
-        [scope]: cleanUpdate(resolveHeroDeviceDesign(presentation, scope)),
+        [scope]: updated,
       },
     };
   }
