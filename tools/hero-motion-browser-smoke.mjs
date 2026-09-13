@@ -297,6 +297,8 @@ async function main() {
   };
 
   const play = async () => {
+    const beforeMain = await cdp.evaluate(`document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null`);
+    requireCheck(beforeMain, 'No se pudo identificar el juego principal antes de iniciar la prueba interactiva.');
     const clicked = await cdp.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Probar funcionamiento'));
       if (!(button instanceof HTMLButtonElement)) return document.body.innerText.includes('Volver a editar');
@@ -305,6 +307,20 @@ async function main() {
     })()`);
     requireCheck(clicked, 'No se pudo activar la prueba interactiva del Hero.');
     await waitUntil(cdp, `document.body.innerText.includes('Volver a editar')`, 'modo de prueba interactiva');
+    await waitUntil(
+      cdp,
+      `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') !== ${JSON.stringify(beforeMain)}`,
+      'transición automática inicial del modo de prueba'
+    );
+    // HomeHeroLivePreview demuestra el movimiento al entrar en modo de prueba.
+    // Deja terminar esa transición completa antes de medir una repetición manual;
+    // así no se mezclan dos recorridos físicos ni dos ventanas de edge-wrap.
+    await delay(950);
+    await waitUntil(
+      cdp,
+      `!document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-edge-wrap="true"]')`,
+      'limpieza del edge-wrap de la demostración automática'
+    );
   };
 
   const replayAndMeasure = async (style) => {
