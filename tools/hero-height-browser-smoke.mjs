@@ -263,6 +263,25 @@ function closeEnough(a, b) {
   return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= tolerance;
 }
 
+function sameGeometry(a, b) {
+  if (!a || !b) return false;
+  const numericKeys = [
+    "rootHeight",
+    "viewportHeight",
+    "mainHeight",
+    "marginTop",
+    "marginBottom",
+    "insetTop",
+    "insetBottom",
+  ];
+  if (!numericKeys.every((key) => closeEnough(a[key], b[key]))) return false;
+  if (a.cardHeightVariable !== b.cardHeightVariable) return false;
+  if (a.footprintToNext === null || b.footprintToNext === null) {
+    return a.footprintToNext === b.footprintToNext;
+  }
+  return closeEnough(a.footprintToNext, b.footprintToNext);
+}
+
 function assertGeometryStable(baseline, sample, label) {
   for (const key of [
     "rootHeight",
@@ -323,6 +342,29 @@ async function measureSurface(cdp, surface) {
   `));
 }
 
+async function waitForStableSurface(cdp, surface, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  const samples = [];
+  let previous = null;
+  let stableIntervals = 0;
+
+  while (Date.now() < deadline) {
+    const sample = await measureSurface(cdp, surface);
+    if (sample) {
+      samples.push(sample);
+      if (sameGeometry(previous, sample)) stableIntervals += 1;
+      else stableIntervals = 0;
+      previous = sample;
+      if (stableIntervals >= 2) {
+        return { baseline: sample, stabilizationSamples: samples };
+      }
+    }
+    await delay(120);
+  }
+
+  throw new Error(`${surface}: la geometría inicial del Hero no se estabilizó antes de medir la navegación.`);
+}
+
 async function clickNext(cdp, surface) {
   return cdp.evaluate(surfaceExpression(surface, `
     const view = doc?.defaultView;
@@ -341,7 +383,7 @@ async function clickNext(cdp, surface) {
 }
 
 async function verifySurface(cdp, surface, transitions = 3) {
-  const baseline = await measureSurface(cdp, surface);
+  const { baseline, stabilizationSamples } = await waitForStableSurface(cdp, surface);
   requireCheck(baseline, `${surface}: no se pudo medir el Hero.`);
   requireCheck(baseline.rootHeight > 0, `${surface}: Hero sin altura visible.`);
   requireCheck(
@@ -380,7 +422,7 @@ async function verifySurface(cdp, surface, transitions = 3) {
     }
   }
 
-  return checks;
+  return { stabilizationSamples, checks };
 }
 
 async function main() {
@@ -463,7 +505,7 @@ async function main() {
       "utf8"
     );
     console.log(
-      "[hero-height-runtime] OK: editor y Home mantienen altura, márgenes, insets y huella vertical estables durante 3 cambios de imagen."
+      "[hero-height-runtime] OK: editor y Home estabilizan su geometría inicial y mantienen altura, márgenes, insets y huella vertical durante 3 cambios de imagen."
     );
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
