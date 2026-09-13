@@ -156,7 +156,7 @@ export function homeHeroPositionDisplay(
 export function homeHeroPositionTransform(
   style: HomeHeroPositionStyle
 ) {
-  return `translate3d(calc(-50% + var(--hero-slot-x) + ${style.translateX}px), calc(-50% + ${style.translateY}px), ${style.translateZ}px) rotateX(${style.rotateX}deg) rotateY(${style.rotateY}deg) rotateZ(${style.rotateZ}deg) scale(${style.scale})`;
+  return `translate3d(calc(-50% + var(--hero-slot-x) + var(--hero-drag-offset, 0px) + ${style.translateX}px), calc(-50% + ${style.translateY}px), ${style.translateZ}px) rotateX(${style.rotateX}deg) rotateY(${style.rotateY}deg) rotateZ(${style.rotateZ}deg) scale(${style.scale}) scaleX(var(--hero-motion-scale-x, 1))`;
 }
 
 export type HeroBounds = { left: number; top: number; right: number; bottom: number };
