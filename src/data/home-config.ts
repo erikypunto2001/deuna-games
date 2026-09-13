@@ -112,13 +112,17 @@ export const homeHeroCompositionIds = [
 ] as const;
 
 export const homeHeroPresetIds = [
-  "classic", "coverflow", "cinema", "stack", "arc",
-  "perspective", "minimal", "spotlight", "cards", "custom",
+  "classic", "cinema", "minimal", "spotlight", "cards", "custom",
 ] as const;
 
-export const homeHeroMotionEngineIds = [
-  "legacy",
-  "physical",
+export const homeHeroLegacyPresetIds = [
+  "coverflow", "stack", "arc", "perspective",
+] as const;
+
+export const homeHeroMotionStyleIds = [
+  "momentum",
+  "morph",
+  "parallax",
 ] as const;
 
 export const homeHeroNavigationStyleIds = [
@@ -134,7 +138,7 @@ export const homeHeroNavigationStyleIds = [
 
 export type HomeHeroDevice = "desktop" | "tablet" | "mobile";
 export type HomeHeroPosition = "all" | "main" | "left1" | "left2" | "right1" | "right2";
-export type HomeHeroMotionEngine = (typeof homeHeroMotionEngineIds)[number];
+export type HomeHeroMotionStyle = (typeof homeHeroMotionStyleIds)[number];
 export type HomeHeroNavigationStyle = (typeof homeHeroNavigationStyleIds)[number];
 
 export type HomeHeroPositionStyle = {
@@ -182,13 +186,9 @@ export type HomeHeroNavigationConfig = {
 export type HomeHeroBasePresentation = {
   composition: (typeof homeHeroCompositionIds)[number];
   previewCount: 1 | 2 | 3;
-  motion: "depth" | "slide" | "fade";
-  motionEngine: HomeHeroMotionEngine;
+  motionStyle: HomeHeroMotionStyle;
   autoplayMs: 0 | 4000 | 6500 | 8000;
   preset: (typeof homeHeroPresetIds)[number];
-  transition: "slide" | "coverflow" | "fade" | "3d" | "stack" | "perspective" | "custom";
-  durationMs: number;
-  easing: "ease" | "ease-in" | "ease-out" | "ease-in-out" | "linear";
   radius: number;
   shadow: number;
   borderWidth: number;
@@ -211,15 +211,40 @@ export type HomeHeroPresentation = HomeHeroBasePresentation & {
   deviceOverrides?: Partial<Record<HomeHeroDevice, HomeHeroBasePresentation>>;
 };
 
-export type HomeHeroPresentationInput = Omit<
-  Partial<HomeHeroPresentation>,
-  "positions" | "responsive" | "navigation"
+export type HomeHeroBasePresentationInput = Omit<
+  Partial<HomeHeroBasePresentation>,
+  "positions" | "responsive" | "navigation" | "preset"
 > & {
+  preset?:
+    | (typeof homeHeroPresetIds)[number]
+    | (typeof homeHeroLegacyPresetIds)[number];
+  // Compatibility-only fields accepted from historical revisions. They are
+  // normalized into `motionStyle` and are never written by the current editor.
+  motion?: "depth" | "slide" | "fade";
+  motionEngine?: "legacy" | "physical";
+  transition?:
+    | "slide"
+    | "coverflow"
+    | "fade"
+    | "3d"
+    | "stack"
+    | "perspective"
+    | "custom";
+  durationMs?: number;
+  easing?: "ease" | "ease-in" | "ease-out" | "ease-in-out" | "linear";
   positions?: Partial<Record<HomeHeroPosition, HomeHeroPositionStyle>>;
   responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroResponsiveStyle>>>;
   navigation?: Partial<Omit<HomeHeroNavigationConfig, "responsive">> & {
-    responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroNavigationPlacement>>>;
+    responsive?: Partial<
+      Record<HomeHeroDevice, Partial<HomeHeroNavigationPlacement>>
+    >;
   };
+};
+
+export type HomeHeroPresentationInput = HomeHeroBasePresentationInput & {
+  deviceOverrides?: Partial<
+    Record<HomeHeroDevice, HomeHeroBasePresentationInput>
+  >;
 };
 
 export type HomeConfig = {
@@ -264,15 +289,9 @@ const defaultHomeCuration: HomeCurationConfig = {
 const defaultHeroPresentation: HomeHeroPresentation = {
   composition: "studio",
   previewCount: 2,
-  motion: "depth",
-  // Publicaciones anteriores al motor físico deben conservar exactamente su
-  // semántica de movimiento hasta que el editor cree y publique otro snapshot.
-  motionEngine: "legacy",
+  motionStyle: "momentum",
   autoplayMs: 6500,
   preset: "cinema",
-  transition: "3d",
-  durationMs: 620,
-  easing: "ease-out",
   radius: 18,
   shadow: 55,
   borderWidth: 1,
@@ -295,8 +314,8 @@ const defaultHeroPresentation: HomeHeroPresentation = {
     right2: { scale: .68, rotateX: 0, rotateY: -22, rotateZ: 0, translateX: 126, translateY: 15, translateZ: -180, opacity: 42, blur: 1, brightness: 58, contrast: 105, saturation: 62 },
   },
   responsive: {
-    desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },
-    tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },
+    desktop: { visibleCards: 5, cardWidth: 1000, cardHeight: 450, gap: 24, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },
+    tablet: { visibleCards: 3, cardWidth: 760, cardHeight: 420, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },
     mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38, spacingReference: "visual" },
   },
   navigation: {
@@ -504,12 +523,56 @@ function resolveCuration(
   };
 }
 
+function normalizeHeroPreset(
+  preset: HomeHeroBasePresentationInput["preset"] | undefined
+): HomeHeroBasePresentation["preset"] {
+  if (!preset) return defaultHeroPresentation.preset;
+  if (homeHeroPresetIds.includes(preset as HomeHeroBasePresentation["preset"])) {
+    return preset as HomeHeroBasePresentation["preset"];
+  }
+  if (preset === "stack" || preset === "arc") return "cinema";
+  return "classic";
+}
+
+function legacyMotionStyle(
+  presentation: HomeHeroPresentationInput | undefined
+): HomeHeroMotionStyle {
+  if (presentation?.motionStyle) return presentation.motionStyle;
+
+  const legacyTransition = presentation?.transition;
+  if (legacyTransition === "coverflow" || legacyTransition === "3d" || legacyTransition === "perspective") {
+    return "morph";
+  }
+  if (legacyTransition === "fade" || legacyTransition === "stack" || legacyTransition === "custom") {
+    return "parallax";
+  }
+  return "momentum";
+}
+
 function resolveHeroPresentation(
   presentation: HomeHeroPresentationInput | undefined
 ): HomeHeroPresentation {
+  const {
+    motion: _legacyMotion,
+    motionEngine: _legacyMotionEngine,
+    transition: _legacyTransition,
+    durationMs: _legacyDuration,
+    easing: _legacyEasing,
+    deviceOverrides: sourceDeviceOverrides,
+    preset: sourcePreset,
+    ...currentPresentation
+  } = presentation ?? {};
+  void _legacyMotion;
+  void _legacyMotionEngine;
+  void _legacyTransition;
+  void _legacyDuration;
+  void _legacyEasing;
+
   const resolved: HomeHeroPresentation = {
     ...defaultHeroPresentation,
-    ...presentation,
+    ...currentPresentation,
+    preset: normalizeHeroPreset(sourcePreset),
+    motionStyle: legacyMotionStyle(presentation),
     positions: {
       ...defaultHeroPresentation.positions,
       ...presentation?.positions,
@@ -553,6 +616,21 @@ function resolveHeroPresentation(
   // new default `autoplay: true` and presenting contradictory editor state.
   if (resolved.autoplayMs === 0) {
     resolved.autoplay = false;
+  }
+
+  if (sourceDeviceOverrides) {
+    resolved.deviceOverrides = {};
+    for (const device of ["desktop", "tablet", "mobile"] as const) {
+      const override = sourceDeviceOverrides[device];
+      if (!override) continue;
+      const normalized = resolveHeroPresentation({
+        ...override,
+        deviceOverrides: undefined,
+      });
+      const { deviceOverrides: _nested, ...base } = normalized;
+      void _nested;
+      resolved.deviceOverrides[device] = base;
+    }
   }
 
   return resolved;
