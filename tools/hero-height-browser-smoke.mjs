@@ -13,7 +13,17 @@ const outputDir = path.resolve(
 );
 const adminUsername = process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
 const adminPassword = process.env.DEUNA_VISUAL_ADMIN_PASSWORD;
-const viewport = { width: 1440, height: 1000 };
+const desktopViewport = { width: 1440, height: 1000 };
+const viewports = {
+  desktop: { width: 1440, height: 1000 },
+  tablet: { width: 1024, height: 900 },
+  mobile: { width: 390, height: 844 },
+};
+const editorDevices = [
+  { id: "desktop", label: "Escritorio", frameTitle: "Hero real en escritorio" },
+  { id: "tablet", label: "Tableta", frameTitle: "Hero real en tableta" },
+  { id: "mobile", label: "Móvil", frameTitle: "Hero real en móvil" },
+];
 const tolerance = 1;
 
 function findChrome() {
@@ -203,7 +213,7 @@ async function waitUntil(cdp, expression, label, timeoutMs = 12_000) {
   throw new Error(`Timeout esperando ${label}.`);
 }
 
-async function setViewport(cdp) {
+async function setViewport(cdp, viewport) {
   await cdp.send("Emulation.setDeviceMetricsOverride", {
     width: viewport.width,
     height: viewport.height,
@@ -263,6 +273,11 @@ function closeEnough(a, b) {
   return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= tolerance;
 }
 
+function sameOptionalNumber(a, b) {
+  if (a === null || b === null) return a === b;
+  return closeEnough(a, b);
+}
+
 function sameGeometry(a, b) {
   if (!a || !b) return false;
   const numericKeys = [
@@ -275,11 +290,9 @@ function sameGeometry(a, b) {
     "insetBottom",
   ];
   if (!numericKeys.every((key) => closeEnough(a[key], b[key]))) return false;
+  if (!sameOptionalNumber(a.outerHostHeight, b.outerHostHeight)) return false;
   if (a.cardHeightVariable !== b.cardHeightVariable) return false;
-  if (a.footprintToNext === null || b.footprintToNext === null) {
-    return a.footprintToNext === b.footprintToNext;
-  }
-  return closeEnough(a.footprintToNext, b.footprintToNext);
+  return sameOptionalNumber(a.footprintToNext, b.footprintToNext);
 }
 
 function assertGeometryStable(baseline, sample, label) {
@@ -294,6 +307,13 @@ function assertGeometryStable(baseline, sample, label) {
     requireCheck(
       closeEnough(baseline[key], sample[key]),
       `${label}: ${key} cambió de ${baseline[key]} a ${sample[key]}.`
+    );
+  }
+
+  if (baseline.outerHostHeight !== null && sample.outerHostHeight !== null) {
+    requireCheck(
+      closeEnough(baseline.outerHostHeight, sample.outerHostHeight),
+      `${label}: el alto exterior del preview cambió de ${baseline.outerHostHeight} a ${sample.outerHostHeight}.`
     );
   }
 
@@ -326,12 +346,15 @@ async function measureSurface(cdp, surface) {
     const next = root.nextElementSibling instanceof HtmlElement ? root.nextElementSibling : null;
     const nextRect = next?.getBoundingClientRect() ?? null;
     const style = view.getComputedStyle(root);
+    const outerFrame = ${surface === "editor" ? 'document.querySelector(\'iframe[title^="Hero real"]\')' : "null"};
+    const outerHostHeight = outerFrame?.parentElement?.getBoundingClientRect().height ?? null;
     const numeric = (value) => { const parsed = Number.parseFloat(value); return Number.isFinite(parsed) ? parsed : 0; };
     return {
       main: main.getAttribute('aria-label'),
       rootHeight: rootRect.height,
       viewportHeight: viewportRect.height,
       mainHeight: mainRect.height,
+      outerHostHeight,
       marginTop: numeric(style.marginTop),
       marginBottom: numeric(style.marginBottom),
       insetTop: numeric(style.getPropertyValue('--hero-visual-inset-top')),
@@ -342,7 +365,7 @@ async function measureSurface(cdp, surface) {
   `));
 }
 
-async function waitForStableSurface(cdp, surface, timeoutMs = 5_000) {
+async function waitForStableSurface(cdp, surface, label, timeoutMs = 5_000) {
   const deadline = Date.now() + timeoutMs;
   const samples = [];
   let previous = null;
@@ -362,7 +385,7 @@ async function waitForStableSurface(cdp, surface, timeoutMs = 5_000) {
     await delay(120);
   }
 
-  throw new Error(`${surface}: la geometría inicial del Hero no se estabilizó antes de medir la navegación.`);
+  throw new Error(`${label}: la geometría inicial del Hero no se estabilizó antes de medir la navegación.`);
 }
 
 async function clickNext(cdp, surface) {
@@ -382,13 +405,13 @@ async function clickNext(cdp, surface) {
   `));
 }
 
-async function verifySurface(cdp, surface, transitions = 3) {
-  const { baseline, stabilizationSamples } = await waitForStableSurface(cdp, surface);
-  requireCheck(baseline, `${surface}: no se pudo medir el Hero.`);
-  requireCheck(baseline.rootHeight > 0, `${surface}: Hero sin altura visible.`);
+async function verifySurface(cdp, surface, label, transitions = 3) {
+  const { baseline, stabilizationSamples } = await waitForStableSurface(cdp, surface, label);
+  requireCheck(baseline, `${label}: no se pudo medir el Hero.`);
+  requireCheck(baseline.rootHeight > 0, `${label}: Hero sin altura visible.`);
   requireCheck(
     closeEnough(baseline.rootHeight, baseline.viewportHeight),
-    `${surface}: el viewport (${baseline.viewportHeight}) no coincide con la altura del Hero (${baseline.rootHeight}).`
+    `${label}: el viewport (${baseline.viewportHeight}) no coincide con la altura del Hero (${baseline.rootHeight}).`
   );
 
   const checks = [{ phase: "baseline", ...baseline }];
@@ -396,7 +419,7 @@ async function verifySurface(cdp, surface, transitions = 3) {
 
   for (let index = 0; index < transitions; index += 1) {
     const clicked = await clickNext(cdp, surface);
-    requireCheck(clicked, `${surface}: no hay control disponible para avanzar el Hero.`);
+    requireCheck(clicked, `${label}: no hay control disponible para avanzar el Hero.`);
 
     for (const [phase, wait] of [
       ["early", 60],
@@ -405,17 +428,17 @@ async function verifySurface(cdp, surface, transitions = 3) {
     ]) {
       await delay(wait);
       const sample = await measureSurface(cdp, surface);
-      requireCheck(sample, `${surface}: no se pudo medir el Hero en ${phase}.`);
-      assertGeometryStable(baseline, sample, `${surface} transición ${index + 1} ${phase}`);
+      requireCheck(sample, `${label}: no se pudo medir el Hero en ${phase}.`);
+      assertGeometryStable(baseline, sample, `${label} transición ${index + 1} ${phase}`);
       checks.push({ transition: index + 1, phase, ...sample });
       if (phase === "settled") {
         requireCheck(
           sample.main && sample.main !== previousMain,
-          `${surface}: la flecha no cambió el juego principal en la transición ${index + 1}.`
+          `${label}: la flecha no cambió el juego principal en la transición ${index + 1}.`
         );
         requireCheck(
           closeEnough(baseline.mainHeight, sample.mainHeight),
-          `${surface}: la tarjeta principal cambió de alto entre imágenes (${baseline.mainHeight} → ${sample.mainHeight}).`
+          `${label}: la tarjeta principal cambió de alto entre imágenes (${baseline.mainHeight} → ${sample.mainHeight}).`
         );
         previousMain = sample.main;
       }
@@ -423,6 +446,21 @@ async function verifySurface(cdp, surface, transitions = 3) {
   }
 
   return { stabilizationSamples, checks };
+}
+
+async function selectEditorDevice(cdp, device) {
+  const clicked = await cdp.evaluate(`(() => {
+    const button = Array.from(document.querySelectorAll('button[aria-pressed]')).find((node) => node.textContent?.trim() === ${JSON.stringify(device.label)});
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  })()`);
+  requireCheck(clicked, `Editor ${device.id}: no se pudo seleccionar ${device.label}.`);
+  await waitUntil(
+    cdp,
+    `document.querySelector('iframe[title=${JSON.stringify(device.frameTitle)}]')?.contentDocument?.querySelector('section[aria-roledescription="carrusel"]')`,
+    `preview ${device.label}`
+  );
 }
 
 async function main() {
@@ -438,7 +476,7 @@ async function main() {
     "--remote-debugging-port=0",
     "--remote-debugging-address=127.0.0.1",
     `--user-data-dir=${profileDir}`,
-    `--window-size=${viewport.width},${viewport.height}`,
+    `--window-size=${desktopViewport.width},${desktopViewport.height}`,
     "about:blank",
   ], { stdio: ["ignore", "ignore", "pipe"] });
   browser.stderr.resume();
@@ -447,10 +485,10 @@ async function main() {
   const report = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    viewport,
+    viewports,
     tolerance,
-    editor: null,
-    publicHome: null,
+    editor: {},
+    publicHome: {},
     runtimeIssues: [],
   };
 
@@ -462,7 +500,7 @@ async function main() {
       cdp.send("Runtime.enable"),
       cdp.send("Network.enable"),
     ]);
-    await setViewport(cdp);
+    await setViewport(cdp, desktopViewport);
     cdp.on("Runtime.exceptionThrown", (event) => {
       report.runtimeIssues.push(
         event.exceptionDetails?.exception?.description ??
@@ -485,15 +523,30 @@ async function main() {
       'document.querySelector(\'iframe[title^="Hero real"]\')?.contentDocument?.querySelector(\'section[aria-roledescription="carrusel"]\')',
       "Hero real del editor"
     );
-    report.editor = await verifySurface(cdp, "editor");
 
-    await navigate(cdp, `${baseUrl}/`);
-    await waitUntil(
-      cdp,
-      'document.querySelector(\'section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]\')',
-      "Hero público"
-    );
-    report.publicHome = await verifySurface(cdp, "public");
+    for (const device of editorDevices) {
+      await selectEditorDevice(cdp, device);
+      report.editor[device.id] = await verifySurface(
+        cdp,
+        "editor",
+        `Editor ${device.label.toLowerCase()}`
+      );
+    }
+
+    for (const [device, viewport] of Object.entries(viewports)) {
+      await setViewport(cdp, viewport);
+      await navigate(cdp, `${baseUrl}/`);
+      await waitUntil(
+        cdp,
+        'document.querySelector(\'section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]\')',
+        `Hero público ${device}`
+      );
+      report.publicHome[device] = await verifySurface(
+        cdp,
+        "public",
+        `Home ${device}`
+      );
+    }
 
     requireCheck(
       report.runtimeIssues.length === 0,
@@ -505,7 +558,7 @@ async function main() {
       "utf8"
     );
     console.log(
-      "[hero-height-runtime] OK: editor y Home estabilizan su geometría inicial y mantienen altura, márgenes, insets y huella vertical durante 3 cambios de imagen."
+      "[hero-height-runtime] OK: editor y Home mantienen altura, márgenes, insets, host exterior y huella vertical estables en escritorio, tableta y móvil durante 3 cambios de imagen por dispositivo."
     );
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
