@@ -295,16 +295,18 @@ function surfaceExpression(surface, body) {
 
 async function measureSurface(cdp, surface) {
   return cdp.evaluate(surfaceExpression(surface, `
+    const view = doc?.defaultView;
+    const HtmlElement = view?.HTMLElement;
     const root = doc?.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
     const viewportNode = root?.querySelector('[class*="carouselViewport"]');
     const main = root?.querySelector('[data-position="main"]');
-    if (!(root instanceof HTMLElement) || !(viewportNode instanceof HTMLElement) || !(main instanceof HTMLElement)) return null;
+    if (!view || !HtmlElement || !(root instanceof HtmlElement) || !(viewportNode instanceof HtmlElement) || !(main instanceof HtmlElement)) return null;
     const rootRect = root.getBoundingClientRect();
     const viewportRect = viewportNode.getBoundingClientRect();
     const mainRect = main.getBoundingClientRect();
-    const next = root.nextElementSibling instanceof HTMLElement ? root.nextElementSibling : null;
+    const next = root.nextElementSibling instanceof HtmlElement ? root.nextElementSibling : null;
     const nextRect = next?.getBoundingClientRect() ?? null;
-    const style = getComputedStyle(root);
+    const style = view.getComputedStyle(root);
     const numeric = (value) => { const parsed = Number.parseFloat(value); return Number.isFinite(parsed) ? parsed : 0; };
     return {
       main: main.getAttribute('aria-label'),
@@ -323,13 +325,16 @@ async function measureSurface(cdp, surface) {
 
 async function clickNext(cdp, surface) {
   return cdp.evaluate(surfaceExpression(surface, `
+    const view = doc?.defaultView;
+    const HtmlElement = view?.HTMLElement;
+    const ButtonElement = view?.HTMLButtonElement;
     const root = doc?.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
-    if (!(root instanceof HTMLElement)) return false;
+    if (!HtmlElement || !(root instanceof HtmlElement)) return false;
     root.focus();
     const next = root.querySelector('button[aria-label="Juego siguiente"]:not(:disabled)');
     const previous = root.querySelector('button[aria-label="Juego anterior"]:not(:disabled)');
     const target = next ?? previous;
-    if (!(target instanceof HTMLButtonElement)) return false;
+    if (!ButtonElement || !(target instanceof ButtonElement)) return false;
     target.click();
     return true;
   `));
