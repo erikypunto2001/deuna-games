@@ -368,6 +368,8 @@ async function main() {
     report.checks.momentum = await replayAndMeasure('momentum');
     requireCheck(parseFloat(report.checks.momentum.after.transitionDuration ?? '0') > 0, 'Momentum no tiene transición física activa.');
 
+    const beforeDragMain = await cdp.evaluate(`document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null`);
+    requireCheck(beforeDragMain, 'No se pudo identificar el juego principal antes del drag.');
     const dragPoint = await cdp.evaluate(`(() => {
       const frame = document.querySelector('iframe[title^="Hero real"]');
       const doc = frame?.contentDocument;
@@ -385,7 +387,15 @@ async function main() {
     const duringDrag = await cdp.evaluate(`(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const root=doc?.querySelector('[data-motion-style]'); const card=doc?.querySelector('[data-position="main"]'); return { dragging: root?.getAttribute('data-dragging') ?? null, transform: card ? getComputedStyle(card).transform : null }; })()`);
     requireCheck(duringDrag.dragging === 'true', 'El drag real no activó el estado continuo antes del pointerup.');
     await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: dragPoint.x - 86, y: dragPoint.y, button: 'left', buttons: 0, clickCount: 1 });
-    report.checks.drag = duringDrag;
+    await waitUntil(
+      cdp,
+      `(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const root=doc?.querySelector('[data-motion-style]'); const main=doc?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null; return root?.getAttribute('data-dragging') !== 'true' && main && main !== ${JSON.stringify(beforeDragMain)}; })()`,
+      'commit del drag real'
+    );
+    const afterDrag = await cdp.evaluate(`(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const root=doc?.querySelector('[data-motion-style]'); const card=doc?.querySelector('[data-position="main"]'); return { dragging: root?.getAttribute('data-dragging') ?? null, main: card?.getAttribute('aria-label') ?? null, transform: card ? getComputedStyle(card).transform : null }; })()`);
+    requireCheck(afterDrag.dragging !== 'true', 'El drag quedó atascado como activo después del pointerup.');
+    requireCheck(afterDrag.main && afterDrag.main !== beforeDragMain, 'El drag no confirmó el cambio del juego principal al soltar.');
+    report.checks.drag = { beforeMain: beforeDragMain, during: duringDrag, after: afterDrag };
 
     await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Volver a editar'))?.click()`);
     await waitUntil(cdp, `document.body.innerText.includes('Probar funcionamiento')`, 'vuelta a edición');
@@ -408,7 +418,7 @@ async function main() {
     await capture(cdp, path.join(outputDir, 'hero-motion-v3-desktop.png'));
     requireCheck(report.runtimeIssues.length === 0, `Errores runtime V3: ${report.runtimeIssues.join(' | ')}`);
     await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-    console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, drag continuo y reduced motion.`);
+    console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, drag continuo confirmado y reduced motion.`);
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
     await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8').catch(() => {});
