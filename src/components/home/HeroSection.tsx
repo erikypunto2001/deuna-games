@@ -76,6 +76,14 @@ type ResponsiveArtworkProps = {
   style?: CSSProperties;
 };
 
+const PARALLAX_ARTWORK_TRANSFORM: Record<HomeHeroVisualPosition, string> = {
+  left2: "translate3d(9%, 0, 0) scale(1.085)",
+  left1: "translate3d(4.5%, 0, 0) scale(1.06)",
+  main: "translate3d(0, 0, 0) scale(1.035)",
+  right1: "translate3d(-4.5%, 0, 0) scale(1.06)",
+  right2: "translate3d(-9%, 0, 0) scale(1.085)",
+};
+
 function canUseFineHover() {
   return typeof window !== "undefined" && window.matchMedia(FINE_HOVER_MEDIA).matches;
 }
@@ -512,10 +520,13 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
                 homeHeroPositionOffset(position) - homeHeroPositionOffset(previousPosition) !== -motionDelta
               )
             );
+            const parallaxArtworkStyle = presentation.motionStyle === "parallax"
+              ? { transform: PARALLAX_ARTWORK_TRANSFORM[position] }
+              : undefined;
             return (
               <article key={game.id} className={`${styles.heroCard} ${motionStyles.motionCard}`} data-position={position} data-main={isMain || undefined} data-edge-wrap={edgeWrap || undefined} onClick={onSelectPosition ? () => onSelectPosition(position) : undefined} role="group" aria-roledescription="slide" aria-label={`${index + 1} de ${games.length}: ${game.title}`} style={{ opacity: positionStyle.opacity / 100, filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`, transform: homeHeroPositionTransform(positionStyle) }}>
                 <div className={motionStyles.motionFrame}><div className={styles.cardSurface}>
-                  <div className={`${styles.media} ${motionStyles.motionArtwork}`}>
+                  <div className={`${styles.media} ${motionStyles.motionArtwork}`} style={parallaxArtworkStyle}>
                     {game.heroImage || game.coverImage ? <ResponsiveArtwork game={game} alt={isMain ? game.mediaAccessibility?.hero ?? game.imageAlt : ""} active={isMain} style={artworkStyle} /> : <div className={styles.mediaFallback} aria-hidden="true" />}
                     {isMain && <HeroVideoLayer game={game} enabled={videoShouldRender} />}
                     {imageEffect && isMain && <div className={styles.tuningOverlay} style={{ opacity: tuningOverlayOpacity }} aria-hidden="true" />}
