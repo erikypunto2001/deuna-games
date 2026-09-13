@@ -372,8 +372,9 @@ async function main() {
       const frame = document.querySelector('iframe[title^="Hero real"]');
       const doc = frame?.contentDocument;
       const viewportNode = doc?.querySelector('[class*="carouselViewport"]');
-      if (!(frame instanceof HTMLIFrameElement) || !(viewportNode instanceof HTMLElement)) return null;
+      if (!(frame instanceof HTMLIFrameElement) || !viewportNode || typeof viewportNode.getBoundingClientRect !== 'function') return null;
       const fr = frame.getBoundingClientRect(); const vr = viewportNode.getBoundingClientRect();
+      if (!(vr.width > 0) || !(vr.height > 0)) return null;
       const sx = fr.width / Math.max(1, frame.clientWidth); const sy = fr.height / Math.max(1, frame.clientHeight);
       return { x: fr.left + (vr.left + vr.width * .55) * sx, y: fr.top + (vr.top + vr.height * .5) * sy };
     })()`);
