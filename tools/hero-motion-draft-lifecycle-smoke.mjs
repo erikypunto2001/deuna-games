@@ -151,10 +151,10 @@ function singleValue(html, name) {
   return unique[0];
 }
 
-function publicMotionEngine(html) {
-  const match = html.match(/data-motion-engine="(legacy|physical)"/);
+function publicMotionStyle(html) {
+  const match = html.match(/data-motion-style="(momentum|morph|parallax)"/);
   if (!match) {
-    throw new Error("La Home pública no expone data-motion-engine en el Hero SSR.");
+    throw new Error("La Home pública no expone data-motion-style en el Hero SSR.");
   }
   return match[1];
 }
@@ -203,8 +203,8 @@ async function loadHeroDraft(cookie) {
     throw new Error("heroJson SSR no contiene JSON válido.");
   }
 
-  if (!state?.presentation || typeof state.presentation.motionEngine !== "string") {
-    throw new Error("heroJson no expone presentation.motionEngine.");
+  if (!state?.presentation || !["momentum", "morph", "parallax"].includes(state.presentation.motionStyle)) {
+    throw new Error("heroJson no expone un presentation.motionStyle V3 válido.");
   }
 
   return { expectedRevision, state };
@@ -227,7 +227,7 @@ const publicBefore = await request("/");
 if (publicBefore.status !== 200) {
   throw new Error(`La Home pública respondió ${publicBefore.status} antes del smoke.`);
 }
-const publishedEngineBefore = publicMotionEngine(publicBefore.body);
+const publishedStyleBefore = publicMotionStyle(publicBefore.body);
 
 const loginBody = new URLSearchParams({
   username: adminUsername,
@@ -244,33 +244,30 @@ if (loginResponse.status !== 303) {
 const cookie = sessionCookie(loginResponse.headers["set-cookie"]);
 
 const original = await loadHeroDraft(cookie);
-if (original.state.presentation.motionEngine !== "legacy") {
-  throw new Error(
-    `El fixture Hero debe comenzar en legacy; comenzó en ${original.state.presentation.motionEngine}.`
-  );
-}
+const originalStyle = original.state.presentation.motionStyle;
+const targetStyle = originalStyle === "morph" ? "parallax" : "morph";
 
 let activeRevision = original.expectedRevision;
 let primaryError = null;
 
 try {
-  const physicalState = structuredClone(original.state);
-  physicalState.presentation.motionEngine = "physical";
+  const changedState = structuredClone(original.state);
+  changedState.presentation.motionStyle = targetStyle;
   activeRevision = await saveHeroDraft(
     cookie,
     activeRevision,
-    physicalState,
-    "Guardar motor físico V2"
+    changedState,
+    `Guardar movimiento V3 ${targetStyle}`
   );
 
-  const physicalDraft = await loadHeroDraft(cookie);
-  if (physicalDraft.expectedRevision !== activeRevision) {
+  const changedDraft = await loadHeroDraft(cookie);
+  if (changedDraft.expectedRevision !== activeRevision) {
     throw new Error(
-      `El Admin quedó en revisión ${physicalDraft.expectedRevision}; se esperaba ${activeRevision}.`
+      `El Admin quedó en revisión ${changedDraft.expectedRevision}; se esperaba ${activeRevision}.`
     );
   }
-  if (physicalDraft.state.presentation.motionEngine !== "physical") {
-    throw new Error("El borrador no conservó motionEngine=physical después del guardado.");
+  if (changedDraft.state.presentation.motionStyle !== targetStyle) {
+    throw new Error(`El borrador no conservó motionStyle=${targetStyle} después del guardado.`);
   }
 
   const publicAfterDraft = await request("/");
@@ -279,10 +276,10 @@ try {
       `La Home pública respondió ${publicAfterDraft.status} después del guardado de borrador.`
     );
   }
-  const publishedEngineAfterDraft = publicMotionEngine(publicAfterDraft.body);
-  if (publishedEngineAfterDraft !== publishedEngineBefore) {
+  const publishedStyleAfterDraft = publicMotionStyle(publicAfterDraft.body);
+  if (publishedStyleAfterDraft !== publishedStyleBefore) {
     throw new Error(
-      `Guardar el borrador filtró motionEngine a la Home pública (${publishedEngineBefore} → ${publishedEngineAfterDraft}).`
+      `Guardar el borrador filtró motionStyle a la Home pública (${publishedStyleBefore} → ${publishedStyleAfterDraft}).`
     );
   }
 } catch (error) {
@@ -324,13 +321,13 @@ if (publicAfterRestore.status !== 200) {
     `La Home pública respondió ${publicAfterRestore.status} después de restaurar el borrador.`
   );
 }
-const publishedEngineAfterRestore = publicMotionEngine(publicAfterRestore.body);
-if (publishedEngineAfterRestore !== publishedEngineBefore) {
+const publishedStyleAfterRestore = publicMotionStyle(publicAfterRestore.body);
+if (publishedStyleAfterRestore !== publishedStyleBefore) {
   throw new Error(
-    `La restauración del borrador alteró la Home pública (${publishedEngineBefore} → ${publishedEngineAfterRestore}).`
+    `La restauración del borrador alteró la Home pública (${publishedStyleBefore} → ${publishedStyleAfterRestore}).`
   );
 }
 
 console.log(
-  `Hero motion draft lifecycle: OK (draft legacy → physical → restored legacy; public stayed ${publishedEngineBefore}; final revision ${activeRevision}).`
+  `Hero motion draft lifecycle: OK (draft ${originalStyle} → ${targetStyle} → restored ${originalStyle}; public stayed ${publishedStyleBefore}; final revision ${activeRevision}).`
 );

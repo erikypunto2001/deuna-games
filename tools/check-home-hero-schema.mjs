@@ -24,8 +24,15 @@ function clone(value) {
 
 const current = clone(sourceHomeConfig.heroPresentation);
 assert(
-  current.motionEngine === "legacy",
-  "La presentación fuente debe conservar el motor legacy para no reinterpretar publicaciones históricas al desplegar código nuevo."
+  current.motionStyle === "momentum",
+  "La presentación fuente debe usar Momentum como movimiento V3 canónico."
+);
+assert(
+  !Object.hasOwn(current, "motionEngine") &&
+    !Object.hasOwn(current, "transition") &&
+    !Object.hasOwn(current, "durationMs") &&
+    !Object.hasOwn(current, "easing"),
+  "El contrato resuelto actual no debe reintroducir controles del motor V2."
 );
 assert(
   homeHeroPresentationEditorSchema.safeParse(current).success,
@@ -36,48 +43,77 @@ assert(
   "La presentación fuente del Hero debe ser válida como revisión persistida."
 );
 
-const legacy = {
+const legacyMinimal = {
   composition: current.composition,
   previewCount: current.previewCount,
-  motion: current.motion,
+  motion: "slide",
   autoplayMs: current.autoplayMs,
 };
 assert(
-  homeHeroPresentationInputSchema.safeParse(legacy).success,
-  "El contrato persistido debe seguir aceptando revisiones anteriores a los controles visuales nuevos."
+  homeHeroPresentationInputSchema.safeParse(legacyMinimal).success,
+  "El contrato persistido debe seguir aceptando revisiones históricas anteriores al motor V3."
 );
 
-const beforeMotionEngine = clone(current);
-delete beforeMotionEngine.motionEngine;
-const normalizedBeforeMotionEngine =
-  homeHeroPresentationEditorSchema.safeParse(beforeMotionEngine);
+const legacySlide = clone(current);
+delete legacySlide.motionStyle;
+legacySlide.motionEngine = "legacy";
+legacySlide.transition = "slide";
+legacySlide.durationMs = 500;
+legacySlide.easing = "ease";
+const normalizedLegacySlide = homeHeroPresentationEditorSchema.safeParse(legacySlide);
 assert(
-  normalizedBeforeMotionEngine.success &&
-    normalizedBeforeMotionEngine.data.motionEngine === "legacy",
-  "Borradores anteriores a motionEngine deben migrar al motor legacy, nunca activar movimiento físico implícitamente."
+  normalizedLegacySlide.success &&
+    normalizedLegacySlide.data.motionStyle === "momentum" &&
+    !Object.hasOwn(normalizedLegacySlide.data, "motionEngine") &&
+    !Object.hasOwn(normalizedLegacySlide.data, "transition") &&
+    !Object.hasOwn(normalizedLegacySlide.data, "durationMs") &&
+    !Object.hasOwn(normalizedLegacySlide.data, "easing"),
+  "Un borrador V2 debe normalizarse a Momentum y expulsar los campos del motor anterior."
 );
-const resolvedBeforeMotionEngine = resolveHomeConfig({
+const resolvedLegacySlide = resolveHomeConfig({
   ...sourceHomeConfig,
-  heroPresentation: beforeMotionEngine,
+  heroPresentation: legacySlide,
 }).heroPresentation;
 assert(
-  resolvedBeforeMotionEngine.motionEngine === "legacy",
-  "Snapshots publicados sin motionEngine deben resolver al motor legacy."
+  resolvedLegacySlide.motionStyle === "momentum" &&
+    !Object.hasOwn(resolvedLegacySlide, "motionEngine") &&
+    !Object.hasOwn(resolvedLegacySlide, "transition"),
+  "Un snapshot V2 publicado debe entrar al runtime por el único contrato V3."
 );
 
-const physicalMotion = clone(current);
-physicalMotion.motionEngine = "physical";
+for (const [transition, expected] of [
+  ["coverflow", "morph"],
+  ["3d", "morph"],
+  ["perspective", "morph"],
+  ["fade", "parallax"],
+  ["stack", "parallax"],
+  ["custom", "parallax"],
+]) {
+  const historical = clone(current);
+  delete historical.motionStyle;
+  historical.transition = transition;
+  const normalized = homeHeroPresentationEditorSchema.safeParse(historical);
+  assert(
+    normalized.success && normalized.data.motionStyle === expected,
+    `La transición histórica ${transition} debe migrar a ${expected}.`
+  );
+}
+
+for (const motionStyle of ["momentum", "morph", "parallax"]) {
+  const candidate = clone(current);
+  candidate.motionStyle = motionStyle;
+  assert(
+    homeHeroPresentationEditorSchema.safeParse(candidate).success &&
+      homeHeroPresentationInputSchema.safeParse(candidate).success,
+    `El movimiento V3 ${motionStyle} debe ser válido en editor y persistencia.`
+  );
+}
+const invalidMotionStyle = clone(current);
+invalidMotionStyle.motionStyle = "automatic";
 assert(
-  homeHeroPresentationEditorSchema.safeParse(physicalMotion).success &&
-    homeHeroPresentationInputSchema.safeParse(physicalMotion).success,
-  "El motor físico debe poder persistirse explícitamente en una revisión editorial válida."
-);
-const invalidMotionEngine = clone(current);
-invalidMotionEngine.motionEngine = "automatic";
-assert(
-  !homeHeroPresentationEditorSchema.safeParse(invalidMotionEngine).success &&
-    !homeHeroPresentationInputSchema.safeParse(invalidMotionEngine).success,
-  "Motores desconocidos deben rechazarse en editor y snapshots persistidos."
+  !homeHeroPresentationEditorSchema.safeParse(invalidMotionStyle).success &&
+    !homeHeroPresentationInputSchema.safeParse(invalidMotionStyle).success,
+  "Movimientos desconocidos deben rechazarse en editor y snapshots persistidos."
 );
 
 const oldEditorDraft = clone(current);
@@ -212,6 +248,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Hero schema: OK (contrato único, motor físico opt-in con fallback legacy, autoplay con pausa normalizada, límites compartidos y compatibilidad de borradores antiguos)."
+    "Hero schema: OK (motor V3 único, migración histórica a tres movimientos, autoplay seguro, límites compartidos y compatibilidad de borradores antiguos)."
   );
 }

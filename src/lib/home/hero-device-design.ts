@@ -23,9 +23,8 @@ function heroBasePresentation(
  * the moment the override was created. Resolve those cross-device slots from
  * their effective owners so editor operations never read stale baseline data.
  *
- * `motionEngine` is intentionally global. A historical device snapshot must
- * never be able to downgrade or upgrade the runtime engine independently from
- * the presentation revision that was explicitly saved and published.
+ * `motionStyle` is intentionally global. A device snapshot may customize
+ * geometry, but the movement language belongs to the Hero revision as a whole.
  */
 export function resolveHeroDeviceDesign(
   presentation: HomeHeroPresentation,
@@ -36,7 +35,7 @@ export function resolveHeroDeviceDesign(
 
   return {
     ...selected,
-    motionEngine: base.motionEngine,
+    motionStyle: base.motionStyle,
     responsive: {
       desktop:
         presentation.deviceOverrides?.desktop?.responsive.desktop ??
@@ -162,11 +161,16 @@ export function updateHeroDeviceDesign(
   };
 
   if (scope !== "all") {
+    const updated = cleanUpdate(resolveHeroDeviceDesign(presentation, scope));
     return {
       ...presentation,
+      // Movement is revision-level even when the rest of this edit is scoped
+      // to one viewport. Persist it on the base contract that every device
+      // resolves from instead of leaving an ignored value inside an override.
+      motionStyle: updated.motionStyle,
       deviceOverrides: {
         ...presentation.deviceOverrides,
-        [scope]: cleanUpdate(resolveHeroDeviceDesign(presentation, scope)),
+        [scope]: updated,
       },
     };
   }

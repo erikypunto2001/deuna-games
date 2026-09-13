@@ -134,15 +134,14 @@ assert(
     heroSaveBoundary.includes("readPreparedFormFields(form)") &&
     heroSaveBoundary.includes("persistHeroRecoveryFields(fields)") &&
     heroSaveBoundary.includes("submitPreparedFields(fields)") &&
-    heroSaveBoundary.includes("motionEngineOverride") &&
-    heroSaveBoundary.includes('window.addEventListener("beforeunload", warnOnUnload)') &&
-    heroSaveBoundary.includes('window.removeEventListener("beforeunload", warnOnUnload)') &&
+    !heroSaveBoundary.includes("motionEngineOverride") &&
+    !heroSaveBoundary.includes("requestMotionEngineSave") &&
     heroSaveBoundary.includes("response.status === 409") &&
     heroSaveBoundary.includes("clearStoredHeroDrafts()") &&
     heroSaveBoundary.includes("router.refresh()") &&
     homePage.includes("<HomeHeroSaveBoundary revision={item.revision}>") &&
     homePage.includes("key={item.revision}"),
-  "Inicio · Hero debe conservar el guardado protegido: payload capturado, recuperación local del mismo payload, aviso de salida para cambios de motor pendientes, errores sin desmontar el editor y remonte sólo después de una revisión confirmada."
+  "Inicio · Hero debe conservar el guardado protegido: payload capturado, recuperación local del mismo payload, un único owner de persistencia, errores sin desmontar el editor y remonte sólo después de una revisión confirmada."
 );
 
 assert(

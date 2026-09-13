@@ -61,7 +61,6 @@ import motionStyles from "./HeroMotion.module.css";
 import styles from "./HeroSection.module.css";
 
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
-const SWIPE_THRESHOLD = 55;
 const HERO_PRIMARY_ACTION = "Ver juego";
 const HERO_SECONDARY_ACTION = "Más información";
 
@@ -70,14 +69,19 @@ type HeroFact = {
   label: string;
 };
 
-type HeroMotionDirection = "forward" | "backward";
-type HeroMotionSequence = "a" | "b";
-
 type ResponsiveArtworkProps = {
   game: Game;
   alt: string;
   active?: boolean;
   style?: CSSProperties;
+};
+
+const PARALLAX_ARTWORK_TRANSFORM: Record<HomeHeroVisualPosition, string> = {
+  left2: "translate3d(9%, 0, 0) scale(1.085)",
+  left1: "translate3d(4.5%, 0, 0) scale(1.06)",
+  main: "translate3d(0, 0, 0) scale(1.035)",
+  right1: "translate3d(-4.5%, 0, 0) scale(1.06)",
+  right2: "translate3d(-9%, 0, 0) scale(1.085)",
 };
 
 function canUseFineHover() {
@@ -86,7 +90,6 @@ function canUseFineHover() {
 
 function imageViewportForHero(game: Game) {
   const viewport = game.heroImage ? game.imageMedia?.hero : game.imageMedia?.cover;
-  // The carousel owns its dimensions; gallery aspect metadata cannot resize it.
   return viewport ? { ...viewport, aspect: undefined } : undefined;
 }
 
@@ -94,7 +97,6 @@ function classificationLine(game: Game) {
   const values = [game.category, ...(game.genres ?? [])];
   const unique: string[] = [];
   const seen = new Set<string>();
-
   for (const raw of values) {
     const value = raw.trim();
     if (!value) continue;
@@ -104,7 +106,6 @@ function classificationLine(game: Game) {
     unique.push(value.toLocaleUpperCase("es"));
     if (unique.length === 3) break;
   }
-
   return unique;
 }
 
@@ -115,44 +116,22 @@ function heroTitleParts(game: Game) {
   const comparableHighlight = highlight.toLocaleLowerCase("es");
   const highlightAlreadyIncluded = Boolean(
     comparableHighlight &&
-      (comparableBase === comparableHighlight ||
-        comparableBase.endsWith(` ${comparableHighlight}`))
+      (comparableBase === comparableHighlight || comparableBase.endsWith(` ${comparableHighlight}`))
   );
-
-  return {
-    base,
-    highlight: highlightAlreadyIncluded ? "" : highlight,
-  };
+  return { base, highlight: highlightAlreadyIncluded ? "" : highlight };
 }
 
 function heroFacts(game: Game): HeroFact[] {
   const facts: HeroFact[] = [];
-
   if (typeof game.rating === "number") {
     const reviews = game.reviews?.trim();
-    facts.push({
-      kind: "rating",
-      label: `${game.rating.toFixed(1)}${reviews ? ` · ${reviews} reseñas` : ""}`,
-    });
+    facts.push({ kind: "rating", label: `${game.rating.toFixed(1)}${reviews ? ` · ${reviews} reseñas` : ""}` });
   }
-
-  if (game.developer?.trim()) {
-    facts.push({ kind: "developer", label: game.developer.trim() });
-  }
-
+  if (game.developer?.trim()) facts.push({ kind: "developer", label: game.developer.trim() });
   const release = formatGameReleaseDate(game.releaseDate);
-  if (release) {
-    facts.push({ kind: "release", label: release });
-  }
-
-  if (game.platforms?.length) {
-    facts.push({ kind: "platforms", label: game.platforms.join(" · ") });
-  }
-
-  if (facts.length < 4 && game.version?.trim()) {
-    facts.push({ kind: "version", label: `Versión ${game.version.trim()}` });
-  }
-
+  if (release) facts.push({ kind: "release", label: release });
+  if (game.platforms?.length) facts.push({ kind: "platforms", label: game.platforms.join(" · ") });
+  if (facts.length < 4 && game.version?.trim()) facts.push({ kind: "version", label: `Versión ${game.version.trim()}` });
   return facts.slice(0, 4);
 }
 
@@ -164,29 +143,12 @@ function FactIcon({ kind }: { kind: HeroFact["kind"] }) {
   return <Tag size={17} aria-hidden="true" />;
 }
 
-function ResponsiveArtwork({
-  game,
-  alt,
-  active = false,
-  style,
-}: ResponsiveArtworkProps) {
+function ResponsiveArtwork({ game, alt, active = false, style }: ResponsiveArtworkProps) {
   const src = game.heroImage ?? game.coverImage;
   if (!src) return null;
-
   return (
-    <span
-      className={`${styles.heroPicture} ${artworkStyles.artworkFrame}`}
-      style={style}
-    >
-      <GameMedia
-        src={src}
-        alt={alt}
-        sizes="(max-width: 680px) 92vw, (max-width: 1100px) 88vw, 78vw"
-        priority={active}
-        variant="hero"
-        viewport={imageViewportForHero(game)}
-        imageClassName={styles.heroArtwork}
-      />
+    <span className={`${styles.heroPicture} ${artworkStyles.artworkFrame}`} style={style}>
+      <GameMedia src={src} alt={alt} sizes="(max-width: 680px) 92vw, (max-width: 1100px) 88vw, 78vw" priority={active} variant="hero" viewport={imageViewportForHero(game)} imageClassName={styles.heroArtwork} />
     </span>
   );
 }
@@ -195,109 +157,43 @@ function HeroVideoLayer({ game, enabled }: { game: Game; enabled: boolean }) {
   const resolved = resolveGameHeroVideo(game);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [documentVisible, setDocumentVisible] = useState(true);
-
   useEffect(() => {
     const syncVisibility = () => setDocumentVisible(!document.hidden);
     syncVisibility();
     document.addEventListener("visibilitychange", syncVisibility);
     return () => document.removeEventListener("visibilitychange", syncVisibility);
   }, []);
-
-  if (!enabled || !resolved || failedSrc === resolved.src || !documentVisible) {
-    return null;
-  }
-
-  return (
-    <FramedVideo
-      key={resolved.src}
-      src={resolved.src}
-      viewport={resolved.viewport}
-      autoPlay
-      loop
-      controls={false}
-      preload="metadata"
-      tabIndex={-1}
-      frameStyle={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 1,
-        pointerEvents: "none",
-        background: "transparent",
-      }}
-      onError={() => setFailedSrc(resolved.src)}
-    />
-  );
+  if (!enabled || !resolved || failedSrc === resolved.src || !documentVisible) return null;
+  return <FramedVideo key={resolved.src} src={resolved.src} viewport={resolved.viewport} autoPlay loop controls={false} preload="metadata" tabIndex={-1} frameStyle={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", background: "transparent" }} onError={() => setFailedSrc(resolved.src)} />;
 }
 
-function MainCardContent({
-  game,
-  motionEnabled,
-}: {
-  game: Game;
-  motionEnabled: boolean;
-}) {
+function MainCardContent({ game, motionEnabled }: { game: Game; motionEnabled: boolean }) {
   const classifications = classificationLine(game);
   const facts = heroFacts(game);
   const title = heroTitleParts(game);
-
   return (
     <div className={`${styles.content} ${motionEnabled ? motionStyles.contentReveal : ""}`}>
-      {classifications.length > 0 && (
-        <div className={styles.classificationLine} aria-label="Clasificación del juego">
-          {classifications.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
-        </div>
-      )}
-
-      <h3 className={styles.title}>
-        <span>{title.base}</span>
-        {title.highlight && <strong>{title.highlight}</strong>}
-      </h3>
-
+      {classifications.length > 0 && <div className={styles.classificationLine} aria-label="Clasificación del juego">{classifications.map((item) => <span key={item}>{item}</span>)}</div>}
+      <h3 className={styles.title}><span>{title.base}</span>{title.highlight && <strong>{title.highlight}</strong>}</h3>
       <p className={styles.description}>{game.description}</p>
-
-      {facts.length > 0 && (
-        <div className={styles.facts} aria-label="Información principal del juego">
-          {facts.map((fact) => (
-            <span className={styles.fact} key={`${fact.kind}-${fact.label}`}>
-              <FactIcon kind={fact.kind} />
-              <span>{fact.label}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
+      {facts.length > 0 && <div className={styles.facts} aria-label="Información principal del juego">{facts.map((fact) => <span className={styles.fact} key={`${fact.kind}-${fact.label}`}><FactIcon kind={fact.kind} /><span>{fact.label}</span></span>)}</div>}
       <div className={styles.actions}>
-        <Link href={`/juegos/${game.slug}`} className={styles.primaryButton}>
-          <Play size={17} fill="currentColor" aria-hidden="true" />
-          {HERO_PRIMARY_ACTION}
-        </Link>
-        <Link href={`/juegos/${game.slug}`} className={styles.secondaryButton}>
-          <Info size={18} aria-hidden="true" />
-          {HERO_SECONDARY_ACTION}
-        </Link>
+        <Link href={`/juegos/${game.slug}`} className={styles.primaryButton}><Play size={17} fill="currentColor" aria-hidden="true" />{HERO_PRIMARY_ACTION}</Link>
+        <Link href={`/juegos/${game.slug}`} className={styles.secondaryButton}><Info size={18} aria-hidden="true" />{HERO_SECONDARY_ACTION}</Link>
       </div>
     </div>
   );
 }
 
-function deviceVariables(
-  presentation: HomeHeroPresentation,
-  totalGames: number
-) {
+function deviceVariables(presentation: HomeHeroPresentation, totalGames: number) {
   const variables: Record<string, string | number> = {
-    "--hero-slide-offset": presentation.direction === "reverse" ? "-90px" : "90px",
     "--hero-editor-radius": `${presentation.radius}px`,
-    "--hero-editor-duration": `${presentation.durationMs}ms`,
-    "--hero-editor-easing": presentation.easing,
     "--hero-editor-shadow": presentation.shadow / 100,
     "--hero-editor-glow": presentation.glow / 100,
     "--hero-editor-overlay": presentation.overlay / 100,
     "--hero-editor-border": `${presentation.borderWidth}px`,
     "--hero-autoplay-ms": `${presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS}ms`,
   };
-
   for (const device of ["desktop", "tablet", "mobile"] as const) {
     const responsive = presentation.responsive[device];
     const navigation = presentation.navigation.responsive[device];
@@ -311,30 +207,15 @@ function deviceVariables(
     variables[`--hero-${device}-navigation-x`] = `${navigation.x}%`;
     variables[`--hero-${device}-navigation-y`] = `${navigation.y}%`;
     variables[`--hero-${device}-navigation-scale`] = navigation.scale;
-
     for (const position of HOME_HERO_VISUAL_POSITIONS) {
-      variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(
-        position,
-        responsive,
-        presentation.direction,
-        totalGames
-      );
+      variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(position, responsive, presentation.direction, totalGames);
       variables[`--hero-${device}-slot-${position}`] = homeHeroSlotCSS(position);
     }
   }
-
   return variables as CSSProperties;
 }
 
-export default function HeroSection({
-  games,
-  presentation: sourcePresentation,
-  imageEffect = false,
-  imageTuning,
-  autoplaySuspended = false,
-  onSelectPosition,
-  navigationEditor,
-}: {
+export default function HeroSection({ games, presentation: sourcePresentation, imageEffect = false, imageTuning, autoplaySuspended = false, onSelectPosition, navigationEditor }: {
   games: Game[];
   presentation: HomeHeroPresentation;
   imageEffect?: boolean;
@@ -354,13 +235,12 @@ export default function HeroSection({
     return () => view.removeEventListener("resize", update);
   }, []);
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
-  const physicalMotion = presentation.motionEngine === "physical";
   const fitRef = useRef<HTMLDivElement>(null);
-  const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
+  const dragSettleFrame = useRef<number | null>(null);
+  const pointerStart = useRef<{ x: number; y: number; id: number; lastX: number; lastTime: number; velocityX: number } | null>(null);
   const suppressClick = useRef(false);
   const lastWheel = useRef(0);
   const autoplayClock = useRef({ key: "", remaining: 0 });
-  const motionSequenceRef = useRef<HeroMotionSequence>("b");
   const [activeIndex, setActiveIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -368,84 +248,39 @@ export default function HeroSection({
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
-  const [motionDirection, setMotionDirection] = useState<HeroMotionDirection>("forward");
-  const [motionSequence, setMotionSequence] = useState<HeroMotionSequence | null>(null);
-
-  const resolvedTuning = useMemo(
-    () => resolveHeroImageTuning(imageTuning),
-    [imageTuning]
-  );
-  const artworkStyle = useMemo<CSSProperties>(
-    () => ({
-      filter: `brightness(${resolvedTuning.brightness}%) saturate(${resolvedTuning.saturation}%) contrast(${resolvedTuning.contrast}%)`,
-    }),
-    [resolvedTuning]
-  );
+  const [dragOffset, setDragOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [motionDelta, setMotionDelta] = useState(0);
+  const resolvedTuning = useMemo(() => resolveHeroImageTuning(imageTuning), [imageTuning]);
+  const artworkStyle = useMemo<CSSProperties>(() => ({ filter: `brightness(${resolvedTuning.brightness}%) saturate(${resolvedTuning.saturation}%) contrast(${resolvedTuning.contrast}%)` }), [resolvedTuning]);
   const tuningOverlayOpacity = resolvedTuning.overlayStrength / 100;
-
-  const normalizedActiveIndex = games.length
-    ? ((activeIndex % games.length) + games.length) % games.length
-    : 0;
+  const normalizedActiveIndex = games.length ? ((activeIndex % games.length) + games.length) % games.length : 0;
   const activeGame = games[normalizedActiveIndex] ?? games[0];
-  const isPaused = (hovered && presentation.pauseOnHover) || focused || manualPaused || reducedMotion || !documentVisible || autoplaySuspended;
-  const autoplayDelay = !presentation.autoplay || presentation.autoplayMs === 0
-    ? null
-    : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
+  const isPaused = (hovered && presentation.pauseOnHover) || focused || manualPaused || reducedMotion || dragging || !documentVisible || autoplaySuspended;
+  const autoplayDelay = !presentation.autoplay || presentation.autoplayMs === 0 ? null : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
   const direction = presentation.direction === "reverse" ? -1 : 1;
-  const rootStyle = useMemo(
-    () => deviceVariables(presentation, games.length),
-    [games.length, presentation]
-  );
-
-  const startMotion = useCallback((delta: number) => {
-    if (!delta) return;
-    setMotionDirection(delta > 0 ? "forward" : "backward");
-    const next = motionSequenceRef.current === "a" ? "b" : "a";
-    motionSequenceRef.current = next;
-    setMotionSequence(next);
-  }, []);
+  const rootStyle = useMemo(() => ({ ...deviceVariables(presentation, games.length), "--hero-drag-offset": `${dragOffset}px` }) as CSSProperties, [dragOffset, games.length, presentation]);
 
   const moveBy = useCallback((delta: number) => {
-    if (!physicalMotion) {
-      setActiveIndex((current) => {
-        if (!games.length) return 0;
-        const normalized = ((current % games.length) + games.length) % games.length;
-        const next = normalized + delta;
-        if (!presentation.loop) {
-          return Math.max(0, Math.min(games.length - 1, next));
-        }
-        return (next + games.length) % games.length;
-      });
-      return;
-    }
-
-    if (!games.length) return;
-    const current = ((activeIndex % games.length) + games.length) % games.length;
-    const requested = current + delta;
-    const target = presentation.loop
-      ? (requested + games.length) % games.length
-      : Math.max(0, Math.min(games.length - 1, requested));
-    if (target === current) return;
-    startMotion(delta);
-    setActiveIndex(target);
-  }, [activeIndex, games.length, physicalMotion, presentation.loop, startMotion]);
+    if (!games.length || !delta) return;
+    setMotionDelta(delta);
+    setActiveIndex((current) => {
+      const normalized = ((current % games.length) + games.length) % games.length;
+      const requested = normalized + delta;
+      if (!presentation.loop) return Math.max(0, Math.min(games.length - 1, requested));
+      return (requested + games.length) % games.length;
+    });
+  }, [games.length, presentation.loop]);
 
   const selectSlide = useCallback((targetIndex: number) => {
     if (!games.length) return;
     const target = ((targetIndex % games.length) + games.length) % games.length;
     if (target === normalizedActiveIndex) return;
-    if (!physicalMotion) {
-      setActiveIndex(target);
-      return;
-    }
     let delta = target - normalizedActiveIndex;
-    if (presentation.loop && Math.abs(delta) > games.length / 2) {
-      delta += delta > 0 ? -games.length : games.length;
-    }
-    startMotion(delta);
+    if (presentation.loop && Math.abs(delta) > games.length / 2) delta += delta > 0 ? -games.length : games.length;
+    setMotionDelta(delta);
     setActiveIndex(target);
-  }, [games.length, normalizedActiveIndex, physicalMotion, presentation.loop, startMotion]);
-
+  }, [games.length, normalizedActiveIndex, presentation.loop]);
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
 
@@ -485,82 +320,57 @@ export default function HeroSection({
       if (event.ctrlKey || Math.abs(event.deltaY) < 12) return;
       event.preventDefault();
       const now = performance.now();
-      if (now - lastWheel.current < Math.max(350, presentation.durationMs)) return;
+      if (now - lastWheel.current < 650) return;
       lastWheel.current = now;
       moveBy(event.deltaY > 0 ? direction : -direction);
     };
     node.addEventListener("wheel", onWheel, { passive: false });
     return () => node.removeEventListener("wheel", onWheel);
-  }, [direction, moveBy, presentation.durationMs, presentation.wheel]);
+  }, [direction, moveBy, presentation.wheel]);
 
   useLayoutEffect(() => {
     const fit = fitRef.current;
     const root = rootRef.current;
     const viewport = fit?.parentElement;
     if (!fit || !root || !viewport) return;
-
     const resetVisualInsets = () => {
       root.style.setProperty("--hero-visual-inset-top", "0px");
       root.style.setProperty("--hero-visual-inset-bottom", "0px");
     };
-
     const update = () => {
       fit.style.transform = "none";
       const origin = viewport.getBoundingClientRect();
       const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
-      if (!cards.length || !origin.width || !origin.height) {
-        resetVisualInsets();
-        return;
-      }
+      if (!cards.length || !origin.width || !origin.height) { resetVisualInsets(); return; }
       const screenWidth = root.ownerDocument.defaultView?.innerWidth ?? 1440;
       const device = screenWidth <= 680 ? "mobile" : screenWidth <= 1100 ? "tablet" : "desktop";
       const responsive = presentation.responsive[device];
-      // On phones the neighbors are edge previews; fitting them all would make
-      // the main title and actions too small to read or tap.
-      const fittedCards = device === "mobile" ? cards.filter((card) => card.dataset.position === "main") : cards;
+      const fittedCards = cards.filter((card) => card.dataset.position === "main");
       const bounds = fittedCards.map((card) => card.getBoundingClientRect());
-      const fitted = fitHomeHeroBounds({
-        left: Math.min(...bounds.map((box) => box.left)) - origin.left,
-        top: Math.min(...bounds.map((box) => box.top)) - origin.top,
-        right: Math.max(...bounds.map((box) => box.right)) - origin.left,
-        bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top,
-      }, origin.width, origin.height, responsive.alignment);
+      const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
       fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
-
-      if (responsive.spacingReference === "canvas") {
-        resetVisualInsets();
-        return;
-      }
-
+      if (responsive.spacingReference === "canvas") { resetVisualInsets(); return; }
       const rootBounds = root.getBoundingClientRect();
       const viewportBounds = viewport.getBoundingClientRect();
       const verticalBounds: Array<{ top: number; bottom: number }> = [];
-
       for (const card of cards) {
         const box = card.getBoundingClientRect();
         const top = Math.max(box.top, viewportBounds.top);
         const bottom = Math.min(box.bottom, viewportBounds.bottom);
         if (bottom > top) verticalBounds.push({ top, bottom });
       }
-
       for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
         if (!control.getClientRects().length) continue;
         const box = control.getBoundingClientRect();
         if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
       }
-
-      if (!verticalBounds.length) {
-        resetVisualInsets();
-        return;
-      }
-
+      if (!verticalBounds.length) { resetVisualInsets(); return; }
       const visualTop = Math.min(...verticalBounds.map((box) => box.top));
       const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
       const round = (value: number) => Math.round(value * 100) / 100;
       root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
       root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
     };
-
     update();
     const observer = new ResizeObserver(update);
     observer.observe(viewport);
@@ -574,254 +384,170 @@ export default function HeroSection({
     };
   }, [presentation, games.length, normalizedActiveIndex]);
 
-  if (!activeGame) return null;
-
-  const heroMode = resolveGameDestinationMediaMode(activeGame, "hero");
+  const heroMode = activeGame ? resolveGameDestinationMediaMode(activeGame, "hero") : "image";
   const hoverPlayback = heroMode === "hover-video";
-  const videoShouldRender =
-    !reducedMotion &&
-    heroMode !== "image" &&
-    (!hoverPlayback || hoverPreviewActive);
-  const visiblePositions = homeHeroVisiblePositions(
-    presentation.responsive[designDevice],
-    presentation.direction,
-    games.length
-  );
-  const renderPositions = physicalMotion
-    ? visiblePositions
-    : HOME_HERO_VISUAL_POSITIONS;
+  const videoShouldRender = !reducedMotion && heroMode !== "image" && (!hoverPlayback || hoverPreviewActive);
+  const visiblePositions = homeHeroVisiblePositions(presentation.responsive[designDevice], presentation.direction, games.length);
+  const renderPositions = visiblePositions;
   const seenGames = new Set<string>();
   const renderedCards = renderPositions.flatMap((position) => {
     const offset = homeHeroPositionOffset(position);
     const rawIndex = normalizedActiveIndex + offset;
-    if (!presentation.loop && (rawIndex < 0 || rawIndex >= games.length)) {
-      return [];
-    }
+    if (!presentation.loop && (rawIndex < 0 || rawIndex >= games.length)) return [];
     const index = ((rawIndex % games.length) + games.length) % games.length;
     const game = games[index];
     if (!game) return [];
-    if (physicalMotion && seenGames.has(String(game.id))) return [];
-    if (physicalMotion) seenGames.add(String(game.id));
+    if (seenGames.has(String(game.id))) return [];
+    seenGames.add(String(game.id));
     return [{ position, game, index }];
   });
+  const previousActiveIndex = games.length
+    ? ((normalizedActiveIndex - motionDelta) % games.length + games.length) % games.length
+    : 0;
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!presentation.keyboard) return;
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      nextSlide();
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      previousSlide();
-    }
+    if (event.key === "ArrowRight") { event.preventDefault(); nextSlide(); }
+    else if (event.key === "ArrowLeft") { event.preventDefault(); previousSlide(); }
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     suppressClick.current = false;
-    if (!event.isPrimary || event.button !== 0) return;
+    if (!event.isPrimary || event.button !== 0 || onSelectPosition) return;
     if ((event.pointerType === "mouse" && presentation.drag) || (event.pointerType !== "mouse" && presentation.touch)) {
-      pointerStart.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      const now = performance.now();
+      pointerStart.current = { x: event.clientX, y: event.clientY, id: event.pointerId, lastX: event.clientX, lastTime: now, velocityX: 0 };
     }
   }
 
-  function resetPointer() {
+  const settleDrag = useCallback((delta = 0) => {
+    const view = rootRef.current?.ownerDocument.defaultView;
+    if (dragSettleFrame.current !== null && view) view.cancelAnimationFrame(dragSettleFrame.current);
+    setDragging(false);
+    const finish = () => {
+      dragSettleFrame.current = null;
+      setDragOffset(0);
+      if (delta) moveBy(delta);
+    };
+    if (!view || reducedMotion) { finish(); return; }
+    dragSettleFrame.current = view.requestAnimationFrame(finish);
+  }, [moveBy, reducedMotion]);
+
+  useEffect(() => {
+    const view = rootRef.current?.ownerDocument.defaultView;
+    return () => {
+      if (dragSettleFrame.current !== null && view) view.cancelAnimationFrame(dragSettleFrame.current);
+    };
+  }, []);
+
+  function resetPointer(animate = false) {
+    const hadPointer = pointerStart.current !== null;
     pointerStart.current = null;
+    if (animate && hadPointer) settleDrag();
+    else { setDragging(false); setDragOffset(0); }
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     const start = pointerStart.current;
     if (!start || start.id !== event.pointerId) return;
-    const dx = Math.abs(start.x - event.clientX);
-    const dy = Math.abs(start.y - event.clientY);
-    if (dy > dx && dy > 12) { resetPointer(); return; }
-    if (dx >= SWIPE_THRESHOLD && dx > dy) {
-      suppressClick.current = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) { resetPointer(true); return; }
+    if (Math.abs(dx) < 4) return;
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
+    suppressClick.current = true;
+    setDragging(true);
+    setDragOffset(dx);
+    const now = performance.now();
+    const elapsed = Math.max(1, now - start.lastTime);
+    start.velocityX = (event.clientX - start.lastX) / elapsed;
+    start.lastX = event.clientX;
+    start.lastTime = now;
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     const start = pointerStart.current;
     if (!start || start.id !== event.pointerId) return;
-    const difference = start.x - event.clientX;
-    const vertical = Math.abs(start.y - event.clientY);
-    resetPointer();
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    const velocity = start.velocityX;
+    pointerStart.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (Math.abs(difference) < SWIPE_THRESHOLD || vertical >= Math.abs(difference)) return;
+    const threshold = Math.min(120, Math.max(46, presentation.responsive[designDevice].cardWidth * 0.1));
+    const commits = Math.abs(dx) >= threshold || Math.abs(velocity) >= 0.45;
+    if (!commits || Math.abs(dy) >= Math.max(Math.abs(dx), 24)) { settleDrag(); return; }
     suppressClick.current = true;
-    if (difference > 0) nextSlide();
-    else previousSlide();
+    const gesture = Math.abs(velocity) >= 0.45 ? velocity : dx;
+    settleDrag(gesture < 0 ? direction : -direction);
+  }
+
+  function handleLostPointerCapture() {
+    if (!pointerStart.current) return;
+    pointerStart.current = null;
+    settleDrag();
   }
 
   function startHoverPreview() {
     if (hoverPlayback && canUseFineHover()) setHoverPreviewActive(true);
     setHovered(true);
   }
-
   function stopHoverPreview() {
     if (hoverPlayback) setHoverPreviewActive(false);
     setHovered(false);
   }
 
-  return (
-    <section
-      ref={rootRef}
-      className={`${styles.heroSection} ${physicalMotion ? motionStyles.motionRoot : ""}`}
-      data-composition={presentation.composition}
-      data-transition={presentation.transition}
-      data-motion-engine={presentation.motionEngine}
-      data-motion-direction={physicalMotion ? motionDirection : undefined}
-      data-motion-sequence={physicalMotion ? motionSequence ?? undefined : undefined}
-      aria-label="Juegos destacados"
-      aria-roledescription="carrusel"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      style={rootStyle}
-      onMouseEnter={startHoverPreview}
-      onMouseLeave={stopHoverPreview}
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={(event) => {
-        if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false);
-      }}
-    >
-      <h2 className={styles.srOnly}>Juegos destacados</h2>
+  if (!activeGame) return null;
 
-      <div
-        className={styles.carouselViewport}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onLostPointerCapture={resetPointer}
-        onDragStart={(event) => event.preventDefault()}
-        onClickCapture={(event) => {
-          if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; }
-        }}
-        onPointerCancel={resetPointer}
-      >
-        <div ref={fitRef} className={styles.stageFit}>
-        <div className={styles.stage}>
+  return (
+    <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>
+      <h2 className={styles.srOnly}>Juegos destacados</h2>
+      <div className={styles.carouselViewport} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onLostPointerCapture={handleLostPointerCapture} onDragStart={(event) => event.preventDefault()} onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }} onPointerCancel={() => resetPointer(true)}>
+        <div ref={fitRef} className={styles.stageFit}><div className={styles.stage}>
           {renderedCards.map(({ position, game, index }) => {
             const positionStyle = presentation.positions[position];
             const isMain = position === "main";
-
+            const previousPosition = presentation.loop && motionDelta !== 0
+              ? visiblePositions.find((candidate) => {
+                  const previousIndex = ((previousActiveIndex + homeHeroPositionOffset(candidate)) % games.length + games.length) % games.length;
+                  return previousIndex === index;
+                })
+              : undefined;
+            const edgeWrap = Boolean(
+              presentation.loop &&
+              motionDelta !== 0 &&
+              (
+                !previousPosition ||
+                homeHeroPositionOffset(position) - homeHeroPositionOffset(previousPosition) !== -motionDelta
+              )
+            );
+            const parallaxArtworkStyle = presentation.motionStyle === "parallax"
+              ? { transform: PARALLAX_ARTWORK_TRANSFORM[position] }
+              : undefined;
             return (
-              <article
-                key={physicalMotion ? game.id : `${normalizedActiveIndex}-${position}-${game.id}`}
-                className={`${styles.heroCard} ${physicalMotion ? motionStyles.motionCard : ""}`}
-                data-position={position}
-                data-main={isMain || undefined}
-                onClick={onSelectPosition ? () => onSelectPosition(position) : undefined}
-                role="group"
-                aria-roledescription="slide"
-                aria-label={`${index + 1} de ${games.length}: ${game.title}`}
-                style={{
-                  opacity: positionStyle.opacity / 100,
-                  filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`,
-                  transform: homeHeroPositionTransform(positionStyle),
-                }}
-              >
-                <div className={motionStyles.motionFrame}>
-                <div className={styles.cardSurface} style={physicalMotion ? { animation: "none" } : undefined}>
-                  <div className={styles.media}>
-                    {game.heroImage || game.coverImage ? (
-                      <ResponsiveArtwork
-                        game={game}
-                        alt={isMain ? game.mediaAccessibility?.hero ?? game.imageAlt : ""}
-                        active={isMain}
-                        style={artworkStyle}
-                      />
-                    ) : (
-                      <div className={styles.mediaFallback} aria-hidden="true" />
-                    )}
-
+              <article key={game.id} className={`${styles.heroCard} ${motionStyles.motionCard}`} data-position={position} data-main={isMain || undefined} data-edge-wrap={edgeWrap || undefined} onClick={onSelectPosition ? () => onSelectPosition(position) : undefined} role="group" aria-roledescription="slide" aria-label={`${index + 1} de ${games.length}: ${game.title}`} style={{ opacity: positionStyle.opacity / 100, filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`, transform: homeHeroPositionTransform(positionStyle) }}>
+                <div className={motionStyles.motionFrame}><div className={styles.cardSurface}>
+                  <div className={`${styles.media} ${motionStyles.motionArtwork}`} style={parallaxArtworkStyle}>
+                    {game.heroImage || game.coverImage ? <ResponsiveArtwork game={game} alt={isMain ? game.mediaAccessibility?.hero ?? game.imageAlt : ""} active={isMain} style={artworkStyle} /> : <div className={styles.mediaFallback} aria-hidden="true" />}
                     {isMain && <HeroVideoLayer game={game} enabled={videoShouldRender} />}
-
-                    {imageEffect && isMain && (
-                      <div
-                        className={styles.tuningOverlay}
-                        style={{ opacity: tuningOverlayOpacity }}
-                        aria-hidden="true"
-                      />
-                    )}
+                    {imageEffect && isMain && <div className={styles.tuningOverlay} style={{ opacity: tuningOverlayOpacity }} aria-hidden="true" />}
                     <div className={styles.editorOverlay} aria-hidden="true" />
                     {isMain && <div className={styles.readabilityOverlay} aria-hidden="true" />}
                   </div>
-
-                  {isMain ? (
-                    <>
-                      {game.badge && <span className={styles.featuredBadge}>{game.badge}</span>}
-                      <MainCardContent game={game} motionEnabled={physicalMotion} />
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.sideSelect}
-                      aria-label={onSelectPosition ? `Editar posición de ${game.title}` : `Mostrar ${game.title}`}
-                      onClick={(event) => {
-                        if (onSelectPosition) {
-                          event.stopPropagation();
-                          onSelectPosition(position);
-                          return;
-                        }
-                        selectSlide(index);
-                      }}
-                    >
-                      <span>
-                        <strong>{game.shortTitle ?? game.title}</strong>
-                        <small>{game.category}</small>
-                      </span>
-                    </button>
+                  {isMain ? <>{game.badge && <span className={styles.featuredBadge}>{game.badge}</span>}<MainCardContent game={game} motionEnabled={!reducedMotion} /></> : (
+                    <button type="button" className={styles.sideSelect} aria-label={onSelectPosition ? `Editar posición de ${game.title}` : `Mostrar ${game.title}`} onClick={(event) => { if (onSelectPosition) { event.stopPropagation(); onSelectPosition(position); return; } selectSlide(index); }}><span><strong>{game.shortTitle ?? game.title}</strong><small>{game.category}</small></span></button>
                   )}
-                </div>
-                </div>
+                </div></div>
               </article>
             );
           })}
-        </div>
-        </div>
+        </div></div>
       </div>
-
-      {games.length > 1 && (
-        <>
-          <button
-            type="button"
-            className={`${styles.arrow} ${styles.arrowLeft}`}
-            data-hero-spacing-boundary="control"
-            aria-label="Juego anterior"
-            onClick={previousSlide}
-            disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}
-          >
-            <ChevronLeft size={29} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={`${styles.arrow} ${styles.arrowRight}`}
-            data-hero-spacing-boundary="control"
-            aria-label="Juego siguiente"
-            onClick={nextSlide}
-            disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}
-          >
-            <ChevronRight size={29} aria-hidden="true" />
-          </button>
-
-          <HeroNavigation
-            games={games}
-            activeIndex={normalizedActiveIndex}
-            config={presentation.navigation}
-            autoplayDelay={autoplayDelay}
-            isPaused={isPaused}
-            manualPaused={manualPaused}
-            atAutoplayEnd={atAutoplayEnd}
-            onSelect={selectSlide}
-            onTogglePause={() => setManualPaused((current) => !current)}
-            editor={navigationEditor}
-          />
-        </>
-      )}
-
-      <span className={styles.srOnly} aria-hidden="true">
-        {formatHomeHeroPosition(normalizedActiveIndex, games.length)}
-      </span>
+      {games.length > 1 && <>
+        <button type="button" className={`${styles.arrow} ${styles.arrowLeft}`} data-hero-spacing-boundary="control" aria-label="Juego anterior" onClick={previousSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}><ChevronLeft size={29} aria-hidden="true" /></button>
+        <button type="button" className={`${styles.arrow} ${styles.arrowRight}`} data-hero-spacing-boundary="control" aria-label="Juego siguiente" onClick={nextSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}><ChevronRight size={29} aria-hidden="true" /></button>
+        <HeroNavigation games={games} activeIndex={normalizedActiveIndex} config={presentation.navigation} autoplayDelay={autoplayDelay} isPaused={isPaused} manualPaused={manualPaused} atAutoplayEnd={atAutoplayEnd} onSelect={selectSlide} onTogglePause={() => setManualPaused((current) => !current)} editor={navigationEditor} />
+      </>}
+      <span className={styles.srOnly} aria-hidden="true">{formatHomeHeroPosition(normalizedActiveIndex, games.length)}</span>
     </section>
   );
 }
