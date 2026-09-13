@@ -1,16 +1,19 @@
 .motionRoot,
 .motionRoot[data-motion-style="momentum"] {
   --hero-motion-duration: 760ms;
+  --hero-artwork-duration: 760ms;
   --hero-motion-easing: cubic-bezier(.16, 1, .3, 1);
 }
 
 .motionRoot[data-motion-style="morph"] {
   --hero-motion-duration: 820ms;
+  --hero-artwork-duration: 820ms;
   --hero-motion-easing: cubic-bezier(.2, .9, .2, 1);
 }
 
 .motionRoot[data-motion-style="parallax"] {
   --hero-motion-duration: 900ms;
+  --hero-artwork-duration: 900ms;
   --hero-motion-easing: cubic-bezier(.18, .82, .18, 1);
 }
 
@@ -34,7 +37,7 @@
 .motionArtwork {
   transform: translate3d(0, 0, 0) scale(1);
   transform-origin: center;
-  transition: transform var(--hero-motion-duration) var(--hero-motion-easing);
+  transition: transform var(--hero-artwork-duration) var(--hero-motion-easing);
   will-change: transform;
 }
 
@@ -120,14 +123,17 @@
 @media (max-width: 680px) {
   .motionRoot {
     --hero-motion-duration: 620ms;
+    --hero-artwork-duration: 620ms;
   }
 
   .motionRoot[data-motion-style="morph"] {
     --hero-motion-duration: 680ms;
+    --hero-artwork-duration: 680ms;
   }
 
   .motionRoot[data-motion-style="parallax"] {
     --hero-motion-duration: 720ms;
+    --hero-artwork-duration: 720ms;
   }
 }
 

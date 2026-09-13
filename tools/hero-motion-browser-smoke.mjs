@@ -297,6 +297,8 @@ async function main() {
   };
 
   const play = async () => {
+    const beforeMain = await cdp.evaluate(`document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null`);
+    requireCheck(beforeMain, 'No se pudo identificar el juego principal antes de iniciar la prueba interactiva.');
     const clicked = await cdp.evaluate(`(() => {
       const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Probar funcionamiento'));
       if (!(button instanceof HTMLButtonElement)) return document.body.innerText.includes('Volver a editar');
@@ -305,6 +307,20 @@ async function main() {
     })()`);
     requireCheck(clicked, 'No se pudo activar la prueba interactiva del Hero.');
     await waitUntil(cdp, `document.body.innerText.includes('Volver a editar')`, 'modo de prueba interactiva');
+    await waitUntil(
+      cdp,
+      `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') !== ${JSON.stringify(beforeMain)}`,
+      'transición automática inicial del modo de prueba'
+    );
+    // HomeHeroLivePreview demuestra el movimiento al entrar en modo de prueba.
+    // Deja terminar esa transición completa antes de medir una repetición manual;
+    // así no se mezclan dos recorridos físicos ni dos ventanas de edge-wrap.
+    await delay(950);
+    await waitUntil(
+      cdp,
+      `!document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-edge-wrap="true"]')`,
+      'limpieza del edge-wrap de la demostración automática'
+    );
   };
 
   const replayAndMeasure = async (style) => {
@@ -335,6 +351,7 @@ async function main() {
         main: active?.getAttribute('aria-label') ?? null,
         retained: retained.length,
         moved: moved.length,
+        edgeWrapCount: doc?.querySelectorAll('[data-edge-wrap="true"]').length ?? 0,
         transitionDuration: active ? getComputedStyle(active).transitionDuration : null,
         mainScaleX: active ? getComputedStyle(active).getPropertyValue('--hero-motion-scale-x').trim() : null,
         sideScaleX: doc?.querySelector('[data-position="right1"]') ? getComputedStyle(doc.querySelector('[data-position="right1"]')).getPropertyValue('--hero-motion-scale-x').trim() : null,
@@ -344,6 +361,7 @@ async function main() {
     })()`);
     requireCheck(after.main !== before.main, `${style} no cambió el juego principal.`);
     requireCheck(after.retained >= 2 && after.moved >= 1, `${style} no conservó nodos físicos entre slots (${after.retained}/${after.moved}).`);
+    requireCheck(after.edgeWrapCount === 0, `${style} dejó ${after.edgeWrapCount} tarjeta(s) marcadas como edge-wrap después del settle corto.`);
     return { before, after };
   };
 
@@ -418,7 +436,7 @@ async function main() {
     await capture(cdp, path.join(outputDir, 'hero-motion-v3-desktop.png'));
     requireCheck(report.runtimeIssues.length === 0, `Errores runtime V3: ${report.runtimeIssues.join(' | ')}`);
     await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-    console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, drag continuo confirmado y reduced motion.`);
+    console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, edge-wrap transitorio, drag continuo confirmado y reduced motion.`);
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
     await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8').catch(() => {});
