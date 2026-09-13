@@ -215,7 +215,7 @@ export default function HomeHeroLivePreview({
           {followsBrowserViewport && <span>Vista sincronizada con la ventana actual</span>}
         </div>
         <div>
-          <span role="status">Movimiento {motionLabel}. Guardar conserva el borrador; los cambios editoriales que hagas aquí llegan a la Home pública sólo al publicar Inicio.</span>
+          <span role="status">Movimiento global {motionLabel}: se aplica a escritorio, tableta y móvil. Guardar conserva el borrador; los cambios editoriales que hagas aquí llegan a la Home pública sólo al publicar Inicio.</span>
           {playing && games.length > 1 && <button type="button" className={styles.breakpoint} onClick={replayTransition}>Repetir movimiento ahora</button>}
         </div>
       </div>
