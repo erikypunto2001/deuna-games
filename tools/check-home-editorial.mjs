@@ -31,6 +31,7 @@ const [
   creationService,
   heroSection,
   heroStyles,
+  heroMotionStyles,
   heroContract,
   heroDevices,
   heroLayout,
@@ -64,6 +65,7 @@ const [
   source("src/lib/admin/content-create-service.ts"),
   source("src/components/home/HeroSection.tsx"),
   source("src/components/home/HeroSection.module.css"),
+  source("src/components/home/HeroMotion.module.css"),
   source("src/lib/home/hero-contract.ts"),
   source("src/lib/home/hero-devices.ts"),
   source("src/lib/home/hero-layout.ts"),
@@ -323,10 +325,11 @@ assert(
     heroSection.includes("homeHeroPositionTransform(positionStyle)") &&
     heroSection.includes("homeHeroPositionDisplay") &&
     heroSection.includes("homeHeroSlotCSS") &&
-    heroSection.includes("--hero-editor-easing") &&
+    heroSection.includes('data-motion-style={presentation.motionStyle}') &&
+    heroSection.includes('"--hero-drag-offset"') &&
     heroSection.includes("--hero-editor-overlay") &&
     heroSection.includes("--hero-editor-border"),
-  "El renderer público debe consumir la visibilidad y geometría canónicas, responsive, easing, overlay y borde desde HomeHeroPresentation."
+  "El renderer público debe consumir visibilidad/geometría canónicas, el único motionStyle V3, drag continuo, overlay y borde desde HomeHeroPresentation."
 );
 
 assert(
@@ -343,19 +346,14 @@ assert(
 );
 
 assert(
-  heroStyles.includes('data-transition="slide"') &&
-    heroStyles.includes('data-transition="coverflow"') &&
-    heroStyles.includes('data-transition="fade"') &&
-    heroStyles.includes('data-transition="3d"') &&
-    heroStyles.includes('data-transition="stack"') &&
-    heroStyles.includes('data-transition="perspective"') &&
-    heroStyles.includes('data-transition="custom"') &&
-    heroStyles.includes("var(--hero-editor-duration)") &&
-    heroStyles.includes("var(--hero-editor-easing)") &&
+  heroMotionStyles.includes('data-motion-style="momentum"') &&
+    heroMotionStyles.includes('data-motion-style="morph"') &&
+    heroMotionStyles.includes('data-motion-style="parallax"') &&
+    heroMotionStyles.includes("--hero-motion-duration") &&
     heroStyles.includes("@media(max-width:1100px)") &&
     heroStyles.includes("@media(max-width:680px)") &&
-    heroStyles.includes("prefers-reduced-motion"),
-  "Las transiciones y los breakpoints públicos del Hero deben seguir implementados."
+    heroMotionStyles.includes("prefers-reduced-motion"),
+  "El Hero público debe implementar sólo los tres movimientos V3, sus ritmos art-directed y los breakpoints compartidos."
 );
 
 assert(
@@ -366,7 +364,10 @@ assert(
     heroEditor.includes("Transformación 3D") &&
     heroEditor.includes("Tarjetas visibles") &&
     heroEditor.includes("Perspectiva") &&
-    heroEditor.includes("Easing") &&
+    heroEditor.includes("Momentum") &&
+    heroEditor.includes("Morph") &&
+    heroEditor.includes("Parallax Sweep") &&
+    !heroEditor.includes("Easing") &&
     heroEditor.includes("Cambiar imagen") &&
     heroEditor.includes("Ajustar encuadre") &&
     heroEditor.includes("selectionModes") &&

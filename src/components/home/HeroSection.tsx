@@ -376,8 +376,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     };
   }, [presentation, games.length, normalizedActiveIndex]);
 
-  if (!activeGame) return null;
-  const heroMode = resolveGameDestinationMediaMode(activeGame, "hero");
+  const heroMode = activeGame ? resolveGameDestinationMediaMode(activeGame, "hero") : "image";
   const hoverPlayback = heroMode === "hover-video";
   const videoShouldRender = !reducedMotion && heroMode !== "image" && (!hoverPlayback || hoverPreviewActive);
   const visiblePositions = homeHeroVisiblePositions(presentation.responsive[designDevice], presentation.direction, games.length);
@@ -485,6 +484,8 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     if (hoverPlayback) setHoverPreviewActive(false);
     setHovered(false);
   }
+
+  if (!activeGame) return null;
 
   return (
     <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>

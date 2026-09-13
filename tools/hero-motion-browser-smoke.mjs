@@ -274,298 +274,146 @@ function requireCheck(condition, message) {
 
 async function main() {
   await mkdir(outputDir, { recursive: true });
-  const profileDir = await mkdtemp(
-    path.join(os.tmpdir(), "deuna-hero-motion-chrome-")
-  );
-  const browser = spawn(
-    findChrome(),
-    [
-      "--headless=new",
-      "--disable-gpu",
-      "--disable-dev-shm-usage",
-      "--no-sandbox",
-      "--remote-debugging-port=0",
-      "--remote-debugging-address=127.0.0.1",
-      `--user-data-dir=${profileDir}`,
-      `--window-size=${viewport.width},${viewport.height}`,
-      "about:blank",
-    ],
-    { stdio: ["ignore", "ignore", "pipe"] }
-  );
+  const profileDir = await mkdtemp(path.join(os.tmpdir(), "deuna-hero-motion-chrome-"));
+  const browser = spawn(findChrome(), [
+    "--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+    "--remote-debugging-port=0", "--remote-debugging-address=127.0.0.1",
+    `--user-data-dir=${profileDir}`, `--window-size=${viewport.width},${viewport.height}`, "about:blank",
+  ], { stdio: ["ignore", "ignore", "pipe"] });
   browser.stderr.resume();
 
   let cdp = null;
-  const report = {
-    generatedAt: new Date().toISOString(),
-    baseUrl,
-    checks: {},
-    runtimeIssues: [],
+  const report = { generatedAt: new Date().toISOString(), baseUrl, checks: {}, runtimeIssues: [] };
+
+  const selectMotion = async (label, style) => {
+    const clicked = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.trim().startsWith(${JSON.stringify(label)}));
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`);
+    requireCheck(clicked, `No se encontró el selector ${label}.`);
+    await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style="${style}"]')`, `motionStyle ${style}`);
+  };
+
+  const play = async () => {
+    const clicked = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Probar funcionamiento'));
+      if (!(button instanceof HTMLButtonElement)) return document.body.innerText.includes('Volver a editar');
+      button.click();
+      return true;
+    })()`);
+    requireCheck(clicked, 'No se pudo activar la prueba interactiva del Hero.');
+    await waitUntil(cdp, `document.body.innerText.includes('Volver a editar')`, 'modo de prueba interactiva');
+  };
+
+  const replayAndMeasure = async (style) => {
+    const before = await cdp.evaluate(`(() => {
+      const frame = document.querySelector('iframe[title^="Hero real"]');
+      const doc = frame?.contentDocument;
+      const root = doc?.querySelector('[data-motion-style="${style}"]');
+      const cards = Array.from(doc?.querySelectorAll('[data-position]') ?? []);
+      if (frame?.contentWindow) frame.contentWindow.__heroV3Nodes = cards.map(node => ({ node, position: node.getAttribute('data-position') }));
+      return { style: root?.getAttribute('data-motion-style') ?? null, main: doc?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null, cards: cards.length };
+    })()`);
+    const replay = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Repetir movimiento ahora'));
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click(); return true;
+    })()`);
+    requireCheck(replay, `No se pudo repetir ${style}.`);
+    await delay(260);
+    const after = await cdp.evaluate(`(() => {
+      const frame = document.querySelector('iframe[title^="Hero real"]');
+      const doc = frame?.contentDocument;
+      const cards = Array.from(doc?.querySelectorAll('[data-position]') ?? []);
+      const prior = frame?.contentWindow?.__heroV3Nodes ?? [];
+      const retained = prior.filter(({node}) => cards.includes(node));
+      const moved = retained.filter(({node, position}) => node.getAttribute('data-position') !== position);
+      const active = doc?.querySelector('[data-position="main"]');
+      return {
+        main: active?.getAttribute('aria-label') ?? null,
+        retained: retained.length,
+        moved: moved.length,
+        transitionDuration: active ? getComputedStyle(active).transitionDuration : null,
+        mainScaleX: active ? getComputedStyle(active).getPropertyValue('--hero-motion-scale-x').trim() : null,
+        sideScaleX: doc?.querySelector('[data-position="right1"]') ? getComputedStyle(doc.querySelector('[data-position="right1"]')).getPropertyValue('--hero-motion-scale-x').trim() : null,
+        mainArtworkTransform: doc?.querySelector('[data-position="main"] [class*="motionArtwork"]') ? getComputedStyle(doc.querySelector('[data-position="main"] [class*="motionArtwork"]')).transform : null,
+        sideArtworkTransform: doc?.querySelector('[data-position="right1"] [class*="motionArtwork"]') ? getComputedStyle(doc.querySelector('[data-position="right1"] [class*="motionArtwork"]')).transform : null,
+      };
+    })()`);
+    requireCheck(after.main !== before.main, `${style} no cambió el juego principal.`);
+    requireCheck(after.retained >= 2 && after.moved >= 1, `${style} no conservó nodos físicos entre slots (${after.retained}/${after.moved}).`);
+    return { before, after };
   };
 
   try {
     const target = await waitForDebugger(profileDir, browser);
     cdp = new CdpSession(await openWebSocket(target.webSocketDebuggerUrl));
-    await Promise.all([
-      cdp.send("Page.enable"),
-      cdp.send("Runtime.enable"),
-      cdp.send("Network.enable"),
-    ]);
+    await Promise.all([cdp.send('Page.enable'), cdp.send('Runtime.enable'), cdp.send('Network.enable')]);
     await setViewport(cdp);
-
-    cdp.on("Runtime.exceptionThrown", (event) => {
-      report.runtimeIssues.push(
-        event.exceptionDetails?.exception?.description ??
-          event.exceptionDetails?.text ??
-          "Excepción JavaScript sin detalle."
-      );
-    });
-    cdp.on("Runtime.consoleAPICalled", (event) => {
-      if (event.type !== "error") return;
-      report.runtimeIssues.push(
-        event.args
-          ?.map((arg) => arg.value ?? arg.description ?? arg.type)
-          .join(" ") ?? "console.error sin detalle."
-      );
-    });
+    cdp.on('Runtime.exceptionThrown', (event) => report.runtimeIssues.push(event.exceptionDetails?.exception?.description ?? event.exceptionDetails?.text ?? 'Excepción JavaScript sin detalle.'));
+    cdp.on('Runtime.consoleAPICalled', (event) => { if (event.type === 'error') report.runtimeIssues.push(event.args?.map((arg) => arg.value ?? arg.description ?? arg.type).join(' ') ?? 'console.error'); });
 
     await loginAdmin(cdp);
     await navigate(cdp, `${baseUrl}/admin/portada?seccion=hero`);
-    await waitUntil(
-      cdp,
-      `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-engine]')`,
-      "preview real del Hero"
-    );
+    await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');
 
-    const initial = await cdp.evaluate(`
-      (() => {
-        const frame = document.querySelector('iframe[title^="Hero real"]');
-        const preview = frame?.contentDocument;
-        const root = preview?.querySelector('[data-motion-engine]');
-        const main = preview?.querySelector('[data-position="main"]');
-        const input = document.querySelector('form[action="/api/admin/content/home/hero"] input[name="heroJson"]');
-        const revision = document.querySelector('form[action="/api/admin/content/home/hero"] input[name="expectedRevision"]');
-        let storedEngine = null;
-        if (input instanceof HTMLInputElement) {
-          storedEngine = JSON.parse(input.value)?.presentation?.motionEngine ?? null;
-        }
-        return {
-          previewEngine: root?.getAttribute("data-motion-engine") ?? null,
-          mainLabel: main?.getAttribute("aria-label") ?? null,
-          storedEngine,
-          expectedRevision: revision instanceof HTMLInputElement ? revision.value : null,
-        };
-      })()
-    `);
-    report.checks.initial = initial;
-    requireCheck(
-      initial.previewEngine === "legacy",
-      `El preview inicial debía ser legacy y fue ${initial.previewEngine}.`
-    );
-    requireCheck(
-      initial.storedEngine === "legacy",
-      `El borrador fixture debía conservar legacy y fue ${initial.storedEngine}.`
-    );
+    const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);
+    requireCheck(JSON.stringify(labels) === JSON.stringify(['Momentum','Morph','Parallax Sweep']), `El Admin debe exponer exactamente tres movimientos y expuso ${JSON.stringify(labels)}.`);
+    report.checks.motionOptions = labels;
 
-    const previewClicked = await cdp.evaluate(`
-      (() => {
-        const button = Array.from(document.querySelectorAll("button")).find(
-          (node) => node.textContent?.includes("Probar funcionamiento")
-        );
-        if (!(button instanceof HTMLButtonElement)) return false;
-        button.click();
-        return true;
-      })()
-    `);
-    requireCheck(
-      previewClicked,
-      "No se encontró «Probar funcionamiento» en el editor Hero."
-    );
+    await selectMotion('Momentum', 'momentum');
+    await play();
+    report.checks.momentum = await replayAndMeasure('momentum');
+    requireCheck(parseFloat(report.checks.momentum.after.transitionDuration ?? '0') > 0, 'Momentum no tiene transición física activa.');
 
-    await waitUntil(
-      cdp,
-      `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-engine="physical"]')`,
-      "simulación física V2"
-    );
-    await delay(350);
+    const dragPoint = await cdp.evaluate(`(() => {
+      const frame = document.querySelector('iframe[title^="Hero real"]');
+      const doc = frame?.contentDocument;
+      const viewportNode = doc?.querySelector('[class*="carouselViewport"]');
+      if (!(frame instanceof HTMLIFrameElement) || !(viewportNode instanceof HTMLElement)) return null;
+      const fr = frame.getBoundingClientRect(); const vr = viewportNode.getBoundingClientRect();
+      const sx = fr.width / Math.max(1, frame.clientWidth); const sy = fr.height / Math.max(1, frame.clientHeight);
+      return { x: fr.left + (vr.left + vr.width * .55) * sx, y: fr.top + (vr.top + vr.height * .5) * sy };
+    })()`);
+    requireCheck(dragPoint, 'No se pudo resolver el punto físico del carril para drag.');
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: dragPoint.x, y: dragPoint.y, button: 'left', buttons: 1, clickCount: 1 });
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: dragPoint.x - 86, y: dragPoint.y, button: 'left', buttons: 1 });
+    await delay(80);
+    const duringDrag = await cdp.evaluate(`(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const root=doc?.querySelector('[data-motion-style]'); const card=doc?.querySelector('[data-position="main"]'); return { dragging: root?.getAttribute('data-dragging') ?? null, transform: card ? getComputedStyle(card).transform : null }; })()`);
+    requireCheck(duringDrag.dragging === 'true', 'El drag real no activó el estado continuo antes del pointerup.');
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: dragPoint.x - 86, y: dragPoint.y, button: 'left', buttons: 0, clickCount: 1 });
+    report.checks.drag = duringDrag;
 
-    const simulated = await cdp.evaluate(`
-      (() => {
-        const frame = document.querySelector('iframe[title^="Hero real"]');
-        const preview = frame?.contentDocument;
-        const root = preview?.querySelector('[data-motion-engine="physical"]');
-        const main = preview?.querySelector('[data-position="main"]');
-        const input = document.querySelector('form[action="/api/admin/content/home/hero"] input[name="heroJson"]');
-        const revision = document.querySelector('form[action="/api/admin/content/home/hero"] input[name="expectedRevision"]');
-        const bodyText = document.body?.innerText ?? "";
-        let storedEngine = null;
-        if (input instanceof HTMLInputElement) {
-          storedEngine = JSON.parse(input.value)?.presentation?.motionEngine ?? null;
-        }
-        const cards = Array.from(preview?.querySelectorAll('[data-position]') ?? []);
-        if (frame?.contentWindow) {
-          frame.contentWindow.__deunaHeroMotionNodes = cards.map((node) => ({
-            node,
-            position: node.getAttribute("data-position"),
-          }));
-        }
-        return {
-          previewEngine: root?.getAttribute("data-motion-engine") ?? null,
-          mainLabel: main?.getAttribute("aria-label") ?? null,
-          motionDirection: root?.getAttribute("data-motion-direction") ?? null,
-          motionSequence: root?.getAttribute("data-motion-sequence") ?? null,
-          storedEngine,
-          expectedRevision: revision instanceof HTMLInputElement ? revision.value : null,
-          simulationNotice: bodyText.includes("Simulación V2 activa sólo en esta prueba"),
-          cardCount: cards.length,
-        };
-      })()
-    `);
-    report.checks.simulated = simulated;
-    requireCheck(
-      simulated.previewEngine === "physical",
-      "«Probar funcionamiento» no activó V2 en el renderer real."
-    );
-    requireCheck(
-      simulated.storedEngine === "legacy",
-      "La simulación V2 contaminó el payload guardable del borrador."
-    );
-    requireCheck(
-      simulated.expectedRevision === initial.expectedRevision,
-      "La simulación V2 alteró la revisión editorial."
-    );
-    requireCheck(
-      simulated.simulationNotice,
-      "Falta el estado explícito de simulación V2 no guardada."
-    );
-    requireCheck(
-      simulated.motionSequence !== null,
-      "La prueba V2 no disparó una transición física inicial."
-    );
-    requireCheck(
-      simulated.mainLabel !== initial.mainLabel,
-      "La prueba V2 no avanzó el juego principal."
-    );
-    requireCheck(
-      simulated.cardCount >= 2,
-      "No hay suficientes tarjetas visibles para comprobar identidad física."
-    );
+    await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Volver a editar'))?.click()`);
+    await waitUntil(cdp, `document.body.innerText.includes('Probar funcionamiento')`, 'vuelta a edición');
+    await selectMotion('Morph', 'morph'); await play();
+    report.checks.morph = await replayAndMeasure('morph');
+    requireCheck(report.checks.morph.after.sideScaleX && report.checks.morph.after.sideScaleX !== '1', 'Morph no aplica expansión/compresión progresiva en tarjetas laterales.');
 
-    const replayClicked = await cdp.evaluate(`
-      (() => {
-        const button = Array.from(document.querySelectorAll("button")).find(
-          (node) => node.textContent?.includes("Repetir transición ahora")
-        );
-        if (!(button instanceof HTMLButtonElement)) return false;
-        button.click();
-        return true;
-      })()
-    `);
-    requireCheck(
-      replayClicked,
-      "No se encontró «Repetir transición ahora» durante la prueba V2."
-    );
-    await delay(250);
+    await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Volver a editar'))?.click()`);
+    await waitUntil(cdp, `document.body.innerText.includes('Probar funcionamiento')`, 'vuelta a edición parallax');
+    await selectMotion('Parallax Sweep', 'parallax'); await play();
+    report.checks.parallax = await replayAndMeasure('parallax');
+    requireCheck(report.checks.parallax.after.mainArtworkTransform !== report.checks.parallax.after.sideArtworkTransform, 'Parallax Sweep no separa el recorrido del artwork entre slots.');
 
-    const replay = await cdp.evaluate(`
-      (() => {
-        const frame = document.querySelector('iframe[title^="Hero real"]');
-        const preview = frame?.contentDocument;
-        const root = preview?.querySelector('[data-motion-engine="physical"]');
-        const after = Array.from(preview?.querySelectorAll('[data-position]') ?? []);
-        const before = frame?.contentWindow?.__deunaHeroMotionNodes ?? [];
-        const retained = before.filter(({ node }) => after.includes(node));
-        const moved = retained.filter(
-          ({ node, position }) => node.getAttribute("data-position") !== position
-        );
-        const main = preview?.querySelector('[data-position="main"]');
-        const input = document.querySelector('form[action="/api/admin/content/home/hero"] input[name="heroJson"]');
-        let storedEngine = null;
-        if (input instanceof HTMLInputElement) {
-          storedEngine = JSON.parse(input.value)?.presentation?.motionEngine ?? null;
-        }
-        return {
-          mainLabel: main?.getAttribute("aria-label") ?? null,
-          motionSequence: root?.getAttribute("data-motion-sequence") ?? null,
-          retainedNodes: retained.length,
-          movedNodes: moved.length,
-          storedEngine,
-        };
-      })()
-    `);
-    report.checks.replay = replay;
-    requireCheck(
-      replay.motionSequence &&
-        replay.motionSequence !== simulated.motionSequence,
-      "La repetición no alternó la secuencia del motor físico."
-    );
-    requireCheck(
-      replay.mainLabel !== simulated.mainLabel,
-      "La repetición V2 no cambió el juego principal."
-    );
-    requireCheck(
-      replay.retainedNodes >= 2,
-      `V2 no preservó suficientes nodos React entre slots (${replay.retainedNodes}).`
-    );
-    requireCheck(
-      replay.movedNodes >= 1,
-      "Ningún nodo estable cambió de posición durante la transición V2."
-    );
-    requireCheck(
-      replay.storedEngine === "legacy",
-      "Repetir la transición modificó el borrador persistible."
-    );
+    await cdp.send('Emulation.setEmulatedMedia', { media: '', features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await delay(120);
+    const reduced = await cdp.evaluate(`(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const card=doc?.querySelector('[data-position="main"]'); const art=doc?.querySelector('[data-position="main"] [class*="motionArtwork"]'); return { cardDuration: card ? getComputedStyle(card).transitionDuration : null, artworkDuration: art ? getComputedStyle(art).transitionDuration : null, animation: card?.querySelector('[class*="contentReveal"]') ? getComputedStyle(card.querySelector('[class*="contentReveal"] > *')).animationName : null }; })()`);
+    report.checks.reducedMotion = reduced;
+    requireCheck(reduced.cardDuration === '0s' && reduced.artworkDuration === '0s', `Reduced motion no anuló transiciones: ${JSON.stringify(reduced)}.`);
 
-    await capture(
-      cdp,
-      path.join(outputDir, "hero-motion-runtime-physical-desktop.png")
-    );
-
-    await navigate(cdp, `${baseUrl}/`);
-    await waitUntil(
-      cdp,
-      `document.querySelector('[data-motion-engine]')`,
-      "Hero público tras simulación V2"
-    );
-    const publicState = await cdp.evaluate(`
-      (() => {
-        const root = document.querySelector('[data-motion-engine]');
-        return {
-          engine: root?.getAttribute("data-motion-engine") ?? null,
-          url: location.href,
-        };
-      })()
-    `);
-    report.checks.publicAfterSimulation = publicState;
-    requireCheck(
-      publicState.engine === "legacy",
-      `La Home pública cambió sin publicar: motor ${publicState.engine}.`
-    );
-    requireCheck(
-      report.runtimeIssues.length === 0,
-      `Errores runtime durante la prueba V2: ${report.runtimeIssues.join(" | ")}`
-    );
-
-    await writeFile(
-      path.join(outputDir, "hero-motion-runtime.json"),
-      `${JSON.stringify(report, null, 2)}\n`,
-      "utf8"
-    );
-    console.log(
-      `[hero-motion-runtime] OK: legacy → simulación physical → replay con ${replay.retainedNodes} nodos retenidos/${replay.movedNodes} movidos → Home pública legacy.`
-    );
+    await capture(cdp, path.join(outputDir, 'hero-motion-v3-desktop.png'));
+    requireCheck(report.runtimeIssues.length === 0, `Errores runtime V3: ${report.runtimeIssues.join(' | ')}`);
+    await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+    console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, drag continuo y reduced motion.`);
   } catch (error) {
-    report.error =
-      error instanceof Error ? error.stack ?? error.message : String(error);
-    await writeFile(
-      path.join(outputDir, "hero-motion-runtime.json"),
-      `${JSON.stringify(report, null, 2)}\n`,
-      "utf8"
-    ).catch(() => {});
+    report.error = error instanceof Error ? error.stack ?? error.message : String(error);
+    await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8').catch(() => {});
     throw error;
   } finally {
-    cdp?.close();
-    browser.kill("SIGTERM");
-    await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+    cdp?.close(); browser.kill('SIGTERM'); await rm(profileDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
