@@ -26,19 +26,212 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Restore validated Hero V3 final files
+      - name: Apply validated Hero V3 final transformations
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL 'https://raw.githubusercontent.com/ooguchii/deuna-games/65c0ad4203bd07c23d7e43f4fed6c77609fa2a67/.github/workflows/hero-v3-finalize.yml' -o /tmp/hero-v3-finalizer-source.yml
-          awk '
-            /cat > \/tmp\/hero-v3-final-files\.tgz\.b64/ { capture=1; next }
-            capture && /^[[:space:]]*EOF[[:space:]]*$/ { exit }
-            capture { print }
-          ' /tmp/hero-v3-finalizer-source.yml | tr -d '[:space:]' | base64 --decode > /tmp/hero-v3-final-files.tgz
-          echo '0b68f123e0158c093cf71a2305ad0faa07f5f927753f4ad27a9a38d3f3378a18  /tmp/hero-v3-final-files.tgz' | sha256sum -c -
-          tar -xzf /tmp/hero-v3-final-files.tgz -C .
+          cat > /tmp/smoke-tail.txt <<'SMOKE_EOF'
+          async function main() {
+            await mkdir(outputDir, { recursive: true });
+            const profileDir = await mkdtemp(path.join(os.tmpdir(), "deuna-hero-motion-chrome-"));
+            const browser = spawn(findChrome(), [
+              "--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+              "--remote-debugging-port=0", "--remote-debugging-address=127.0.0.1",
+              `--user-data-dir=${profileDir}`, `--window-size=${viewport.width},${viewport.height}`, "about:blank",
+            ], { stdio: ["ignore", "ignore", "pipe"] });
+            browser.stderr.resume();
+
+            let cdp = null;
+            const report = { generatedAt: new Date().toISOString(), baseUrl, checks: {}, runtimeIssues: [] };
+
+            const selectMotion = async (label, style) => {
+              const clicked = await cdp.evaluate(`(() => {
+                const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.trim().startsWith(${JSON.stringify(label)}));
+                if (!(button instanceof HTMLButtonElement)) return false;
+                button.click();
+                return true;
+              })()`);
+              requireCheck(clicked, `No se encontró el selector ${label}.`);
+              await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style="${style}"]')`, `motionStyle ${style}`);
+            };
+
+            const play = async () => {
+              const clicked = await cdp.evaluate(`(() => {
+                const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Probar funcionamiento'));
+                if (!(button instanceof HTMLButtonElement)) return document.body.innerText.includes('Volver a editar');
+                button.click();
+                return true;
+              })()`);
+              requireCheck(clicked, 'No se pudo activar la prueba interactiva del Hero.');
+              await waitUntil(cdp, `document.body.innerText.includes('Volver a editar')`, 'modo de prueba interactiva');
+            };
+
+            const replayAndMeasure = async (style) => {
+              const before = await cdp.evaluate(`(() => {
+                const frame = document.querySelector('iframe[title^="Hero real"]');
+                const doc = frame?.contentDocument;
+                const root = doc?.querySelector('[data-motion-style="${style}"]');
+                const cards = Array.from(doc?.querySelectorAll('[data-position]') ?? []);
+                if (frame?.contentWindow) frame.contentWindow.__heroV3Nodes = cards.map(node => ({ node, position: node.getAttribute('data-position') }));
+                return { style: root?.getAttribute('data-motion-style') ?? null, main: doc?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null, cards: cards.length };
+              })()`);
+              const replay = await cdp.evaluate(`(() => {
+                const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Repetir movimiento ahora'));
+                if (!(button instanceof HTMLButtonElement)) return false;
+                button.click(); return true;
+              })()`);
+              requireCheck(replay, `No se pudo repetir ${style}.`);
+              await delay(260);
+              const after = await cdp.evaluate(`(() => {
+                const frame = document.querySelector('iframe[title^="Hero real"]');
+                const doc = frame?.contentDocument;
+                const cards = Array.from(doc?.querySelectorAll('[data-position]') ?? []);
+                const prior = frame?.contentWindow?.__heroV3Nodes ?? [];
+                const retained = prior.filter(({node}) => cards.includes(node));
+                const moved = retained.filter(({node, position}) => node.getAttribute('data-position') !== position);
+                const active = doc?.querySelector('[data-position="main"]');
+                return {
+                  main: active?.getAttribute('aria-label') ?? null,
+                  retained: retained.length,
+                  moved: moved.length,
+                  transitionDuration: active ? getComputedStyle(active).transitionDuration : null,
+                  mainScaleX: active ? getComputedStyle(active).getPropertyValue('--hero-motion-scale-x').trim() : null,
+                  sideScaleX: doc?.querySelector('[data-position="right1"]') ? getComputedStyle(doc.querySelector('[data-position="right1"]')).getPropertyValue('--hero-motion-scale-x').trim() : null,
+                  mainArtworkTransform: doc?.querySelector('[data-position="main"] [class*="motionArtwork"]') ? getComputedStyle(doc.querySelector('[data-position="main"] [class*="motionArtwork"]')).transform : null,
+                  sideArtworkTransform: doc?.querySelector('[data-position="right1"] [class*="motionArtwork"]') ? getComputedStyle(doc.querySelector('[data-position="right1"] [class*="motionArtwork"]')).transform : null,
+                };
+              })()`);
+              requireCheck(after.main !== before.main, `${style} no cambió el juego principal.`);
+              requireCheck(after.retained >= 2 && after.moved >= 1, `${style} no conservó nodos físicos entre slots (${after.retained}/${after.moved}).`);
+              return { before, after };
+            };
+
+            try {
+              const target = await waitForDebugger(profileDir, browser);
+              cdp = new CdpSession(await openWebSocket(target.webSocketDebuggerUrl));
+              await Promise.all([cdp.send('Page.enable'), cdp.send('Runtime.enable'), cdp.send('Network.enable')]);
+              await setViewport(cdp);
+              cdp.on('Runtime.exceptionThrown', (event) => report.runtimeIssues.push(event.exceptionDetails?.exception?.description ?? event.exceptionDetails?.text ?? 'Excepción JavaScript sin detalle.'));
+              cdp.on('Runtime.consoleAPICalled', (event) => { if (event.type === 'error') report.runtimeIssues.push(event.args?.map((arg) => arg.value ?? arg.description ?? arg.type).join(' ') ?? 'console.error'); });
+
+              await loginAdmin(cdp);
+              await navigate(cdp, `${baseUrl}/admin/portada?seccion=hero`);
+              await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');
+
+              const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);
+              requireCheck(JSON.stringify(labels) === JSON.stringify(['Momentum','Morph','Parallax Sweep']), `El Admin debe exponer exactamente tres movimientos y expuso ${JSON.stringify(labels)}.`);
+              report.checks.motionOptions = labels;
+
+              await selectMotion('Momentum', 'momentum');
+              await play();
+              report.checks.momentum = await replayAndMeasure('momentum');
+              requireCheck(parseFloat(report.checks.momentum.after.transitionDuration ?? '0') > 0, 'Momentum no tiene transición física activa.');
+
+              const dragPoint = await cdp.evaluate(`(() => {
+                const frame = document.querySelector('iframe[title^="Hero real"]');
+                const doc = frame?.contentDocument;
+                const viewportNode = doc?.querySelector('[class*="carouselViewport"]');
+                if (!(frame instanceof HTMLIFrameElement) || !(viewportNode instanceof HTMLElement)) return null;
+                const fr = frame.getBoundingClientRect(); const vr = viewportNode.getBoundingClientRect();
+                const sx = fr.width / Math.max(1, frame.clientWidth); const sy = fr.height / Math.max(1, frame.clientHeight);
+                return { x: fr.left + (vr.left + vr.width * .55) * sx, y: fr.top + (vr.top + vr.height * .5) * sy };
+              })()`);
+              requireCheck(dragPoint, 'No se pudo resolver el punto físico del carril para drag.');
+              await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: dragPoint.x, y: dragPoint.y, button: 'left', buttons: 1, clickCount: 1 });
+              await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: dragPoint.x - 86, y: dragPoint.y, button: 'left', buttons: 1 });
+              await delay(80);
+              const duringDrag = await cdp.evaluate(`(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const root=doc?.querySelector('[data-motion-style]'); const card=doc?.querySelector('[data-position="main"]'); return { dragging: root?.getAttribute('data-dragging') ?? null, transform: card ? getComputedStyle(card).transform : null }; })()`);
+              requireCheck(duringDrag.dragging === 'true', 'El drag real no activó el estado continuo antes del pointerup.');
+              await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: dragPoint.x - 86, y: dragPoint.y, button: 'left', buttons: 0, clickCount: 1 });
+              report.checks.drag = duringDrag;
+
+              await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Volver a editar'))?.click()`);
+              await waitUntil(cdp, `document.body.innerText.includes('Probar funcionamiento')`, 'vuelta a edición');
+              await selectMotion('Morph', 'morph'); await play();
+              report.checks.morph = await replayAndMeasure('morph');
+              requireCheck(report.checks.morph.after.sideScaleX && report.checks.morph.after.sideScaleX !== '1', 'Morph no aplica expansión/compresión progresiva en tarjetas laterales.');
+
+              await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Volver a editar'))?.click()`);
+              await waitUntil(cdp, `document.body.innerText.includes('Probar funcionamiento')`, 'vuelta a edición parallax');
+              await selectMotion('Parallax Sweep', 'parallax'); await play();
+              report.checks.parallax = await replayAndMeasure('parallax');
+              requireCheck(report.checks.parallax.after.mainArtworkTransform !== report.checks.parallax.after.sideArtworkTransform, 'Parallax Sweep no separa el recorrido del artwork entre slots.');
+
+              await cdp.send('Emulation.setEmulatedMedia', { media: '', features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+              await delay(120);
+              const reduced = await cdp.evaluate(`(() => { const doc=document.querySelector('iframe[title^="Hero real"]')?.contentDocument; const card=doc?.querySelector('[data-position="main"]'); const art=doc?.querySelector('[data-position="main"] [class*="motionArtwork"]'); return { cardDuration: card ? getComputedStyle(card).transitionDuration : null, artworkDuration: art ? getComputedStyle(art).transitionDuration : null, animation: card?.querySelector('[class*="contentReveal"]') ? getComputedStyle(card.querySelector('[class*="contentReveal"] > *')).animationName : null }; })()`);
+              report.checks.reducedMotion = reduced;
+              requireCheck(reduced.cardDuration === '0s' && reduced.artworkDuration === '0s', `Reduced motion no anuló transiciones: ${JSON.stringify(reduced)}.`);
+
+              await capture(cdp, path.join(outputDir, 'hero-motion-v3-desktop.png'));
+              requireCheck(report.runtimeIssues.length === 0, `Errores runtime V3: ${report.runtimeIssues.join(' | ')}`);
+              await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+              console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, drag continuo y reduced motion.`);
+            } catch (error) {
+              report.error = error instanceof Error ? error.stack ?? error.message : String(error);
+              await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8').catch(() => {});
+              throw error;
+            } finally {
+              cdp?.close(); browser.kill('SIGTERM'); await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+            }
+          }
+
+          await main();
+          SMOKE_EOF
+          cat > /tmp/apply-v3-final.py <<'PY_EOF'
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+
+          p = root/'src/components/home/HeroSection.tsx'
+          s = p.read_text()
+          s = s.replace('  if (!activeGame) return null;\n  const heroMode = resolveGameDestinationMediaMode(activeGame, "hero");', '  const heroMode = activeGame ? resolveGameDestinationMediaMode(activeGame, "hero") : "image";', 1)
+          marker='''  function stopHoverPreview() {\n    if (hoverPlayback) setHoverPreviewActive(false);\n    setHovered(false);\n  }\n\n  return ('''
+          if '  if (!activeGame) return null;\n\n  return (' not in s:
+              s=s.replace(marker, '''  function stopHoverPreview() {\n    if (hoverPlayback) setHoverPreviewActive(false);\n    setHovered(false);\n  }\n\n  if (!activeGame) return null;\n\n  return (''',1)
+          p.write_text(s)
+
+          p = root/'src/components/home/HeroSection.module.css'
+          s = p.read_text()
+          s = s.replace('transition:transform var(--hero-editor-duration) var(--hero-editor-easing),filter var(--hero-editor-duration) var(--hero-editor-easing),opacity var(--hero-editor-duration) var(--hero-editor-easing);','')
+          s = re.sub(r'\.heroSection\[data-transition="(?:slide|fade|coverflow|3d|stack|perspective|custom)"\] \.cardSurface\{[^}]+\}', '', s)
+          s = re.sub(r'@keyframes hero(?:Fade|Slide|Coverflow|Depth|Stack|Perspective|Custom)\{from\{.*?\}\}', '', s)
+          p.write_text(s)
+
+          p = root/'src/components/admin/HomeHeroEditor.module.css'
+          s = p.read_text()
+          s = s.replace('.presets{display:grid;grid-template-columns:repeat(10,minmax(62px,1fr));gap:6px}', '.presets{display:grid;grid-template-columns:repeat(6,minmax(72px,1fr));gap:7px}')
+          new='''.transitions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.transitions button{display:grid;grid-template-rows:auto auto 1fr;gap:7px;min-height:132px;padding:10px;border:1px solid #304052;border-radius:9px;background:#0a121b;color:#8f9dac;text-align:left}.transitions button[data-active="true"]{border-color:var(--brand);background:var(--admin-brand-surface);color:#fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--brand) 24%,transparent)}.transitions button>span{position:relative;height:48px;overflow:hidden;border-radius:6px;background:linear-gradient(135deg,#07101a,#101d2a)}.transitions button b{font-size:12px;letter-spacing:.01em}.transitions button small{color:#7f8fa1;font-size:11px;line-height:1.45}.transitions button[data-active="true"] small{color:#aebfd0}.transitions i{position:absolute;top:13px;width:38px;height:22px;border:1px solid #54708c;border-radius:4px;background:#16283b;box-shadow:0 8px 18px #0006}.transitions i:first-child{left:16%}.transitions i:last-child{right:16%;opacity:.55}.transitions span[data-motion="momentum"] i:first-child{transform:translateX(9px) scale(.86)}.transitions span[data-motion="momentum"] i:last-child{transform:translateX(-9px) scale(1.08)}.transitions span[data-motion="morph"] i:first-child{transform:scaleX(.72) scale(.88);transform-origin:right center}.transitions span[data-motion="morph"] i:last-child{width:48px;transform:scaleX(1.08);transform-origin:left center}.transitions span[data-motion="parallax"]::after{position:absolute;inset:9px 24% 9px 33%;border:1px solid color-mix(in srgb,var(--brand) 58%,#6c8097);border-radius:4px;background:color-mix(in srgb,var(--brand) 14%,transparent);transform:translateX(8px);content:""}.transitions span[data-motion="parallax"] i:first-child{transform:translateX(-7px)}.transitions span[data-motion="parallax"] i:last-child{transform:translateX(7px)}'''
+          s, n = re.subn(r'\.transitions\{.*?(?=\.timeline\{)', new, s, count=1, flags=re.S)
+          assert n == 1
+          s = s.replace('.presets{grid-template-columns:repeat(5,1fr)}', '.presets{grid-template-columns:repeat(3,1fr)}')
+          s = s.replace('.transitions{grid-template-columns:repeat(4,1fr)}', '.transitions{grid-template-columns:repeat(3,1fr)}')
+          s = s.replace('.transitions{grid-template-columns:repeat(2,1fr)}', '.transitions{grid-template-columns:1fr}')
+          p.write_text(s)
+
+          p = root/'tools/check-home-editorial.mjs'
+          s = p.read_text()
+          s = s.replace('  heroStyles,\n  heroContract,', '  heroStyles,\n  heroMotionStyles,\n  heroContract,', 1)
+          s = s.replace('  source("src/components/home/HeroSection.module.css"),\n  source("src/lib/home/hero-contract.ts"),', '  source("src/components/home/HeroSection.module.css"),\n  source("src/components/home/HeroMotion.module.css"),\n  source("src/lib/home/hero-contract.ts"),', 1)
+          s = s.replace('''    heroSection.includes("homeHeroSlotCSS") &&\n    heroSection.includes("--hero-editor-easing") &&\n    heroSection.includes("--hero-editor-overlay") &&\n    heroSection.includes("--hero-editor-border"),\n  "El renderer público debe consumir la visibilidad y geometría canónicas, responsive, easing, overlay y borde desde HomeHeroPresentation."''', '''    heroSection.includes("homeHeroSlotCSS") &&\n    heroSection.includes('data-motion-style={presentation.motionStyle}') &&\n    heroSection.includes('"--hero-drag-offset"') &&\n    heroSection.includes("--hero-editor-overlay") &&\n    heroSection.includes("--hero-editor-border"),\n  "El renderer público debe consumir visibilidad/geometría canónicas, el único motionStyle V3, drag continuo, overlay y borde desde HomeHeroPresentation."''', 1)
+          old='''assert(\n  heroStyles.includes('data-transition="slide"') &&\n    heroStyles.includes('data-transition="coverflow"') &&\n    heroStyles.includes('data-transition="fade"') &&\n    heroStyles.includes('data-transition="3d"') &&\n    heroStyles.includes('data-transition="stack"') &&\n    heroStyles.includes('data-transition="perspective"') &&\n    heroStyles.includes('data-transition="custom"') &&\n    heroStyles.includes("var(--hero-editor-duration)") &&\n    heroStyles.includes("var(--hero-editor-easing)") &&\n    heroStyles.includes("@media(max-width:1100px)") &&\n    heroStyles.includes("@media(max-width:680px)") &&\n    heroStyles.includes("prefers-reduced-motion"),\n  "Las transiciones y los breakpoints públicos del Hero deben seguir implementados."\n);'''
+          newcheck='''assert(\n  heroMotionStyles.includes('data-motion-style="momentum"') &&\n    heroMotionStyles.includes('data-motion-style="morph"') &&\n    heroMotionStyles.includes('data-motion-style="parallax"') &&\n    heroMotionStyles.includes("--hero-motion-duration") &&\n    heroStyles.includes("@media(max-width:1100px)") &&\n    heroStyles.includes("@media(max-width:680px)") &&\n    heroMotionStyles.includes("prefers-reduced-motion"),\n  "El Hero público debe implementar sólo los tres movimientos V3, sus ritmos art-directed y los breakpoints compartidos."\n);'''
+          s=s.replace(old,newcheck,1)
+          s=s.replace('''    heroEditor.includes("Perspectiva") &&\n    heroEditor.includes("Easing") &&\n    heroEditor.includes("Cambiar imagen") &&''', '''    heroEditor.includes("Perspectiva") &&\n    heroEditor.includes("Momentum") &&\n    heroEditor.includes("Morph") &&\n    heroEditor.includes("Parallax Sweep") &&\n    !heroEditor.includes("Easing") &&\n    heroEditor.includes("Cambiar imagen") &&''',1)
+          p.write_text(s)
+
+          p = root/'tools/hero-motion-browser-smoke.mjs'
+          s = p.read_text()
+          start = s.index('async function main() {')
+          new_tail = Path('/tmp/smoke-tail.txt').read_text()
+          s = s[:start] + new_tail
+          p.write_text(s)
+          PY_EOF
+          python /tmp/apply-v3-final.py
           git diff --check
+          ! grep -Eq 'data-transition|--hero-editor-duration|--hero-editor-easing|@keyframes hero(Slide|Fade|Coverflow|Depth|Stack|Perspective|Custom)' src/components/home/HeroSection.module.css
+          ! grep -Eq 'motionEngine|physicalMotion|data-motion-engine|data-transition' src/components/home/HeroSection.tsx
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
