@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { resolveHomeConfig, sourceHomeConfig } from '../src/data/home-config.ts';
 import { applyHeroLayout, applyPreset, carouselLayouts } from '../src/lib/home/hero-presets.ts';
 import { homeHeroVisiblePositions, homeHeroAnchor, homeHeroSlotCSS, fitHomeHeroBounds } from '../src/lib/home/hero-layout.ts';
@@ -178,3 +179,33 @@ console.log('Hero fitting: OK (exact stage height, center-stable rotations, pers
 
 assert.deepEqual(fitHomeHeroBounds({ left: 100, top: 60, right: 600, bottom: 400 }, 1440, 700), { scale: 1, x: 0, y: 0 }, 'Fitting must not cancel manual translations when the cards already fit');
 assert.deepEqual(fitHomeHeroBounds({ left: 0, top: 0, right: 300, bottom: 400 }, 300, 400), { scale: 1, x: 0, y: 0 }, 'A card that exactly fills the configured stage must require no hidden vertical clearance');
+
+const heroSectionSource = readFileSync(new URL('../src/components/home/HeroSection.tsx', import.meta.url), 'utf8');
+const heroSectionCss = readFileSync(new URL('../src/components/home/HeroSection.module.css', import.meta.url), 'utf8');
+assert.ok(
+  heroSectionSource.includes('const responsive = presentation.responsive[designDevice];'),
+  'Hero fitting must use the same resolved device as rendering instead of recomputing breakpoints independently'
+);
+assert.ok(
+  heroSectionSource.includes('root.style.setProperty("--hero-motion-duration", "0ms")') &&
+    heroSectionSource.includes('void fit.offsetWidth;'),
+  'Hero fitting must measure target geometry with card motion temporarily settled'
+);
+assert.ok(
+  heroSectionSource.includes('}, [presentation, games.length, designDevice]);'),
+  'Hero fitting must only rerun for structural layout/device changes'
+);
+assert.ok(
+  !heroSectionSource.includes('}, [presentation, games.length, normalizedActiveIndex]);'),
+  'Changing the active Hero image must never trigger a new geometry fit'
+);
+assert.ok(
+  heroSectionSource.includes('return viewport ? { ...viewport, aspect: undefined } : undefined;'),
+  'Hero artwork must discard editorial image aspect ratios so images cannot resize the fixed Hero frame'
+);
+assert.ok(
+  /\.carouselViewport\{[^}]*height:var\(--hero-card-height\)/.test(heroSectionCss) &&
+    /\.heroCard\{[^}]*height:var\(--hero-card-height\)/.test(heroSectionCss),
+  'The public/editor shared renderer must keep both viewport and cards on the configured fixed Hero height'
+);
+console.log('Hero height stability: OK (image-independent frame, device-consistent fitting and no slide-triggered geometry remeasurement).');
