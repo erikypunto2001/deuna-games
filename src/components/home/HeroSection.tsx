@@ -242,7 +242,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [motionDirection, setMotionDirection] = useState<"forward" | "backward" | null>(null);
+  const [motionDelta, setMotionDelta] = useState(0);
   const resolvedTuning = useMemo(() => resolveHeroImageTuning(imageTuning), [imageTuning]);
   const artworkStyle = useMemo<CSSProperties>(() => ({ filter: `brightness(${resolvedTuning.brightness}%) saturate(${resolvedTuning.saturation}%) contrast(${resolvedTuning.contrast}%)` }), [resolvedTuning]);
   const tuningOverlayOpacity = resolvedTuning.overlayStrength / 100;
@@ -255,7 +255,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
 
   const moveBy = useCallback((delta: number) => {
     if (!games.length || !delta) return;
-    setMotionDirection(delta > 0 ? "forward" : "backward");
+    setMotionDelta(delta);
     setActiveIndex((current) => {
       const normalized = ((current % games.length) + games.length) % games.length;
       const requested = normalized + delta;
@@ -270,7 +270,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     if (target === normalizedActiveIndex) return;
     let delta = target - normalizedActiveIndex;
     if (presentation.loop && Math.abs(delta) > games.length / 2) delta += delta > 0 ? -games.length : games.length;
-    setMotionDirection(delta > 0 ? "forward" : "backward");
+    setMotionDelta(delta);
     setActiveIndex(target);
   }, [games.length, normalizedActiveIndex, presentation.loop]);
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
@@ -495,7 +495,11 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
           {renderedCards.map(({ position, game, index }) => {
             const positionStyle = presentation.positions[position];
             const isMain = position === "main";
-            const edgeWrap = visiblePositions.length === HOME_HERO_VISUAL_POSITIONS.length && ((motionDirection === "forward" && position === "right2") || (motionDirection === "backward" && position === "left2"));
+            const fullPhysicalLoop = presentation.loop && renderedCards.length === HOME_HERO_VISUAL_POSITIONS.length;
+            const edgeWrap = fullPhysicalLoop && (
+              (motionDelta > 0 && (position === "right2" || (Math.abs(motionDelta) > 1 && position === "right1"))) ||
+              (motionDelta < 0 && (position === "left2" || (Math.abs(motionDelta) > 1 && position === "left1")))
+            );
             return (
               <article key={game.id} className={`${styles.heroCard} ${motionStyles.motionCard}`} data-position={position} data-main={isMain || undefined} data-edge-wrap={edgeWrap || undefined} onClick={onSelectPosition ? () => onSelectPosition(position) : undefined} role="group" aria-roledescription="slide" aria-label={`${index + 1} de ${games.length}: ${game.title}`} style={{ opacity: positionStyle.opacity / 100, filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`, transform: homeHeroPositionTransform(positionStyle) }}>
                 <div className={motionStyles.motionFrame}><div className={styles.cardSurface}>
