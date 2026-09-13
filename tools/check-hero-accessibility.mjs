@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [source, css, schema, adminControls, heroSource, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService] = await Promise.all([
+const [source, css, schema, adminControls, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService] = await Promise.all([
   readFile(new URL('../src/components/home/HeroNavigation.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroNavigation.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/lib/home/hero-schema.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/admin/HomeHeroNavigationControls.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroSection.tsx', import.meta.url), 'utf8'),
+  readFile(new URL('../src/components/home/HeroSection.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroMotion.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/admin/HomeHeroLivePreview.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/admin/HomeHeroSaveBoundary.tsx', import.meta.url), 'utf8'),
@@ -31,6 +32,9 @@ assert.match(heroSource, /key=\{game\.id\}/);
 assert.match(heroSource, /const renderPositions = visiblePositions;/);
 assert.match(heroSource, /homeHeroVisiblePositions\(/);
 assert.match(heroSource, /"--hero-drag-offset": `\$\{dragOffset\}px`/);
+assert.match(heroSource, /homeHeroPositionTransform\(positionStyle\)/);
+assert.match(heroCss, /\.heroCard\{/);
+assert.doesNotMatch(heroCss, /data-transition|--hero-editor-duration|--hero-editor-easing|@keyframes hero(?:Slide|Fade|Coverflow|Depth|Stack|Perspective|Custom)/);
 assert.match(heroSource, /setDragOffset\(dx\)/);
 assert.match(heroSource, /dragging \|\|[\s\S]*?!documentVisible/);
 assert.match(heroSource, /requestAnimationFrame\(finish\)/);
