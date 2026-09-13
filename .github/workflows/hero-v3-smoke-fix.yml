@@ -1,0 +1,39 @@
+name: Hero V3 smoke cross-realm fix
+
+on:
+  push:
+    branches: [feature/hero-motion-v3]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feature/hero-motion-v3
+      - name: Fix cross-realm drag probe and self-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tools/hero-motion-browser-smoke.mjs')
+          s=p.read_text()
+          old='''      if (!(frame instanceof HTMLIFrameElement) || !(viewportNode instanceof HTMLElement)) return null;\n      const fr = frame.getBoundingClientRect(); const vr = viewportNode.getBoundingClientRect();'''
+          new='''      if (!(frame instanceof HTMLIFrameElement) || !viewportNode || typeof viewportNode.getBoundingClientRect !== 'function') return null;\n      const fr = frame.getBoundingClientRect(); const vr = viewportNode.getBoundingClientRect();\n      if (!(vr.width > 0) || !(vr.height > 0)) return null;'''
+          if old not in s:
+              raise SystemExit('Expected cross-realm probe not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+          node --check tools/hero-motion-browser-smoke.mjs
+          rm .github/workflows/hero-v3-smoke-fix.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix Hero V3 cross-realm drag smoke'
+          git push origin HEAD:feature/hero-motion-v3
