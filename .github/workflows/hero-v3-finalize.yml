@@ -244,8 +244,8 @@ jobs:
           npm run typecheck
           node tools/check-hero-accessibility.mjs
           node tools/check-admin-persistent-save.mjs
-          node tools/check-hero-device-design.mjs
-          node tools/check-home-hero-schema.mjs
+          node --import ./tools/register-ts-paths.mjs ./tools/check-hero-device-design.mjs
+          node --import ./tools/register-ts-paths.mjs ./tools/check-home-hero-schema.mjs
           node tools/check-home-editorial.mjs
           node --check tools/hero-motion-browser-smoke.mjs
           node --check tools/hero-motion-draft-lifecycle-smoke.mjs
