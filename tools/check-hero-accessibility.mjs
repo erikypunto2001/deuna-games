@@ -46,6 +46,9 @@ assert.match(heroSource, /const previousActiveIndex = games\.length[\s\S]*?norma
 assert.match(heroSource, /const previousPosition = presentation\.loop && motionDelta !== 0[\s\S]*?visiblePositions\.find/);
 assert.match(heroSource, /homeHeroPositionOffset\(position\) - homeHeroPositionOffset\(previousPosition\) !== -motionDelta/);
 assert.doesNotMatch(heroSource, /const fullPhysicalLoop/);
+assert.match(heroSource, /const PARALLAX_ARTWORK_TRANSFORM:[\s\S]*?left2:[\s\S]*?main:[\s\S]*?right2:/);
+assert.match(heroSource, /presentation\.motionStyle === "parallax"[\s\S]*?PARALLAX_ARTWORK_TRANSFORM\[position\]/);
+assert.match(heroSource, /className=\{`\$\{styles\.media\} \$\{motionStyles\.motionArtwork\}`\} style=\{parallaxArtworkStyle\}/);
 for (const style of ['momentum', 'morph', 'parallax']) assert.match(motionCss, new RegExp(`data-motion-style="${style}"`));
 assert.doesNotMatch(motionCss, /data-motion-style="(?:slide|fade|coverflow|3d|stack|perspective|custom)"/);
 assert.match(motionCss, /data-motion-style="morph"[\s\S]*?--hero-motion-scale-x/);
@@ -69,9 +72,12 @@ assert.doesNotMatch(homeContentService, /saveHomeHeroMotionEngineDraft/);
 assert.match(browserSmoke, /typeof viewportNode\.getBoundingClientRect !== 'function'/);
 assert.match(browserSmoke, /vr\.width > 0/);
 assert.doesNotMatch(browserSmoke, /viewportNode instanceof HTMLElement/);
+assert.match(browserSmoke, /beforeDragMain/);
+assert.match(browserSmoke, /commit del drag real/);
+assert.match(browserSmoke, /El drag no confirmó el cambio del juego principal al soltar/);
 
 for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);
   assert.ok(target >= 24 - Number.EPSILON);
 }
-console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag, physical edge-wrap detection, three profiles, panoramic fitting and canonical save ownership).');
+console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag commit, physical edge-wrap detection, runtime Parallax geometry, three profiles, panoramic fitting and canonical save ownership).');
