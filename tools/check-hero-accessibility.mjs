@@ -42,9 +42,10 @@ assert.match(heroSource, /requestAnimationFrame\(finish\)/);
 assert.match(heroSource, /const fittedCards = cards\.filter\(\(card\) => card\.dataset\.position === "main"\);/);
 assert.doesNotMatch(heroSource, /motionEngine|physicalMotion|data-motion-engine|data-transition/);
 assert.match(heroSource, /const \[motionDelta, setMotionDelta\] = useState\(0\);/);
-assert.match(heroSource, /const fullPhysicalLoop = presentation\.loop && renderedCards\.length === HOME_HERO_VISUAL_POSITIONS\.length;/);
-assert.match(heroSource, /motionDelta > 0[\s\S]*?position === "right2"[\s\S]*?Math\.abs\(motionDelta\) > 1[\s\S]*?position === "right1"/);
-assert.match(heroSource, /motionDelta < 0[\s\S]*?position === "left2"[\s\S]*?Math\.abs\(motionDelta\) > 1[\s\S]*?position === "left1"/);
+assert.match(heroSource, /const previousActiveIndex = games\.length[\s\S]*?normalizedActiveIndex - motionDelta/);
+assert.match(heroSource, /const previousPosition = presentation\.loop && motionDelta !== 0[\s\S]*?visiblePositions\.find/);
+assert.match(heroSource, /homeHeroPositionOffset\(position\) - homeHeroPositionOffset\(previousPosition\) !== -motionDelta/);
+assert.doesNotMatch(heroSource, /const fullPhysicalLoop/);
 for (const style of ['momentum', 'morph', 'parallax']) assert.match(motionCss, new RegExp(`data-motion-style="${style}"`));
 assert.doesNotMatch(motionCss, /data-motion-style="(?:slide|fade|coverflow|3d|stack|perspective|custom)"/);
 assert.match(motionCss, /data-motion-style="morph"[\s\S]*?--hero-motion-scale-x/);
@@ -73,4 +74,4 @@ for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);
   assert.ok(target >= 24 - Number.EPSILON);
 }
-console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag, bounded edge wrap, three profiles, panoramic fitting and canonical save ownership).');
+console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag, physical edge-wrap detection, three profiles, panoramic fitting and canonical save ownership).');
