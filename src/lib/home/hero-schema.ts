@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import {
   homeHeroCompositionIds,
-  homeHeroMotionEngineIds,
+  homeHeroLegacyPresetIds,
+  homeHeroMotionStyleIds,
   homeHeroNavigationStyleIds,
   homeHeroPresetIds,
 } from "../../data/home-config.ts";
@@ -44,6 +45,11 @@ const easingSchema = z.enum([
   "ease-out",
   "ease-in-out",
   "linear",
+]);
+
+const persistedPresetSchema = z.union([
+  z.enum(homeHeroPresetIds),
+  z.enum(homeHeroLegacyPresetIds),
 ]);
 
 const visualPositionSchema = z.enum([
@@ -246,16 +252,18 @@ const persistedResponsiveSchema = z
 const commonRequiredFields = {
   composition: z.enum(homeHeroCompositionIds),
   previewCount: previewCountSchema,
-  motion: z.enum(["depth", "slide", "fade"]),
   autoplayMs: autoplayMsSchema,
 } as const;
 
 const optionalPresentationFields = {
-  motionEngine: z.enum(homeHeroMotionEngineIds).optional(),
-  preset: z.enum(homeHeroPresetIds).optional(),
+  motionStyle: z.enum(homeHeroMotionStyleIds).optional(),
+  // Historical fields remain accepted at the persistence boundary only.
+  motion: z.enum(["depth", "slide", "fade"]).optional(),
+  motionEngine: z.enum(["legacy", "physical"]).optional(),
   transition: transitionSchema.optional(),
   durationMs: z.number().int().min(150).max(2000).optional(),
   easing: easingSchema.optional(),
+  preset: persistedPresetSchema.optional(),
   radius: z.number().int().min(0).max(48).optional(),
   shadow: z.number().int().min(0).max(100).optional(),
   borderWidth: z.number().int().min(0).max(6).optional(),
@@ -294,11 +302,13 @@ const basePresentationInputSchema = z
 const basePresentationEditorSchema = z
   .object({
     ...commonRequiredFields,
-    motionEngine: z.enum(homeHeroMotionEngineIds).default("legacy"),
-    preset: z.enum(homeHeroPresetIds),
-    transition: transitionSchema,
-    durationMs: z.number().int().min(150).max(2000),
-    easing: easingSchema,
+    motionStyle: z.enum(homeHeroMotionStyleIds).optional(),
+    motion: z.enum(["depth", "slide", "fade"]).optional(),
+    motionEngine: z.enum(["legacy", "physical"]).optional(),
+    transition: transitionSchema.optional(),
+    durationMs: z.number().int().min(150).max(2000).optional(),
+    easing: easingSchema.optional(),
+    preset: persistedPresetSchema,
     radius: z.number().int().min(0).max(48),
     shadow: z.number().int().min(0).max(100),
     borderWidth: z.number().int().min(0).max(6),
@@ -324,36 +334,64 @@ const basePresentationEditorSchema = z
   })
   .strict();
 
+const normalizeHeroPreset = (
+  preset: z.infer<typeof persistedPresetSchema>
+) => {
+  if (homeHeroPresetIds.includes(preset as (typeof homeHeroPresetIds)[number])) {
+    return preset as (typeof homeHeroPresetIds)[number];
+  }
+  if (preset === "stack" || preset === "arc") return "cinema" as const;
+  return "classic" as const;
+};
+
+const legacyTransitionToMotionStyle = (
+  transition: z.infer<typeof transitionSchema> | undefined
+) => {
+  if (transition === "coverflow" || transition === "3d" || transition === "perspective") return "morph" as const;
+  if (transition === "fade" || transition === "stack" || transition === "custom") return "parallax" as const;
+  return "momentum" as const;
+};
+
 const normalizeEditorPlayback = (
   presentation: z.infer<typeof basePresentationEditorSchema>
 ) => {
-  const autoplay =
-    presentation.autoplayMs === 0
-      ? false
-      : presentation.autoplay;
+  const {
+    motion: _legacyMotion,
+    motionEngine: _legacyMotionEngine,
+    transition: legacyTransition,
+    durationMs: _legacyDuration,
+    easing: _legacyEasing,
+    preset: sourcePreset,
+    ...current
+  } = presentation;
+  void _legacyMotion;
+  void _legacyMotionEngine;
+  void _legacyDuration;
+  void _legacyEasing;
+
+  const autoplay = presentation.autoplayMs === 0 ? false : presentation.autoplay;
 
   return {
-    ...presentation,
+    ...current,
+    preset: normalizeHeroPreset(sourcePreset),
+    motionStyle: presentation.motionStyle ?? legacyTransitionToMotionStyle(legacyTransition),
     autoplay,
     navigation: {
       ...presentation.navigation,
-      showPause:
-        autoplay || presentation.navigation.showPause,
+      showPause: autoplay || presentation.navigation.showPause,
     },
   };
 };
 
 const editorBasePresentationSchema =
-  basePresentationEditorSchema.transform(
-    normalizeEditorPlayback
-  );
+  basePresentationEditorSchema.transform(normalizeEditorPlayback);
 
 // Device snapshots are bounded: they cannot contain further overrides.
 const persistedDeviceOverridesSchema = z
   .object({
-    desktop: basePresentationEditorSchema.optional(),
-    tablet: basePresentationEditorSchema.optional(),
-    mobile: basePresentationEditorSchema.optional(),
+    desktop: basePresentationInputSchema.optional(),
+    tablet: basePresentationInputSchema.optional(),
+    mobile: basePresentationInputSchema.optional(),
   })
   .strict()
   .optional();
@@ -378,6 +416,6 @@ export const homeHeroPresentationEditorSchema =
       deviceOverrides: editorDeviceOverridesSchema,
     })
     .transform((presentation) => ({
-      ...presentation,
       ...normalizeEditorPlayback(presentation),
+      deviceOverrides: presentation.deviceOverrides,
     }));
