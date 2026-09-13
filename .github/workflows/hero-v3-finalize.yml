@@ -1,0 +1,94 @@
+name: Hero V3 deterministic finalizer
+
+on:
+  push:
+    branches: [feature/hero-motion-v3]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Hero V3 branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feature/hero-motion-v3
+          fetch-depth: 0
+
+      - name: Apply deterministic V3 cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Hooks must remain unconditional even when the Hero has no active game.
+          p = Path('src/components/home/HeroSection.tsx')
+          s = p.read_text()
+          early = '''  if (!activeGame) return null;\n  const heroMode = resolveGameDestinationMediaMode(activeGame, "hero");'''
+          if early in s:
+              s = s.replace(early, '''  const heroMode = activeGame ? resolveGameDestinationMediaMode(activeGame, "hero") : "image";''', 1)
+              marker = '''  function stopHoverPreview() {\n    if (hoverPlayback) setHoverPreviewActive(false);\n    setHovered(false);\n  }\n\n  return ('''
+              s = s.replace(marker, '''  function stopHoverPreview() {\n    if (hoverPlayback) setHoverPreviewActive(false);\n    setHovered(false);\n  }\n\n  if (!activeGame) return null;\n\n  return (''', 1)
+          p.write_text(s)
+
+          # HeroSection owns layout only. V3 motion CSS is the sole timing/effect owner.
+          p = Path('src/components/home/HeroSection.module.css')
+          s = p.read_text()
+          s = s.replace('transition:transform var(--hero-editor-duration) var(--hero-editor-easing),filter var(--hero-editor-duration) var(--hero-editor-easing),opacity var(--hero-editor-duration) var(--hero-editor-easing);','')
+          s = re.sub(r'\\.heroSection\\[data-transition="(?:slide|fade|coverflow|3d|stack|perspective|custom)"\\] \\.cardSurface\\{animation:[^}]+\\}', '', s)
+          s = re.sub(r'@keyframes heroFade\\{from\\{opacity:0\\}\\}@keyframes heroSlide\\{from\\{opacity:\\.28;transform:translateX\\(var\\(--hero-slide-offset\\)\\)\\}\\}@keyframes heroCoverflow\\{from\\{opacity:\\.36;transform:translateZ\\(-120px\\) rotateY\\(-18deg\\) scale\\(\\.96\\)\\}\\}@keyframes heroDepth\\{from\\{opacity:\\.34;transform:translate3d\\(36px,8px,-130px\\) scale\\(\\.96\\)\\}\\}@keyframes heroStack\\{from\\{opacity:\\.25;transform:translate3d\\(26px,18px,-180px\\) scale\\(\\.91\\)\\}\\}@keyframes heroPerspective\\{from\\{opacity:\\.26;transform:perspective\\(900px\\) rotateY\\(-24deg\\) translateZ\\(-150px\\) scale\\(\\.94\\)\\}\\}@keyframes heroCustom\\{from\\{opacity:\\.4;transform:translateY\\(14px\\) scale\\(\\.975\\)\\}\\}', '', s)
+          p.write_text(s)
+
+          # The Admin presents exactly three motion choices with legible descriptions.
+          p = Path('src/components/admin/HomeHeroEditor.module.css')
+          s = p.read_text()
+          s = s.replace('.presets{display:grid;grid-template-columns:repeat(10,minmax(62px,1fr));gap:6px}', '.presets{display:grid;grid-template-columns:repeat(6,minmax(72px,1fr));gap:7px}')
+          start = s.find('.transitions{')
+          end = s.find('.timeline{', start)
+          if start >= 0 and end > start and 'grid-template-columns:repeat(7,1fr)' in s[start:end]:
+              block = '''.transitions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.transitions button{display:grid;grid-template-rows:auto auto 1fr;gap:7px;min-height:132px;padding:10px;border:1px solid #304052;border-radius:9px;background:#0a121b;color:#8f9dac;text-align:left}.transitions button[data-active="true"]{border-color:var(--brand);background:var(--admin-brand-surface);color:#fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--brand) 24%,transparent)}.transitions button>span{position:relative;height:48px;overflow:hidden;border-radius:6px;background:linear-gradient(135deg,#07101a,#101d2a)}.transitions button b{font-size:12px;letter-spacing:.01em}.transitions button small{color:#7f8fa1;font-size:11px;line-height:1.45}.transitions button[data-active="true"] small{color:#aebfd0}.transitions i{position:absolute;top:13px;width:38px;height:22px;border:1px solid #54708c;border-radius:4px;background:#16283b;box-shadow:0 8px 18px #0006}.transitions i:first-child{left:16%}.transitions i:last-child{right:16%;opacity:.55}.transitions span[data-motion="momentum"] i:first-child{transform:translateX(9px) scale(.86)}.transitions span[data-motion="momentum"] i:last-child{transform:translateX(-9px) scale(1.08)}.transitions span[data-motion="morph"] i:first-child{transform:scaleX(.72) scale(.88);transform-origin:right center}.transitions span[data-motion="morph"] i:last-child{width:48px;transform:scaleX(1.08);transform-origin:left center}.transitions span[data-motion="parallax"]::after{position:absolute;inset:9px 24% 9px 33%;border:1px solid color-mix(in srgb,var(--brand) 58%,#6c8097);border-radius:4px;background:color-mix(in srgb,var(--brand) 14%,transparent);transform:translateX(8px);content:""}.transitions span[data-motion="parallax"] i:first-child{transform:translateX(-7px)}.transitions span[data-motion="parallax"] i:last-child{transform:translateX(7px)}'''
+              s = s[:start] + block + s[end:]
+          s = s.replace('.presets{grid-template-columns:repeat(5,1fr)}', '.presets{grid-template-columns:repeat(3,1fr)}')
+          s = s.replace('.transitions{grid-template-columns:repeat(4,1fr)}', '.transitions{grid-template-columns:repeat(3,1fr)}')
+          s = s.replace('.transitions{grid-template-columns:repeat(2,1fr)}', '.transitions{grid-template-columns:1fr}')
+          p.write_text(s)
+
+          # Update the broad Home invariant from seven legacy transitions to the three V3 profiles.
+          p = Path('tools/check-home-editorial.mjs')
+          s = p.read_text()
+          if 'heroMotionStyles' not in s.split('] = await Promise.all', 1)[0]:
+              s = s.replace('  heroStyles,\n  heroContract,', '  heroStyles,\n  heroMotionStyles,\n  heroContract,')
+              s = s.replace('  source("src/components/home/HeroSection.module.css"),\n  source("src/lib/home/hero-contract.ts"),', '  source("src/components/home/HeroSection.module.css"),\n  source("src/components/home/HeroMotion.module.css"),\n  source("src/lib/home/hero-contract.ts"),')
+          s = s.replace('''    heroSection.includes("homeHeroSlotCSS") &&\n    heroSection.includes("--hero-editor-easing") &&\n    heroSection.includes("--hero-editor-overlay") &&\n    heroSection.includes("--hero-editor-border"),\n  "El renderer público debe consumir la visibilidad y geometría canónicas, responsive, easing, overlay y borde desde HomeHeroPresentation."''', '''    heroSection.includes("homeHeroSlotCSS") &&\n    heroSection.includes('data-motion-style={presentation.motionStyle}') &&\n    heroSection.includes('"--hero-drag-offset"') &&\n    heroSection.includes("--hero-editor-overlay") &&\n    heroSection.includes("--hero-editor-border"),\n  "El renderer público debe consumir visibilidad/geometría canónicas, el único motionStyle V3, drag continuo, overlay y borde desde HomeHeroPresentation."''')
+          old = '''assert(\n  heroStyles.includes('data-transition="slide"') &&\n    heroStyles.includes('data-transition="coverflow"') &&\n    heroStyles.includes('data-transition="fade"') &&\n    heroStyles.includes('data-transition="3d"') &&\n    heroStyles.includes('data-transition="stack"') &&\n    heroStyles.includes('data-transition="perspective"') &&\n    heroStyles.includes('data-transition="custom"') &&\n    heroStyles.includes("var(--hero-editor-duration)") &&\n    heroStyles.includes("var(--hero-editor-easing)") &&\n    heroStyles.includes("@media(max-width:1100px)") &&\n    heroStyles.includes("@media(max-width:680px)") &&\n    heroStyles.includes("prefers-reduced-motion"),\n  "Las transiciones y los breakpoints públicos del Hero deben seguir implementados."\n);'''
+          new = '''assert(\n  heroMotionStyles.includes('data-motion-style="momentum"') &&\n    heroMotionStyles.includes('data-motion-style="morph"') &&\n    heroMotionStyles.includes('data-motion-style="parallax"') &&\n    heroMotionStyles.includes("--hero-motion-duration") &&\n    heroStyles.includes("@media(max-width:1100px)") &&\n    heroStyles.includes("@media(max-width:680px)") &&\n    heroMotionStyles.includes("prefers-reduced-motion"),\n  "El Hero público debe implementar sólo los tres movimientos V3, sus ritmos art-directed y los breakpoints compartidos."\n);'''
+          s = s.replace(old, new)
+          s = s.replace('''    heroEditor.includes("Perspectiva") &&\n    heroEditor.includes("Easing") &&\n    heroEditor.includes("Cambiar imagen") &&''', '''    heroEditor.includes("Perspectiva") &&\n    heroEditor.includes("Momentum") &&\n    heroEditor.includes("Morph") &&\n    heroEditor.includes("Parallax Sweep") &&\n    !heroEditor.includes("Easing") &&\n    heroEditor.includes("Cambiar imagen") &&''')
+          p.write_text(s)
+          PY
+
+          node --check tools/check-home-editorial.mjs
+          node tools/check-hero-accessibility.mjs
+          node tools/check-admin-accessibility.mjs
+          node tools/check-admin-touch-contract.mjs
+          node tools/check-home-editorial.mjs
+
+      - name: Commit deterministic cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No deterministic cleanup changes were needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/home/HeroSection.tsx src/components/home/HeroSection.module.css src/components/admin/HomeHeroEditor.module.css tools/check-home-editorial.mjs
+          git commit -m "Hero V3: finalize motion runtime and Admin presentation"
+          git push origin HEAD:feature/hero-motion-v3
