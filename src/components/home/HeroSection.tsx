@@ -338,38 +338,46 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
       root.style.setProperty("--hero-visual-inset-bottom", "0px");
     };
     const update = () => {
-      fit.style.transform = "none";
-      const origin = viewport.getBoundingClientRect();
-      const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
-      if (!cards.length || !origin.width || !origin.height) { resetVisualInsets(); return; }
-      const screenWidth = root.ownerDocument.defaultView?.innerWidth ?? 1440;
-      const device = screenWidth <= 680 ? "mobile" : screenWidth <= 1100 ? "tablet" : "desktop";
-      const responsive = presentation.responsive[device];
-      const fittedCards = cards.filter((card) => card.dataset.position === "main");
-      const bounds = fittedCards.map((card) => card.getBoundingClientRect());
-      const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
-      fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
-      if (responsive.spacingReference === "canvas") { resetVisualInsets(); return; }
-      const rootBounds = root.getBoundingClientRect();
-      const viewportBounds = viewport.getBoundingClientRect();
-      const verticalBounds: Array<{ top: number; bottom: number }> = [];
-      for (const card of cards) {
-        const box = card.getBoundingClientRect();
-        const top = Math.max(box.top, viewportBounds.top);
-        const bottom = Math.min(box.bottom, viewportBounds.bottom);
-        if (bottom > top) verticalBounds.push({ top, bottom });
+      const previousMotionDuration = root.style.getPropertyValue("--hero-motion-duration");
+      root.style.setProperty("--hero-motion-duration", "0ms");
+      try {
+        fit.style.transform = "none";
+        // Fitting is geometry, not animation. Force the target slot transforms
+        // before measuring so an in-flight card can never resize the Hero.
+        void fit.offsetWidth;
+        const origin = viewport.getBoundingClientRect();
+        const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
+        if (!cards.length || !origin.width || !origin.height) { resetVisualInsets(); return; }
+        const responsive = presentation.responsive[designDevice];
+        const fittedCards = cards.filter((card) => card.dataset.position === "main");
+        const bounds = fittedCards.map((card) => card.getBoundingClientRect());
+        const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
+        fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+        if (responsive.spacingReference === "canvas") { resetVisualInsets(); return; }
+        const rootBounds = root.getBoundingClientRect();
+        const viewportBounds = viewport.getBoundingClientRect();
+        const verticalBounds: Array<{ top: number; bottom: number }> = [];
+        for (const card of cards) {
+          const box = card.getBoundingClientRect();
+          const top = Math.max(box.top, viewportBounds.top);
+          const bottom = Math.min(box.bottom, viewportBounds.bottom);
+          if (bottom > top) verticalBounds.push({ top, bottom });
+        }
+        for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
+          if (!control.getClientRects().length) continue;
+          const box = control.getBoundingClientRect();
+          if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
+        }
+        if (!verticalBounds.length) { resetVisualInsets(); return; }
+        const visualTop = Math.min(...verticalBounds.map((box) => box.top));
+        const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
+        const round = (value: number) => Math.round(value * 100) / 100;
+        root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
+        root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
+      } finally {
+        if (previousMotionDuration) root.style.setProperty("--hero-motion-duration", previousMotionDuration);
+        else root.style.removeProperty("--hero-motion-duration");
       }
-      for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
-        if (!control.getClientRects().length) continue;
-        const box = control.getBoundingClientRect();
-        if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
-      }
-      if (!verticalBounds.length) { resetVisualInsets(); return; }
-      const visualTop = Math.min(...verticalBounds.map((box) => box.top));
-      const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
-      const round = (value: number) => Math.round(value * 100) / 100;
-      root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
-      root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
     };
     update();
     const observer = new ResizeObserver(update);
@@ -382,7 +390,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
       root.style.removeProperty("--hero-visual-inset-top");
       root.style.removeProperty("--hero-visual-inset-bottom");
     };
-  }, [presentation, games.length, normalizedActiveIndex]);
+  }, [presentation, games.length, designDevice]);
 
   const heroMode = activeGame ? resolveGameDestinationMediaMode(activeGame, "hero") : "image";
   const hoverPlayback = heroMode === "hover-video";
