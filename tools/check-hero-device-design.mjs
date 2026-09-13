@@ -71,7 +71,19 @@ const mobileVisualEdit = updateHeroDeviceDesign(mixedStyle, 'mobile', design => 
 assert.equal(mobileVisualEdit.motionStyle, 'parallax');
 assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').motionStyle, 'parallax');
 assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').radius, 29);
-console.log('Hero motion style scope: OK (the single V3 movement profile remains global across device snapshots).');
+const deviceScopedMotionEdit = updateHeroDeviceDesign(
+  mixedStyle,
+  'mobile',
+  design => {
+    design.motionStyle = 'morph';
+    return design;
+  }
+);
+assert.equal(deviceScopedMotionEdit.motionStyle, 'morph');
+for (const device of ['desktop', 'tablet', 'mobile']) {
+  assert.equal(resolveHeroDeviceDesign(deviceScopedMotionEdit, device).motionStyle, 'morph');
+}
+console.log('Hero motion style scope: OK (the single V3 movement profile remains global across device snapshots and device-scoped editor actions).');
 
 // Reproduce a subtle shared-edit case: an override can already have the requested
 // source-device value in its copied desktop slot while its own slot is divergent.
