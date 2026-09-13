@@ -63,6 +63,7 @@ import styles from "./HeroSection.module.css";
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 const HERO_PRIMARY_ACTION = "Ver juego";
 const HERO_SECONDARY_ACTION = "Más información";
+const HERO_EDGE_WRAP_RESET_MS = 220;
 
 type HeroFact = {
   kind: "rating" | "developer" | "release" | "platforms" | "version";
@@ -237,6 +238,8 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
   const fitRef = useRef<HTMLDivElement>(null);
   const dragSettleFrame = useRef<number | null>(null);
+  const edgeWrapResetTimer = useRef<number | null>(null);
+  const activeIndexRef = useRef(0);
   const pointerStart = useRef<{ x: number; y: number; id: number; lastX: number; lastTime: number; velocityX: number } | null>(null);
   const suppressClick = useRef(false);
   const lastWheel = useRef(0);
@@ -261,26 +264,62 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const direction = presentation.direction === "reverse" ? -1 : 1;
   const rootStyle = useMemo(() => ({ ...deviceVariables(presentation, games.length), "--hero-drag-offset": `${dragOffset}px` }) as CSSProperties, [dragOffset, games.length, presentation]);
 
+  const registerMotionDelta = useCallback((delta: number) => {
+    const view = rootRef.current?.ownerDocument.defaultView;
+    if (edgeWrapResetTimer.current !== null && view) {
+      view.clearTimeout(edgeWrapResetTimer.current);
+      edgeWrapResetTimer.current = null;
+    }
+    if (!delta || reducedMotion || !view) {
+      setMotionDelta(0);
+      return;
+    }
+    setMotionDelta(delta);
+    edgeWrapResetTimer.current = view.setTimeout(() => {
+      edgeWrapResetTimer.current = null;
+      setMotionDelta(0);
+    }, HERO_EDGE_WRAP_RESET_MS);
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    const view = rootRef.current?.ownerDocument.defaultView;
+    return () => {
+      if (edgeWrapResetTimer.current !== null && view) {
+        view.clearTimeout(edgeWrapResetTimer.current);
+      }
+    };
+  }, []);
+
   const moveBy = useCallback((delta: number) => {
     if (!games.length || !delta) return;
-    setMotionDelta(delta);
-    setActiveIndex((current) => {
-      const normalized = ((current % games.length) + games.length) % games.length;
-      const requested = normalized + delta;
-      if (!presentation.loop) return Math.max(0, Math.min(games.length - 1, requested));
-      return (requested + games.length) % games.length;
-    });
-  }, [games.length, presentation.loop]);
+    const normalized = ((activeIndexRef.current % games.length) + games.length) % games.length;
+    const requested = normalized + delta;
+    const target = presentation.loop
+      ? (requested + games.length) % games.length
+      : Math.max(0, Math.min(games.length - 1, requested));
+    if (target === normalized) {
+      registerMotionDelta(0);
+      return;
+    }
+    activeIndexRef.current = target;
+    registerMotionDelta(delta);
+    setActiveIndex(target);
+  }, [games.length, presentation.loop, registerMotionDelta]);
 
   const selectSlide = useCallback((targetIndex: number) => {
     if (!games.length) return;
+    const normalized = ((activeIndexRef.current % games.length) + games.length) % games.length;
     const target = ((targetIndex % games.length) + games.length) % games.length;
-    if (target === normalizedActiveIndex) return;
-    let delta = target - normalizedActiveIndex;
+    if (target === normalized) {
+      registerMotionDelta(0);
+      return;
+    }
+    let delta = target - normalized;
     if (presentation.loop && Math.abs(delta) > games.length / 2) delta += delta > 0 ? -games.length : games.length;
-    setMotionDelta(delta);
+    activeIndexRef.current = target;
+    registerMotionDelta(delta);
     setActiveIndex(target);
-  }, [games.length, normalizedActiveIndex, presentation.loop]);
+  }, [games.length, presentation.loop, registerMotionDelta]);
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
 
