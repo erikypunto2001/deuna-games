@@ -35,7 +35,7 @@ for (const device of ['desktop','tablet','mobile']) {
 assert.equal(resolveHeroDeviceDesign(all,'mobile').composition,'cinema');
 assert.deepEqual(original,sourceHomeConfig.heroPresentation);
 assert.equal(homeHeroPresentationEditorSchema.safeParse({...mobile,deviceOverrides:{mobile:{...original,deviceOverrides:{mobile:original}}}}).success,false);
-console.log('Hero device design: OK (isolated presets/layouts, effective cross-device slots, shared edits, persistence, legacy fallback, bounded validation).');
+console.log('Hero device design: OK (isolated presets/layouts, effective cross-device slots, shared edits, persistence, V3 motion style, bounded validation).');
 
 let full = original;
 for (const device of ['desktop','tablet','mobile']) full = updateHeroDeviceDesign(full, device, p => applyPreset('Cinema', p));
@@ -50,28 +50,28 @@ assert.equal(editorialHomeConfigSchema.safeParse({
 }).success, false);
 console.log('Hero editorial persistence: OK (device designs survive Home validation and reload; nested overrides rejected).');
 
-// `motionEngine` is a revision-level runtime contract, not a device style. A
-// copied historical override must never be able to downgrade the engine on one
-// breakpoint after the editor explicitly opts the draft into V2.
-const mixedEngine = structuredClone(original);
-mixedEngine.motionEngine = 'physical';
-mixedEngine.deviceOverrides = {
+// `motionStyle` is a revision-level runtime contract, not a device style. A
+// copied historical/device override must never choose another movement profile
+// independently from the presentation revision that owns the Hero.
+const mixedStyle = structuredClone(original);
+mixedStyle.motionStyle = 'parallax';
+mixedStyle.deviceOverrides = {
   mobile: {
     ...structuredClone(original),
-    motionEngine: 'legacy',
+    motionStyle: 'morph',
   },
 };
-assert.equal(resolveHeroDeviceDesign(mixedEngine, 'desktop').motionEngine, 'physical');
-assert.equal(resolveHeroDeviceDesign(mixedEngine, 'tablet').motionEngine, 'physical');
-assert.equal(resolveHeroDeviceDesign(mixedEngine, 'mobile').motionEngine, 'physical');
-const mobileVisualEdit = updateHeroDeviceDesign(mixedEngine, 'mobile', design => {
+assert.equal(resolveHeroDeviceDesign(mixedStyle, 'desktop').motionStyle, 'parallax');
+assert.equal(resolveHeroDeviceDesign(mixedStyle, 'tablet').motionStyle, 'parallax');
+assert.equal(resolveHeroDeviceDesign(mixedStyle, 'mobile').motionStyle, 'parallax');
+const mobileVisualEdit = updateHeroDeviceDesign(mixedStyle, 'mobile', design => {
   design.radius = 29;
   return design;
 });
-assert.equal(mobileVisualEdit.motionEngine, 'physical');
-assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').motionEngine, 'physical');
+assert.equal(mobileVisualEdit.motionStyle, 'parallax');
+assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').motionStyle, 'parallax');
 assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').radius, 29);
-console.log('Hero motion engine scope: OK (runtime engine remains global even with historical device snapshots).');
+console.log('Hero motion style scope: OK (the single V3 movement profile remains global across device snapshots).');
 
 // Reproduce a subtle shared-edit case: an override can already have the requested
 // source-device value in its copied desktop slot while its own slot is divergent.
