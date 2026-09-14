@@ -86,19 +86,11 @@ const PARALLAX_ARTWORK_TRANSFORM: Record<HomeHeroVisualPosition, string> = {
 };
 
 function heroMotionRenderPositions(
-  visiblePositions: readonly HomeHeroVisualPosition[],
+  _visiblePositions: readonly HomeHeroVisualPosition[],
   direction: number
 ) {
-  const visible = new Set<HomeHeroVisualPosition>(visiblePositions);
-  const bufferPriority: readonly HomeHeroVisualPosition[] = direction < 0
-    ? ["left1", "right1", "left2", "right2"]
-    : ["right1", "left1", "right2", "left2"];
-  const ordered = [
-    ...visiblePositions,
-    ...bufferPriority.filter((position) => !visible.has(position)),
-    ...HOME_HERO_VISUAL_POSITIONS.filter((position) => !visible.has(position)),
-  ];
-  return [...new Set<HomeHeroVisualPosition>(ordered)];
+  const positions = [...HOME_HERO_VISUAL_POSITIONS];
+  return direction < 0 ? positions.reverse() : positions;
 }
 
 function canUseFineHover() {
