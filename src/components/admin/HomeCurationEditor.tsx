@@ -20,7 +20,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
 
 import type {
@@ -39,12 +38,10 @@ import {
 import type { Game } from "@/types/game";
 
 import styles from "./HomeCurationEditor.module.css";
+import { useInitialSessionStorageSnapshot } from "./useInitialSessionStorageSnapshot";
 
 const CURATION_DRAFT_KEY = "deuna:home-curation-draft:latest";
 const slugPattern = /^[a-z0-9][a-z0-9._-]*$/;
-const subscribeStorage = () => () => {};
-const clientReady = () => true;
-const serverReady = () => false;
 
 const collections: Array<{
   id: HomeCurationCollectionId;
@@ -245,14 +242,6 @@ function clearRecoveryDraft() {
   }
 }
 
-function readRecoveryRaw() {
-  try {
-    return sessionStorage.getItem(CURATION_DRAFT_KEY);
-  } catch {
-    return null;
-  }
-}
-
 function parseRecoveryDraft(raw: string | null): CurationDraft | null {
   if (!raw) return null;
 
@@ -320,16 +309,10 @@ export default function HomeCurationEditor({
     useState<SelectionState>(() => structuredClone(baselineSelections));
   const [query, setQuery] = useState("");
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
-  const recoveryReady = useSyncExternalStore(
-    subscribeStorage,
-    clientReady,
-    serverReady
-  );
-  const storedDraft = useSyncExternalStore(
-    subscribeStorage,
-    readRecoveryRaw,
-    () => null
-  );
+  const {
+    ready: recoveryReady,
+    value: storedDraft,
+  } = useInitialSessionStorageSnapshot(CURATION_DRAFT_KEY);
   const rankingNow = rankingReferenceTime;
 
   const meta = collections.find(
