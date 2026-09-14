@@ -87,12 +87,10 @@ const PARALLAX_ARTWORK_TRANSFORM: Record<HomeHeroVisualPosition, string> = {
 
 function heroMotionRenderPositions(
   visiblePositions: readonly HomeHeroVisualPosition[],
-  direction: number,
-  motionDelta: number
+  direction: number
 ) {
   const visible = new Set<HomeHeroVisualPosition>(visiblePositions);
-  const movement = motionDelta || direction;
-  const bufferPriority: readonly HomeHeroVisualPosition[] = movement < 0
+  const bufferPriority: readonly HomeHeroVisualPosition[] = direction < 0
     ? ["left1", "right1", "left2", "right2"]
     : ["right1", "left1", "right2", "left2"];
   const ordered = [
@@ -258,7 +256,6 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const dragSettleFrame = useRef<number | null>(null);
   const edgeWrapResetTimer = useRef<number | null>(null);
   const activeIndexRef = useRef(0);
-  const renderedPositionsRef = useRef<Map<string, HomeHeroVisualPosition>>(new Map());
   const pointerStart = useRef<{ x: number; y: number; id: number; lastX: number; lastTime: number; velocityX: number } | null>(null);
   const suppressClick = useRef(false);
   const lastWheel = useRef(0);
@@ -445,7 +442,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const videoShouldRender = !reducedMotion && heroMode !== "image" && (!hoverPlayback || hoverPreviewActive);
   const visiblePositions = homeHeroVisiblePositions(presentation.responsive[designDevice], presentation.direction, games.length);
   const visiblePositionSet = new Set<HomeHeroVisualPosition>(visiblePositions);
-  const renderPositions = heroMotionRenderPositions(visiblePositions, direction, motionDelta);
+  const renderPositions = heroMotionRenderPositions(visiblePositions, direction);
   const seenGames = new Set<string>();
   const renderedCards = renderPositions.flatMap((position) => {
     const offset = homeHeroPositionOffset(position);
@@ -458,12 +455,22 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     seenGames.add(String(game.id));
     return [{ position, game, index, isVisible: visiblePositionSet.has(position) }];
   });
-
-  useLayoutEffect(() => {
-    renderedPositionsRef.current = new Map(
-      renderedCards.map(({ game, position }) => [String(game.id), position])
-    );
-  }, [renderedCards]);
+  const previousActiveIndex = games.length
+    ? ((normalizedActiveIndex - motionDelta) % games.length + games.length) % games.length
+    : 0;
+  const previousPositionByGameId = new Map<string, HomeHeroVisualPosition>();
+  if (presentation.loop && motionDelta !== 0) {
+    const previousSeen = new Set<string>();
+    for (const position of renderPositions) {
+      const previousIndex = ((previousActiveIndex + homeHeroPositionOffset(position)) % games.length + games.length) % games.length;
+      const previousGame = games[previousIndex];
+      if (!previousGame) continue;
+      const key = String(previousGame.id);
+      if (previousSeen.has(key)) continue;
+      previousSeen.add(key);
+      previousPositionByGameId.set(key, position);
+    }
+  }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!presentation.keyboard) return;
@@ -567,7 +574,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
             const positionStyle = presentation.positions[position];
             const isMain = position === "main";
             const previousPosition = presentation.loop && motionDelta !== 0
-              ? renderedPositionsRef.current.get(String(game.id))
+              ? previousPositionByGameId.get(String(game.id))
               : undefined;
             const edgeWrap = Boolean(
               presentation.loop &&
