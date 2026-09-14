@@ -137,6 +137,22 @@ assert.match(
 
 assert.doesNotMatch(
   livePreview,
+  /Ancho de pantalla|Alto de pantalla|Usar ventana actual|setManualViewportDimension|manualSizes|customized/,
+  "The Hero preview must not expose a second manual viewport-size editor beside the actual Hero dimensions."
+);
+assert.match(
+  livePreview,
+  /HOME_HERO_VIEWPORT_DEFAULTS\[device\]/,
+  "When the selected device does not match the browser, preview must use the canonical viewport for that device."
+);
+assert.match(
+  livePreview,
+  /clampHomeHeroViewport\(device, browserViewport\)/,
+  "When browser and selected device match, preview must follow the real browser viewport safely."
+);
+
+assert.doesNotMatch(
+  livePreview,
   /const wasPlaying = useRef\(false\);/,
   "Hero preview must not gate all future demonstrations behind one session-wide boolean."
 );
@@ -147,12 +163,12 @@ assert.match(
 );
 assert.match(
   livePreview,
-  /const playbackKey = `\$\{device\}:\$\{presentation\.motionStyle\}:\$\{games\.map\(\(game\) => game\.id\)\.join\(","\)\}`;/,
+  /const playbackKey = `\$\{device\}:\$\{presentation\.motionStyle\}:\$\{games[\s\S]*?\.map\(\(game\) => game\.id\)[\s\S]*?\.join\(","\)\}`;/,
   "Hero preview playback context must change with device, movement profile and visible games."
 );
 assert.match(
   livePreview,
-  /if \(!previewEnd \|\| lastPlaybackKey\.current === playbackKey\) return;/,
+  /lastPlaybackKey\.current === playbackKey/,
   "Hero preview must replay when the active playback context changes while test mode stays open."
 );
 assert.match(
@@ -162,5 +178,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (simple editorial surface, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (simple editorial surface, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
