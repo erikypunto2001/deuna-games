@@ -70,6 +70,7 @@ export default function HomeHeroLivePreview({
   presentation: HomeHeroPresentation;
   device: HomeHeroDevice;
   playing: boolean;
+  onSelectPosition?: () => void;
   background?: Omit<
     PublicPageBackgroundProps,
     "children" | "previewPathname"
