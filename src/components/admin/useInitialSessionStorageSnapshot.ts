@@ -10,7 +10,18 @@ type SnapshotStore = {
 const serverSnapshot = () => null;
 const clientReady = () => true;
 const serverReady = () => false;
-const subscribeReady = () => () => {};
+
+function subscribeReady(callback: () => void) {
+  let active = true;
+
+  queueMicrotask(() => {
+    if (active) callback();
+  });
+
+  return () => {
+    active = false;
+  };
+}
 
 function createInitialSessionStorageStore(key: string): SnapshotStore {
   let captured = false;
@@ -37,6 +48,9 @@ function createInitialSessionStorageStore(key: string): SnapshotStore {
  * Captures a browser-session recovery payload once for the lifetime of the
  * mounted editor. Writes made by that same editor stay available for a future
  * reload, but cannot turn into a recovery gate while the user is still editing.
+ *
+ * The readiness store emits once after hydration so effects can persist new
+ * edits without racing an existing recovery payload from sessionStorage.
  */
 export function useInitialSessionStorageSnapshot(key: string) {
   const [store] = useState(() => createInitialSessionStorageStore(key));
