@@ -13,6 +13,11 @@ assert.match(
 );
 assert.match(
   hero,
+  /renderPositions\.flatMap\([\s\S]*?\)\.sort\(\(left, right\) => left\.index - right\.index\)/,
+  "Las tarjetas Hero deben conservar un orden DOM canónico por juego para que React no reinserte nodos al cambiar de slot."
+);
+assert.match(
+  hero,
   /data-motion-buffer=\{!isVisible \|\| undefined\}/,
   "Las tarjetas físicas fuera del viewport lógico deben identificarse como buffers de movimiento."
 );
@@ -48,5 +53,5 @@ assert.match(
 );
 
 console.log(
-  "Hero motion continuity structure: OK (buffers físicos, salida interpolada, fitting visible-only y motor no interrumpible)."
+  "Hero motion continuity structure: OK (DOM canónico, buffers físicos, salida interpolada, fitting visible-only y motor no interrumpible)."
 );
