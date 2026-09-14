@@ -318,8 +318,11 @@ assert(
     heroDevices.includes("HOME_HERO_VIEWPORT_DEFAULTS") &&
     heroDevices.includes("clampHomeHeroViewport") &&
     livePreview.includes("homeHeroDeviceForWidth") &&
-    livePreview.includes("HOME_HERO_VIEWPORT_WIDTH_LIMITS"),
-  "La preview debe consumir un contrato único de dispositivos y límites JS."
+    livePreview.includes("HOME_HERO_VIEWPORT_DEFAULTS") &&
+    livePreview.includes("clampHomeHeroViewport") &&
+    !livePreview.includes("HOME_HERO_VIEWPORT_WIDTH_LIMITS") &&
+    !livePreview.includes("HOME_HERO_VIEWPORT_HEIGHT_LIMITS"),
+  "La preview debe consumir el contrato único de dispositivos y elegir automáticamente un viewport real o recomendado, sin exponer límites técnicos de emulación."
 );
 
 assert(
@@ -362,24 +365,26 @@ assert(
 
 assert(
   heroEditor.includes("Editor de Hero") &&
-    heroEditor.includes("El contenido del Hero se toma del juego") &&
-    heroEditor.includes("homeHeroVisiblePositions") &&
-    heroEditor.includes("Aplicar cambios a:") &&
-    heroEditor.includes("Transformación 3D") &&
-    heroEditor.includes("Tarjetas visibles") &&
-    heroEditor.includes("Perspectiva") &&
+    heroEditor.includes("selectionModes") &&
+    heroEditor.includes("Elige la composición") &&
+    heroEditor.includes("Tamaño y espacio") &&
     heroEditor.includes("Momentum") &&
     heroEditor.includes("Morph") &&
     heroEditor.includes("Parallax Sweep") &&
-    !heroEditor.includes("Easing") &&
-    heroEditor.includes("Cambiar imagen") &&
-    heroEditor.includes("Ajustar encuadre") &&
-    heroEditor.includes("selectionModes") &&
+    heroEditor.includes("Editar imagen y encuadre") &&
     heroEditor.includes("HomeHeroLivePreview") &&
+    heroEditor.includes("Guardar borrador") &&
+    heroEditor.includes("Revisar y publicar Inicio") &&
+    !heroEditor.includes("Transformación 3D") &&
+    !heroEditor.includes("Tarjetas visibles") &&
+    !heroEditor.includes("Perspectiva") &&
+    !heroEditor.includes("Aplicar cambios a:") &&
+    !heroEditor.includes("Cambiar imagen") &&
+    !heroEditor.includes("Ajustar encuadre") &&
     !heroEditor.includes("Título accesible") &&
     !heroEditor.includes("Botón principal") &&
     !heroEditor.includes("Botón secundario"),
-  "El editor del Hero debe controlar selección, geometría y comportamiento sin campos de copy fantasma."
+  "El editor del Hero debe controlar selección, geometría esencial y movimiento con una superficie simple, sin microcontroles técnicos ni campos de copy fantasma."
 );
 
 assert(
