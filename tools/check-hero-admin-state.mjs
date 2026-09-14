@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [editor, adminPage, rankingReference] = await Promise.all([
+const [editor, livePreview, adminPage, rankingReference] = await Promise.all([
   readFile(
     new URL("../src/components/admin/HomeHeroEditor.tsx", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/components/admin/HomeHeroLivePreview.tsx", import.meta.url),
     "utf8"
   ),
   readFile(
@@ -63,6 +67,32 @@ assert.match(
   "Compare mode must reject aspect helper mutations before aspectControls can change."
 );
 
+assert.doesNotMatch(
+  livePreview,
+  /const wasPlaying = useRef\(false\);/,
+  "Hero preview must not gate all future demonstrations behind one session-wide boolean."
+);
+assert.match(
+  livePreview,
+  /const lastPlaybackKey = useRef<string \| null>\(null\);/,
+  "Hero preview must track the last demonstrated playback context explicitly."
+);
+assert.match(
+  livePreview,
+  /const playbackKey = `\$\{device\}:\$\{presentation\.motionStyle\}:\$\{games\.map\(\(game\) => game\.id\)\.join\(","\)\}`;/,
+  "Hero preview playback context must change with device, movement profile and visible games."
+);
+assert.match(
+  livePreview,
+  /if \(!previewEnd \|\| lastPlaybackKey\.current === playbackKey\) return;/,
+  "Hero preview must replay when the active playback context changes while test mode stays open."
+);
+assert.match(
+  livePreview,
+  /lastPlaybackKey\.current = null;/,
+  "Leaving test mode must rearm the next Hero demonstration."
+);
+
 console.log(
-  "Hero Admin state: OK (compare mode is read-only and ranking hydration reuses a server UTC-day reference)."
+  "Hero Admin state: OK (compare mode read-only, stable ranking hydration and context-aware preview replay)."
 );
