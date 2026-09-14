@@ -242,20 +242,24 @@ assert(
 
 assert(
   curationEditor.includes("deuna:home-curation-draft:latest") &&
-    curationEditor.includes("useSyncExternalStore") &&
-    curationEditor.includes("const storedDraft = useSyncExternalStore") &&
+    curationEditor.includes("useInitialSessionStorageSnapshot") &&
+    curationEditor.includes("useInitialSessionStorageSnapshot(CURATION_DRAFT_KEY)") &&
+    !curationEditor.includes("useSyncExternalStore(") &&
+    !curationEditor.includes("readRecoveryRaw") &&
     curationEditor.includes("const recovery = useMemo") &&
     curationEditor.includes("parseRecoveryDraft") &&
     curationEditor.includes("recoveryDismissed") &&
     !curationEditor.includes("setRecovery(") &&
     presentationEditor.includes("deuna:home-presentation-draft:latest") &&
-    presentationEditor.includes("useSyncExternalStore") &&
-    presentationEditor.includes("const storedDraft = useSyncExternalStore") &&
+    presentationEditor.includes("useInitialSessionStorageSnapshot") &&
+    presentationEditor.includes("useInitialSessionStorageSnapshot(PRESENTATION_DRAFT_KEY)") &&
+    !presentationEditor.includes("useSyncExternalStore(") &&
+    !presentationEditor.includes("readRecoveryRaw") &&
     presentationEditor.includes("const recovery = useMemo") &&
     presentationEditor.includes("parseRecoveryDraft") &&
     presentationEditor.includes("recoveryDismissed") &&
     !presentationEditor.includes("setRecovery("),
-  "Los dos bloques de Resto de Inicio deben leer storage como snapshot post-hidratación, derivar recuperación sin setState en efectos, validarla y conservarla hasta una decisión explícita."
+  "Los dos bloques de Resto de Inicio deben capturar el recovery una sola vez tras hidratar, derivarlo sin setState en efectos, validarlo y conservarlo hasta una decisión explícita sin observar las escrituras de la sesión activa."
 );
 
 assert(
