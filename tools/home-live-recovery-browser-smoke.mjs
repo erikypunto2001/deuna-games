@@ -186,6 +186,51 @@ async function testHero(cdp) {
   })`);
 }
 
+async function applyPresentationTitle(cdp, value, label) {
+  const deadline = Date.now() + 8_000;
+  while (Date.now() < deadline) {
+    const dispatched = await cdp.evaluate(`(() => {
+      const label = Array.from(document.querySelectorAll('label')).find((node) => node.textContent?.includes('Título SEO/accesible'));
+      const input = label?.querySelector('input');
+      if (!(input instanceof HTMLInputElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      if (typeof setter !== 'function') return false;
+      setter.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`);
+    if (dispatched) {
+      await delay(80);
+      const committed = await cdp.evaluate(`(() => {
+        const hidden = document.querySelector('input[name="presentationJson"]');
+        if (!(hidden instanceof HTMLInputElement)) return false;
+        try {
+          const parsed = JSON.parse(hidden.value);
+          const dirty = hidden.closest('form')?.getAttribute('data-home-editor-dirty') === 'true';
+          return dirty && parsed?.copy?.hero?.accessibleTitle === ${JSON.stringify(value)};
+        } catch {
+          return false;
+        }
+      })()`);
+      if (committed) return;
+    }
+    await delay(100);
+  }
+  throw new Error(`Timeout esperando que React confirme ${label}.`);
+}
+
+async function waitForStoredPresentation(cdp, expectedTitle) {
+  await waitUntil(cdp, `(() => {
+    try {
+      const raw = sessionStorage.getItem('deuna:home-presentation-draft:latest');
+      if (!raw) return false;
+      return JSON.parse(raw)?.copy?.hero?.accessibleTitle === ${JSON.stringify(expectedTitle)};
+    } catch {
+      return false;
+    }
+  })()`, "copia local Presentación");
+}
+
 async function testPresentation(cdp) {
   await openClean(cdp, `${baseUrl}/admin/portada?seccion=contenido`, `document.querySelector('input[name="presentationJson"]')`, "Presentación");
   const original = await cdp.evaluate(`(() => {
@@ -195,15 +240,9 @@ async function testPresentation(cdp) {
   })()`);
   requireCheck(typeof original === "string", "No se encontró el título de Presentación.");
   for (const suffix of ["sesión A", "sesión B"]) {
-    requireCheck(await cdp.evaluate(`(() => {
-      const label = Array.from(document.querySelectorAll('label')).find((node) => node.textContent?.includes('Título SEO/accesible'));
-      const input = label?.querySelector('input');
-      if (!(input instanceof HTMLInputElement)) return false;
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, ${JSON.stringify(`${original} · ${suffix}`)});
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      return true;
-    })()`), `No se pudo editar Presentación (${suffix}).`);
-    if (suffix === "sesión A") await waitUntil(cdp, `sessionStorage.getItem('deuna:home-presentation-draft:latest')`, "copia local Presentación");
+    const nextTitle = `${original} · ${suffix}`;
+    await applyPresentationTitle(cdp, nextTitle, `Presentación (${suffix})`);
+    if (suffix === "sesión A") await waitForStoredPresentation(cdp, nextTitle);
     await delay(150);
   }
   return cdp.evaluate(`({

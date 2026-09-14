@@ -1,6 +1,6 @@
 import {
-  access,
   readFile,
+  stat,
 } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -25,6 +25,7 @@ const [
   rootLayout,
   manifest,
   appIconRoute,
+  faviconRoute,
   appIconContract,
   appIconRenderer,
   logoImageResolver,
@@ -40,6 +41,7 @@ const [
   source("src/app/layout.tsx"),
   source("src/app/manifest.ts"),
   source("src/app/app-icon/[size]/route.ts"),
+  source("src/app/favicon.ico/route.ts"),
   source("src/lib/site/app-icon.ts"),
   source("src/lib/site-app-icon.tsx"),
   source("src/lib/site-logo-image.ts"),
@@ -125,6 +127,16 @@ assert(
 );
 
 assert(
+  faviconRoute.includes('dynamic = "force-dynamic"') &&
+    faviconRoute.includes('runtime = "nodejs"') &&
+    faviconRoute.includes("createSiteAppIcon(32)") &&
+    faviconRoute.includes("X-Content-Type-Options") &&
+    faviconRoute.includes("must-revalidate") &&
+    !faviconRoute.includes("immutable"),
+  "El favicon de compatibilidad debe delegar dinámicamente al icono 32px de la identidad publicada, sin cache inmutable."
+);
+
+assert(
   rootLayout.includes('from "@/lib/site/app-icon"') &&
     rootLayout.includes("siteAppIconVersion(config)") &&
     rootLayout.includes("/app-icon/32?v=") &&
@@ -160,12 +172,11 @@ assert(
   "El logo debe usar la autoridad compartida de multimedia: borradores sólo para Admin y cualquier referencia de una publicación inmutable permanece pública para restauraciones históricas."
 );
 
-let staticFaviconExists = true;
+let staticFaviconExists = false;
 try {
-  await access(path.join(root, "src/app/favicon.ico"));
-} catch {
-  staticFaviconExists = false;
-}
+  const faviconEntry = await stat(path.join(root, "src/app/favicon.ico"));
+  staticFaviconExists = faviconEntry.isFile();
+} catch {}
 
 assert(
   !staticFaviconExists,
@@ -178,6 +189,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Superficies del logo global: OK (web, Admin, Cuenta, metadata, PWA, social y serving histórico convergen en la identidad editorial)."
+    "Superficies del logo global: OK (web, Admin, Cuenta, metadata, PWA, favicon dinámico, social y serving histórico convergen en la identidad editorial)."
   );
 }
