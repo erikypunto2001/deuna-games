@@ -48,6 +48,21 @@ assert.match(
 );
 assert.match(
   motionCss,
+  /--hero-motion-live-duration:\s*0ms;[\s\S]*?animation:\s*heroMotionArm\s+1ms\s+steps\(1, end\)\s+80ms\s+forwards/,
+  "El motor V3 debe arrancar desarmado durante el bootstrap responsive para no crear transiciones pendientes antes de la primera pintura."
+);
+assert.match(
+  motionCss,
+  /@keyframes heroMotionArm[\s\S]*?--hero-motion-live-duration:\s*var\(--hero-motion-duration\)[\s\S]*?--hero-artwork-live-duration:\s*var\(--hero-artwork-duration\)/,
+  "El armado inicial debe recuperar las duraciones reales del perfil V3 sin fijarlas a un modo concreto."
+);
+assert.match(
+  motionCss,
+  /transform var\(--hero-motion-live-duration\)[\s\S]*?opacity var\(--hero-motion-live-duration\)/,
+  "Las tarjetas deben usar exclusivamente la duración V3 armada después del bootstrap."
+);
+assert.match(
+  motionCss,
   /\.motionRoot \.motionCard\[data-edge-wrap="true"\]:not\(\[data-motion-buffer="true"\]\)[\s\S]*?transition:\s*none[\s\S]*?animation:\s*heroEdgeWrap/,
   "Edge-wrap instantáneo debe quedar limitado a tarjetas visibles; un buffer conserva siempre la transición V3 base."
 );
@@ -58,5 +73,5 @@ assert.doesNotMatch(
 );
 
 console.log(
-  "Hero motion continuity structure: OK (DOM canónico, transición V3 única para buffers, fitting visible-only y edge-wrap visible-only)."
+  "Hero motion continuity structure: OK (bootstrap armado, DOM canónico, transición V3 única para buffers, fitting visible-only y edge-wrap visible-only)."
 );
