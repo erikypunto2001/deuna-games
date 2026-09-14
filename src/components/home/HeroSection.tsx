@@ -446,7 +446,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     if (seenGames.has(String(game.id))) return [];
     seenGames.add(String(game.id));
     return [{ position, game, index, isVisible: visiblePositionSet.has(position) }];
-  });
+  }).sort((left, right) => left.index - right.index);
   const previousActiveIndex = games.length
     ? ((normalizedActiveIndex - motionDelta) % games.length + games.length) % games.length
     : 0;
