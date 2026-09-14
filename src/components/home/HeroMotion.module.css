@@ -76,24 +76,12 @@
 }
 
 /* In a full five-card loop the far visible card that wraps to the opposite
- * edge must not fly across the center. It teleports only at the dim outer edge
- * and fades in while the other physical cards keep their continuous path. */
-.motionRoot .motionCard[data-edge-wrap="true"] {
+ * edge must not fly across the center. Buffers are excluded deliberately:
+ * they must keep the base V3 transition while entering or leaving the visible
+ * composition, otherwise opacity can freeze or snap at the logical boundary. */
+.motionRoot .motionCard[data-edge-wrap="true"]:not([data-motion-buffer="true"]) {
   transition: none;
   animation: heroEdgeWrap 170ms ease-out both;
-}
-
-/* Partial layouts keep hidden physical cards as motion buffers. A card that
- * has just left the visible composition must finish its normal V3 fade/slide
- * toward opacity 0 even if the physical slot calculation also marks it as a
- * wrap candidate. Buffer-to-buffer wraps are invisible, so preserving the
- * regular transition is both continuous and visually safe. */
-.motionRoot .motionCard[data-motion-buffer="true"] {
-  transition:
-    transform var(--hero-motion-duration) var(--hero-motion-easing),
-    filter var(--hero-motion-duration) var(--hero-motion-easing),
-    opacity var(--hero-motion-duration) var(--hero-motion-easing);
-  animation: none;
 }
 
 @keyframes heroEdgeWrap {
