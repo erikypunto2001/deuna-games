@@ -28,8 +28,10 @@ assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition:\
 
 assert.match(heroSource, /data-motion-style=\{presentation\.motionStyle\}/);
 assert.match(heroSource, /key=\{game\.id\}/);
-assert.match(heroSource, /const renderPositions = visiblePositions;/);
+assert.match(heroSource, /const renderPositions = heroMotionRenderPositions\(visiblePositions, direction\);/);
 assert.match(heroSource, /homeHeroVisiblePositions\(/);
+assert.match(heroSource, /data-hero-visible=\{isVisible \|\| undefined\}/);
+assert.match(heroSource, /data-motion-buffer=\{!isVisible \|\| undefined\}/);
 assert.match(heroSource, /"--hero-drag-offset": `\$\{dragOffset\}px`/);
 assert.match(heroSource, /homeHeroPositionTransform\(positionStyle\)/);
 assert.match(heroCss, /\.heroCard\{/);
@@ -37,11 +39,13 @@ assert.doesNotMatch(heroCss, /data-transition|--hero-editor-duration|--hero-edit
 assert.match(heroSource, /setDragOffset\(dx\)/);
 assert.match(heroSource, /dragging \|\|[\s\S]*?!documentVisible/);
 assert.match(heroSource, /requestAnimationFrame\(finish\)/);
+assert.match(heroSource, /querySelectorAll<HTMLElement>\("\[data-hero-visible='true'\]"\)/);
 assert.match(heroSource, /const fittedCards = cards\.filter\(\(card\) => card\.dataset\.position === "main"\);/);
+assert.doesNotMatch(heroSource, /setProperty\(["']--hero-motion-duration["'],\s*["']0ms["']\)/);
 assert.doesNotMatch(heroSource, /motionEngine|physicalMotion|data-motion-engine|data-transition/);
 assert.match(heroSource, /const \[motionDelta, setMotionDelta\] = useState\(0\);/);
 assert.match(heroSource, /const previousActiveIndex = games\.length[\s\S]*?normalizedActiveIndex - motionDelta/);
-assert.match(heroSource, /const previousPosition = presentation\.loop && motionDelta !== 0[\s\S]*?visiblePositions\.find/);
+assert.match(heroSource, /const previousPosition = presentation\.loop && motionDelta !== 0[\s\S]*?previousPositionByGameId\.get\(String\(game\.id\)\)/);
 assert.match(heroSource, /homeHeroPositionOffset\(position\) - homeHeroPositionOffset\(previousPosition\) !== -motionDelta/);
 assert.doesNotMatch(heroSource, /const fullPhysicalLoop/);
 assert.match(heroSource, /const PARALLAX_ARTWORK_TRANSFORM:[\s\S]*?left2:[\s\S]*?main:[\s\S]*?right2:/);
@@ -80,4 +84,4 @@ for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);
   assert.ok(target >= 24 - Number.EPSILON);
 }
-console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag commit, physical edge-wrap detection, runtime Parallax geometry, three profiles, panoramic fitting and canonical save ownership).');
+console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag commit, physical motion buffers, edge-wrap detection, runtime Parallax geometry, three profiles, panoramic fitting and canonical save ownership).');
