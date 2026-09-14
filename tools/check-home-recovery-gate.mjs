@@ -94,7 +94,7 @@ assert(
 );
 
 assert(
-  heroEditor.includes("recoveryMatchesRevision && <>") &&
+  /recoveryMatchesRevision\s*&&\s*\(\s*<>/.test(heroEditor) &&
     heroEditor.includes("Resuelve la copia desde el aviso de seguridad antes de continuar"),
   "Hero sólo debe exponer Recuperar/Descartar dentro del editor cuando la copia corresponde a la revisión actual; las copias obsoletas quedan a cargo del boundary fail-closed.",
 );

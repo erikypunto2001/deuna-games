@@ -114,10 +114,9 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
 }
 console.log('Hero shared edits: OK (divergent device snapshots receive the same requested change).');
 
-// Linking spacing is different from changing one numeric control: the editor
-// copies the selected device spacing into all three responsive slots at once.
-// Before linking, a selected override must already expose the effective slots
-// owned by the other devices instead of historical copies inside that snapshot.
+// Historical/runtime compatibility still supports copying spacing between devices.
+// The simplified editor no longer exposes a link switch, but the device resolver
+// must keep cross-device slots current so old drafts and programmatic edits remain safe.
 let linkedSpacing = original;
 linkedSpacing = updateHeroDeviceDesign(linkedSpacing, 'desktop', design => {
   design.responsive.desktop.spaceBefore = 11;
@@ -169,46 +168,36 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
   assert.equal(effective.spaceAfter, selectedTabletSpacing.spaceAfter);
   assert.equal(effective.spacingReference, selectedTabletSpacing.spacingReference);
 }
-console.log('Hero linked spacing: OK (effective cross-device baselines stay current and the selected device remains the single source).');
-
-const spacingControlsSource = await readFile(
-  new URL('../src/components/admin/HomeHeroSpacingControls.tsx', import.meta.url),
-  'utf8'
-);
-assert.match(
-  spacingControlsSource,
-  /if \(linked\) onLinkedChange\(false\);\s*onRestore\(\);/,
-  'Restoring all Hero spacing baselines must disable the link because those saved baselines may differ by device.'
-);
-console.log('Hero spacing restore: OK (restoring per-device baselines cannot leave the same-spacing switch enabled).');
+console.log('Hero spacing compatibility: OK (effective cross-device baselines stay current for historical and programmatic edits).');
 
 const heroEditorSource = await readFile(
   new URL('../src/components/admin/HomeHeroEditor.tsx', import.meta.url),
   'utf8'
 );
-assert.match(
+
+assert.doesNotMatch(
   heroEditorSource,
-  /resolveHeroDeviceDesign\(\s*config\.heroPresentation,\s*entry\s*\)\.responsive\[entry\]/,
-  'Hero aspect controls must initialize from each effective device design, not the shared base snapshot.'
+  /HomeHeroSpacingControls|HomeHeroNavigationControls|simplifyHeroFrameRatio|AspectControl|setAspectLocked|updateAspectControls/,
+  'The simple Hero editor must not depend on removed advanced inspector helpers.'
 );
 assert.match(
   heroEditorSource,
-  /const setAspectLocked = \(value: boolean\) => \{[\s\S]*?simplifiedRatio\(\s*responsive\.cardWidth,\s*responsive\.cardHeight\s*\)[\s\S]*?preset:[\s\S]*?"custom"/,
-  'Enabling aspect lock from Libre must capture the currently rendered frame ratio.'
+  /const setResponsive = \([\s\S]*?"cardWidth"[\s\S]*?"cardHeight"[\s\S]*?"gap"[\s\S]*?"spaceBefore"[\s\S]*?"spaceAfter"/,
+  'The simple Hero editor must keep only the essential per-device geometry controls.'
 );
 assert.match(
   heroEditorSource,
-  /const updateAspectControls = \(nextControl: AspectControl\) => \{[\s\S]*?editScope === "all"[\s\S]*?devices\.map/,
-  'Aspect helper state must follow the all-devices edit scope instead of diverging from the persisted frame changes.'
+  /if \(key === "spaceBefore" \|\| key === "spaceAfter"\) \{[\s\S]*?settings\.spacingReference = "visual";/,
+  'Simple Hero spacing must always use the stable visual reference.'
 );
 assert.match(
   heroEditorSource,
-  /label="Mantener proporción al cambiar tamaño"[\s\S]*?change=\{setAspectLocked\}/,
-  'The aspect lock switch must use the current-frame capture path.'
+  /settings\.cardWidth = original\.cardWidth;[\s\S]*?settings\.cardHeight = original\.cardHeight;[\s\S]*?settings\.gap = original\.gap;[\s\S]*?settings\.spaceBefore = original\.spaceBefore;[\s\S]*?settings\.spaceAfter = original\.spaceAfter;[\s\S]*?settings\.spacingReference = "visual";/,
+  'Restoring the simple layout must restore all essential geometry and use visual spacing.'
 );
 assert.doesNotMatch(
   heroEditorSource,
-  /locked: value, preset: value && current\[device\]\.preset === "free"/,
-  'The old stale-ratio lock toggle must not return.'
+  /Mantener proporción al cambiar tamaño|Encuadre de la tarjeta|Perspectiva|Referencia del espaciado|Mismo espaciado en todos los dispositivos/,
+  'Removed advanced sizing and spacing controls must not return.'
 );
-console.log('Hero aspect controls: OK (effective initialization, current-ratio locking and all-device helper state are guarded).');
+console.log('Hero simple device editor: OK (essential geometry only, visual spacing and no duplicate advanced sizing system).');

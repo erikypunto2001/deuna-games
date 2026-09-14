@@ -61,10 +61,94 @@ assert.doesNotMatch(
   "Hero Admin ranking must not recompute wall-clock time during client hydration."
 );
 
+// The editorial surface is intentionally simple. Runtime compatibility keeps
+// understanding historical advanced values, but the current editor must not
+// re-expose engine-level controls that duplicate layouts, presets or movement.
+for (const removedControl of [
+  "Comparar con guardado",
+  "Transformación 3D",
+  "Rotación X",
+  "Rotación Y",
+  "Rotación Z",
+  "Desplazamiento X",
+  "Desplazamiento Y",
+  "Profundidad",
+  "Encuadre de la tarjeta",
+  "Mantener proporción al cambiar tamaño",
+  "Perspectiva",
+  "Referencia del espaciado",
+  "Mismo espaciado en todos los dispositivos",
+  "Rueda del ratón",
+  "Navegación táctil",
+  "Pausar al pasar el puntero",
+  "Repetir al llegar al final",
+]) {
+  assert.doesNotMatch(
+    editor,
+    new RegExp(removedControl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `The simplified Hero editor must not expose ${removedControl}.`
+  );
+}
+
+assert.doesNotMatch(
+  editor,
+  /HomeHeroNavigationControls|HomeHeroSpacingControls|simplifyHeroFrameRatio/,
+  "The simplified Hero editor must not depend on the old advanced inspector helpers."
+);
+assert.doesNotMatch(
+  editor,
+  /\["Classic",\s*"Cinema",\s*"Minimal",\s*"Spotlight",\s*"Cards",\s*"Custom"\]/,
+  "Custom is a state marker, not a visual preset the user should be asked to apply."
+);
+
+for (const essentialControl of [
+  "Modo de selección del Hero",
+  "Elige la composición",
+  "Estilo visual",
+  "Tamaño y espacio",
+  "Separación entre tarjetas",
+  "Estilo de controles",
+  "Mostrar indicadores",
+  "Mostrar progreso",
+  "Elige cómo cambia de juego",
+  "Avance automático",
+  "Tiempo por juego",
+  "Probar funcionamiento",
+  "Guardar borrador",
+  "Revisar y publicar Inicio",
+]) {
+  assert.match(
+    editor,
+    new RegExp(essentialControl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `The simplified Hero editor must keep ${essentialControl}.`
+  );
+}
+
 assert.match(
   editor,
-  /const updateAspectControls = \(nextControl: AspectControl\) => \{\s*if \(comparing\) \{\s*setCompare\(false\);\s*return;\s*\}[\s\S]*?setAspectControls\(/,
-  "Compare mode must reject aspect helper mutations before aspectControls can change."
+  /settings\.spacingReference = "visual";/,
+  "Exterior spacing edited by the simple UI must always use the stable visual reference."
+);
+assert.match(
+  editor,
+  /Arrastre, táctil, teclado y repetición forman parte del[\s\S]*?comportamiento estable del carrusel/,
+  "The editor must explain that interaction mechanics are product behavior, not visual micro-controls."
+);
+
+assert.doesNotMatch(
+  livePreview,
+  /Ancho de pantalla|Alto de pantalla|Usar ventana actual|setManualViewportDimension|manualSizes|customized/,
+  "The Hero preview must not expose a second manual viewport-size editor beside the actual Hero dimensions."
+);
+assert.match(
+  livePreview,
+  /HOME_HERO_VIEWPORT_DEFAULTS\[device\]/,
+  "When the selected device does not match the browser, preview must use the canonical viewport for that device."
+);
+assert.match(
+  livePreview,
+  /clampHomeHeroViewport\(device, browserViewport\)/,
+  "When browser and selected device match, preview must follow the real browser viewport safely."
 );
 
 assert.doesNotMatch(
@@ -79,12 +163,12 @@ assert.match(
 );
 assert.match(
   livePreview,
-  /const playbackKey = `\$\{device\}:\$\{presentation\.motionStyle\}:\$\{games\.map\(\(game\) => game\.id\)\.join\(","\)\}`;/,
+  /const playbackKey = `\$\{device\}:\$\{presentation\.motionStyle\}:\$\{games[\s\S]*?\.map\(\(game\) => game\.id\)[\s\S]*?\.join\(","\)\}`;/,
   "Hero preview playback context must change with device, movement profile and visible games."
 );
 assert.match(
   livePreview,
-  /if \(!previewEnd \|\| lastPlaybackKey\.current === playbackKey\) return;/,
+  /lastPlaybackKey\.current === playbackKey/,
   "Hero preview must replay when the active playback context changes while test mode stays open."
 );
 assert.match(
@@ -94,5 +178,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (compare mode read-only, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (simple editorial surface, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
