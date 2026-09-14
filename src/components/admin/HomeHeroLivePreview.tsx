@@ -90,7 +90,7 @@ export default function HomeHeroLivePreview({
   onNavigationPositionChange?: (x: number, y: number) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
-  const wasPlaying = useRef(false);
+  const lastPlaybackKey = useRef<string | null>(null);
   const [previewEnd, setPreviewEnd] = useState<HTMLDivElement | null>(null);
   const [contentEnd, setContentEnd] = useState<number | null>(null);
   const [availableWidth, setAvailableWidth] = useState(HOME_HERO_VIEWPORT_DEFAULTS.desktop.width);
@@ -105,6 +105,7 @@ export default function HomeHeroLivePreview({
   const { width, height } = selectedViewport;
   const scale = Math.min(1, availableWidth / width);
   const effectivePresentation = presentation;
+  const playbackKey = `${device}:${presentation.motionStyle}:${games.map((game) => game.id).join(",")}`;
 
   useEffect(() => {
     const node = container.current;
@@ -150,11 +151,11 @@ export default function HomeHeroLivePreview({
 
   useEffect(() => {
     if (!playing) {
-      wasPlaying.current = false;
+      lastPlaybackKey.current = null;
       return;
     }
-    if (!previewEnd || wasPlaying.current) return;
-    wasPlaying.current = true;
+    if (!previewEnd || lastPlaybackKey.current === playbackKey) return;
+    lastPlaybackKey.current = playbackKey;
     const view = previewEnd.ownerDocument.defaultView;
     if (!view) return;
     let firstFrame = 0;
@@ -166,7 +167,7 @@ export default function HomeHeroLivePreview({
       view.cancelAnimationFrame(firstFrame);
       view.cancelAnimationFrame(secondFrame);
     };
-  }, [playing, previewEnd, replayTransition]);
+  }, [playing, playbackKey, previewEnd, replayTransition]);
 
   const setManualViewportDimension = (key: keyof HomeHeroViewport, value: number) => {
     setManualSizes((current) => ({ ...current, [device]: { ...selectedViewport, [key]: value } }));
