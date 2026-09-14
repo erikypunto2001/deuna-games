@@ -48,10 +48,15 @@ assert.match(
 );
 assert.match(
   motionCss,
-  /\.motionRoot \.motionCard\[data-motion-buffer="true"\][\s\S]*?transform var\(--hero-motion-duration\)[\s\S]*?opacity var\(--hero-motion-duration\)[\s\S]*?animation:\s*none/,
-  "Una tarjeta que sale hacia un buffer debe conservar transición V3 completa aunque coincida con edge-wrap."
+  /\.motionRoot \.motionCard\[data-edge-wrap="true"\]:not\(\[data-motion-buffer="true"\]\)[\s\S]*?transition:\s*none[\s\S]*?animation:\s*heroEdgeWrap/,
+  "Edge-wrap instantáneo debe quedar limitado a tarjetas visibles; un buffer conserva siempre la transición V3 base."
+);
+assert.doesNotMatch(
+  motionCss,
+  /\.motionRoot \.motionCard\[data-motion-buffer="true"\]\s*\{/,
+  "Los buffers no deben cambiar de régimen transition-* al cruzar el límite visible."
 );
 
 console.log(
-  "Hero motion continuity structure: OK (DOM canónico, buffers físicos, salida interpolada, fitting visible-only y motor no interrumpible)."
+  "Hero motion continuity structure: OK (DOM canónico, transición V3 única para buffers, fitting visible-only y edge-wrap visible-only)."
 );
