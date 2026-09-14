@@ -5,7 +5,7 @@ const hero = await readFile("src/components/home/HeroSection.tsx", "utf8");
 
 assert.match(
   hero,
-  /heroMotionRenderPositions\(visiblePositions, direction, motionDelta\)/,
+  /heroMotionRenderPositions\(visiblePositions, direction\)/,
   "Hero debe renderizar posiciones físicas de continuidad además de las visibles."
 );
 assert.match(
@@ -30,8 +30,13 @@ assert.doesNotMatch(
 );
 assert.match(
   hero,
-  /renderedPositionsRef\.current\.get\(String\(game\.id\)\)/,
-  "Edge-wrap debe basarse en la posición física anterior real de cada tarjeta."
+  /previousPositionByGameId\.get\(String\(game\.id\)\)/,
+  "Edge-wrap debe derivarse de la posición física anterior de cada tarjeta sin leer refs durante render."
+);
+assert.match(
+  hero,
+  /normalizedActiveIndex - motionDelta/,
+  "La posición física anterior debe partir del índice activo anterior real."
 );
 
 console.log(
