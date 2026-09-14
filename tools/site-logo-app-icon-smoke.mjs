@@ -138,6 +138,9 @@ for (const size of [32, 64, 180, 192, 512]) {
   assertPng(response, size);
 }
 
+const favicon = await request("/favicon.ico");
+assertPng(favicon, 32);
+
 const invalid = await request("/app-icon/96");
 assert(invalid.status === 404, "Un tamaño de icono no permitido debe responder 404.");
 assert(
@@ -146,5 +149,5 @@ assert(
 );
 
 console.log(
-  "Site app icon smoke: OK (metadata, manifest, PNG 32/64/180/192/512 y rechazo de tamaños no permitidos)."
+  "Site app icon smoke: OK (metadata, manifest, favicon dinámico, PNG 32/64/180/192/512 y rechazo de tamaños no permitidos)."
 );
