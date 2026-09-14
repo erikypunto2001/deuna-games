@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
 
 import type {
@@ -15,12 +14,10 @@ import type {
 } from "@/data/home-config";
 
 import styles from "./HomePresentationEditor.module.css";
+import { useInitialSessionStorageSnapshot } from "./useInitialSessionStorageSnapshot";
 
 const PRESENTATION_DRAFT_KEY =
   "deuna:home-presentation-draft:latest";
-const subscribeStorage = () => () => {};
-const clientReady = () => true;
-const serverReady = () => false;
 
 const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   hero: "Hero principal",
@@ -103,14 +100,6 @@ function clearRecoveryDraft() {
     sessionStorage.removeItem(PRESENTATION_DRAFT_KEY);
   } catch {
     // El guardado del servidor sigue siendo la fuente de verdad.
-  }
-}
-
-function readRecoveryRaw() {
-  try {
-    return sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
-  } catch {
-    return null;
   }
 }
 
@@ -237,16 +226,10 @@ export default function HomePresentationEditor({
     () => structuredClone(baselineCopy)
   );
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
-  const recoveryReady = useSyncExternalStore(
-    subscribeStorage,
-    clientReady,
-    serverReady
-  );
-  const storedDraft = useSyncExternalStore(
-    subscribeStorage,
-    readRecoveryRaw,
-    () => null
-  );
+  const {
+    ready: recoveryReady,
+    value: storedDraft,
+  } = useInitialSessionStorageSnapshot(PRESENTATION_DRAFT_KEY);
 
   const serialized = useMemo(
     () => buildPayload(sections, copy),
