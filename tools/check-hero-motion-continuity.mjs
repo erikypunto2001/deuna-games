@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const hero = await readFile("src/components/home/HeroSection.tsx", "utf8");
+const [hero, motionCss] = await Promise.all([
+  readFile("src/components/home/HeroSection.tsx", "utf8"),
+  readFile("src/components/home/HeroMotion.module.css", "utf8"),
+]);
 
 assert.match(
   hero,
@@ -38,7 +41,12 @@ assert.match(
   /normalizedActiveIndex - motionDelta/,
   "La posición física anterior debe partir del índice activo anterior real."
 );
+assert.match(
+  motionCss,
+  /\.motionRoot \.motionCard\[data-motion-buffer="true"\][\s\S]*?transform var\(--hero-motion-duration\)[\s\S]*?opacity var\(--hero-motion-duration\)[\s\S]*?animation:\s*none/,
+  "Una tarjeta que sale hacia un buffer debe conservar transición V3 completa aunque coincida con edge-wrap."
+);
 
 console.log(
-  "Hero motion continuity structure: OK (buffers físicos, fitting visible-only y motor no interrumpible)."
+  "Hero motion continuity structure: OK (buffers físicos, salida interpolada, fitting visible-only y motor no interrumpible)."
 );
