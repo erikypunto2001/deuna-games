@@ -11,6 +11,7 @@ const baseUrl = (
 const outputDir = path.resolve(
   process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
 );
+const reportPath = path.join(outputDir, "hero-motion-continuity.json");
 const viewports = [
   { id: "desktop", width: 1440, height: 1000 },
   { id: "tablet", width: 1024, height: 900 },
@@ -190,6 +191,64 @@ function closeEnough(a, b, tolerance = 0.035) {
   return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= tolerance;
 }
 
+async function capturePhase(cdp) {
+  return cdp.evaluate(`(() => {
+    const root = document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
+    const cards = Array.from(root?.querySelectorAll('[data-position]') ?? []);
+    const prior = window.__heroContinuityNodes ?? [];
+    const parseOpacity = (node) => Number.parseFloat(getComputedStyle(node).opacity);
+    const animationInfo = (node) => node.getAnimations().map((animation) => {
+      const timing = animation.effect?.getComputedTiming?.() ?? {};
+      return {
+        type: animation.constructor?.name ?? null,
+        playState: animation.playState,
+        currentTime: typeof animation.currentTime === 'number' ? animation.currentTime : null,
+        progress: typeof timing.progress === 'number' ? timing.progress : null,
+        duration: typeof timing.duration === 'number' ? timing.duration : String(timing.duration ?? ''),
+        transitionProperty: typeof animation.transitionProperty === 'string' ? animation.transitionProperty : null,
+        animationName: typeof animation.animationName === 'string' ? animation.animationName : null,
+      };
+    });
+    const samples = prior.map((item) => {
+      const retained = cards.includes(item.node);
+      if (!retained) return { ...item, retained: false };
+      const style = getComputedStyle(item.node);
+      return {
+        previousPosition: item.position,
+        previousVisible: item.visible,
+        previousOpacity: item.opacity,
+        retained: true,
+        position: item.node.getAttribute('data-position'),
+        visible: item.node.getAttribute('data-hero-visible') === 'true',
+        buffer: item.node.getAttribute('data-motion-buffer') === 'true',
+        edgeWrap: item.node.getAttribute('data-edge-wrap') === 'true',
+        opacity: parseOpacity(item.node),
+        inlineOpacity: item.node.style.opacity,
+        targetOpacity: Number.parseFloat(item.node.style.opacity || style.opacity),
+        display: style.display,
+        transitionProperty: style.transitionProperty,
+        transitionDuration: style.transitionDuration,
+        transitionTimingFunction: style.transitionTimingFunction,
+        animationName: style.animationName,
+        animationDuration: style.animationDuration,
+        animations: animationInfo(item.node),
+      };
+    });
+    const main = root?.querySelector('[data-position="main"]');
+    return {
+      main: main?.getAttribute('aria-label') ?? null,
+      cards: cards.length,
+      retained: samples.filter((sample) => sample.retained).length,
+      moved: samples.filter((sample) => sample.retained && sample.position !== sample.previousPosition).length,
+      running: samples.reduce((sum, sample) => sum + (sample.animations?.filter((animation) => animation.playState === 'running').length ?? 0), 0),
+      entering: samples.filter((sample) => sample.retained && !sample.previousVisible && sample.visible),
+      leaving: samples.filter((sample) => sample.retained && sample.previousVisible && !sample.visible),
+      visibleDurations: samples.filter((sample) => sample.retained && sample.visible).map((sample) => sample.transitionDuration),
+      samples,
+    };
+  })()`);
+}
+
 async function verifyViewport(cdp, viewport) {
   await setViewport(cdp, viewport);
   await navigate(cdp, `${baseUrl}/`);
@@ -243,68 +302,40 @@ async function verifyViewport(cdp, viewport) {
   requireCheck(clicked, `${viewport.id}: no se pudo iniciar la navegación del Hero.`);
 
   await delay(70);
+  const early = await capturePhase(cdp);
+
   // Fuerza un resize mínimo durante la transición. El fitting puede recalcularse,
   // pero nunca debe poner la duración del motor en 0 ni hacer saltar las tarjetas.
   await setViewport(cdp, { ...viewport, height: viewport.height + 1 });
   await delay(95);
+  const mid = await capturePhase(cdp);
 
-  const mid = await cdp.evaluate(`(() => {
-    const root = document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
-    const cards = Array.from(root?.querySelectorAll('[data-position]') ?? []);
-    const prior = window.__heroContinuityNodes ?? [];
-    const parseOpacity = (node) => Number.parseFloat(getComputedStyle(node).opacity);
-    const samples = prior.map((item) => {
-      const retained = cards.includes(item.node);
-      if (!retained) return { ...item, retained: false };
-      const style = getComputedStyle(item.node);
-      return {
-        previousPosition: item.position,
-        previousVisible: item.visible,
-        previousOpacity: item.opacity,
-        retained: true,
-        position: item.node.getAttribute('data-position'),
-        visible: item.node.getAttribute('data-hero-visible') === 'true',
-        opacity: parseOpacity(item.node),
-        targetOpacity: Number.parseFloat(item.node.style.opacity || style.opacity),
-        transitionDuration: style.transitionDuration,
-        runningAnimations: item.node.getAnimations().filter((animation) => animation.playState === 'running').length,
-        edgeWrap: item.node.getAttribute('data-edge-wrap') === 'true',
-      };
-    });
-    const main = root?.querySelector('[data-position="main"]');
-    return {
-      main: main?.getAttribute('aria-label') ?? null,
-      cards: cards.length,
-      retained: samples.filter((sample) => sample.retained).length,
-      moved: samples.filter((sample) => sample.retained && sample.position !== sample.previousPosition).length,
-      running: samples.reduce((sum, sample) => sum + (sample.runningAnimations ?? 0), 0),
-      entering: samples.filter((sample) => sample.retained && !sample.previousVisible && sample.visible),
-      leaving: samples.filter((sample) => sample.retained && sample.previousVisible && !sample.visible),
-      visibleDurations: samples.filter((sample) => sample.retained && sample.visible).map((sample) => sample.transitionDuration),
-      samples,
-    };
-  })()`);
+  const result = { before, early, mid, settled: null, errors: [] };
+  const check = (condition, message) => {
+    if (!condition) result.errors.push(message);
+  };
 
-  requireCheck(mid.main && mid.main !== before.main, `${viewport.id}: el principal no cambió al iniciar la transición.`);
-  requireCheck(mid.retained === before.cards, `${viewport.id}: se desmontaron tarjetas durante la transición (${mid.retained}/${before.cards}).`);
-  requireCheck(mid.moved >= Math.min(2, before.cards), `${viewport.id}: no hay suficientes nodos físicos recorriendo slots (${mid.moved}).`);
-  requireCheck(mid.running > 0, `${viewport.id}: no hay animaciones/transiciones activas a mitad del recorrido.`);
-  requireCheck(
+  check(early.main && early.main !== before.main, `${viewport.id}: el principal no cambió al iniciar la transición.`);
+  check(early.retained === before.cards, `${viewport.id}: se desmontaron tarjetas al iniciar la transición (${early.retained}/${before.cards}).`);
+  check(mid.retained === before.cards, `${viewport.id}: se desmontaron tarjetas durante la transición (${mid.retained}/${before.cards}).`);
+  check(mid.moved >= Math.min(2, before.cards), `${viewport.id}: no hay suficientes nodos físicos recorriendo slots (${mid.moved}).`);
+  check(mid.running > 0, `${viewport.id}: no hay animaciones/transiciones activas a mitad del recorrido.`);
+  check(
     mid.visibleDurations.some((value) => Number.parseFloat(value) > 0),
     `${viewport.id}: un resize durante el movimiento dejó la duración de transición en 0.`
   );
 
   if (before.bufferCount > 0) {
-    requireCheck(mid.entering.length >= 1, `${viewport.id}: ninguna tarjeta buffer entra físicamente al área visible.`);
-    requireCheck(mid.leaving.length >= 1, `${viewport.id}: ninguna tarjeta visible sale físicamente hacia un buffer.`);
+    check(mid.entering.length >= 1, `${viewport.id}: ninguna tarjeta buffer entra físicamente al área visible.`);
+    check(mid.leaving.length >= 1, `${viewport.id}: ninguna tarjeta visible sale físicamente hacia un buffer.`);
     for (const sample of mid.entering) {
-      requireCheck(
+      check(
         sample.opacity > 0.01 && sample.opacity < sample.targetOpacity - 0.01,
         `${viewport.id}: tarjeta entrante saltó de opacity 0 a ${sample.targetOpacity} sin interpolación (mid=${sample.opacity}).`
       );
     }
     for (const sample of mid.leaving) {
-      requireCheck(
+      check(
         sample.opacity > 0.01 && sample.opacity < sample.previousOpacity - 0.01,
         `${viewport.id}: tarjeta saliente desapareció sin completar interpolación (prev=${sample.previousOpacity}, mid=${sample.opacity}).`
       );
@@ -324,17 +355,22 @@ async function verifyViewport(cdp, viewport) {
       runningAnimations: item.node?.isConnected ? item.node.getAnimations().filter((animation) => animation.playState === 'running').length : 0,
     }));
   })()`);
+  result.settled = settled;
 
-  requireCheck(settled.every((sample) => sample.retained), `${viewport.id}: algún nodo se desmontó antes de completar el settle.`);
+  check(settled.every((sample) => sample.retained), `${viewport.id}: algún nodo se desmontó antes de completar el settle.`);
   for (const sample of settled) {
     if (!sample.visible) {
-      requireCheck(closeEnough(sample.opacity, 0), `${viewport.id}: buffer asentado quedó visible con opacity=${sample.opacity}.`);
+      check(closeEnough(sample.opacity, 0), `${viewport.id}: buffer asentado quedó visible con opacity=${sample.opacity}.`);
     } else {
-      requireCheck(closeEnough(sample.opacity, sample.targetOpacity), `${viewport.id}: tarjeta visible no terminó en su opacity objetivo (${sample.opacity}/${sample.targetOpacity}).`);
+      check(closeEnough(sample.opacity, sample.targetOpacity), `${viewport.id}: tarjeta visible no terminó en su opacity objetivo (${sample.opacity}/${sample.targetOpacity}).`);
     }
   }
 
-  return { before, mid, settled };
+  return result;
+}
+
+async function persistReport(report) {
+  await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 }
 
 async function main() {
@@ -377,25 +413,23 @@ async function main() {
     });
 
     for (const viewport of viewports) {
-      report.viewports[viewport.id] = await verifyViewport(cdp, viewport);
+      const result = await verifyViewport(cdp, viewport);
+      report.viewports[viewport.id] = result;
+      await persistReport(report);
+      requireCheck(
+        result.errors.length === 0,
+        `${viewport.id}: ${result.errors.join(" | ")}`
+      );
     }
 
     requireCheck(report.runtimeIssues.length === 0, `Errores runtime: ${report.runtimeIssues.join(" | ")}`);
-    await writeFile(
-      path.join(outputDir, "hero-motion-continuity.json"),
-      `${JSON.stringify(report, null, 2)}\n`,
-      "utf8"
-    );
+    await persistReport(report);
     console.log(
       "Hero motion continuity browser: OK (desktop/tablet/mobile, nodos retenidos, entrada/salida interpolada y resize sin cortar transición)."
     );
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
-    await writeFile(
-      path.join(outputDir, "hero-motion-continuity.json"),
-      `${JSON.stringify(report, null, 2)}\n`,
-      "utf8"
-    ).catch(() => {});
+    await persistReport(report).catch(() => {});
     throw error;
   } finally {
     cdp?.close();
