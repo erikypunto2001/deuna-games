@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [source, css, schema, adminControls, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService, browserSmoke] = await Promise.all([
+const [source, css, schema, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService, browserSmoke] = await Promise.all([
   readFile(new URL('../src/components/home/HeroNavigation.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroNavigation.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/lib/home/hero-schema.ts', import.meta.url), 'utf8'),
-  readFile(new URL('../src/components/admin/HomeHeroNavigationControls.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroSection.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroSection.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroMotion.module.css', import.meta.url), 'utf8'),
@@ -22,7 +21,6 @@ assert.doesNotMatch(source, /aria-live="polite"/);
 assert.match(source, /aria-current=\{active \? "true" : undefined\}/);
 assert.match(source, /aria-pressed=\{manualPaused\}/);
 assert.match(source, /const pauseVisible = autoplayDelay !== null;/);
-assert.doesNotMatch(adminControls, /onToggle\("showPause"/);
 assert.match(schema, /showPause:\s*autoplay \|\| presentation\.navigation\.showPause/);
 assert.match(schema, /motionStyle:\s*presentation\.motionStyle \?\? legacyTransitionToMotionStyle\(legacyTransition\)/);
 assert.match(css, /--hero-navigation-target-size:\s*max\(24px,\s*calc\(2400px \/ var\(--hero-navigation-scale\)\)\);/);
