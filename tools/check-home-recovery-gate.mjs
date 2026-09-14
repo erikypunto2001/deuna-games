@@ -16,6 +16,7 @@ async function source(relativePath) {
 const [
   curationEditor,
   presentationEditor,
+  recoverySnapshotHook,
   heroEditor,
   heroBoundary,
   homeLimits,
@@ -28,6 +29,7 @@ const [
 ] = await Promise.all([
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/components/admin/HomePresentationEditor.tsx"),
+  source("src/components/admin/useInitialSessionStorageSnapshot.ts"),
   source("src/components/admin/HomeHeroEditor.tsx"),
   source("src/components/admin/HomeHeroSaveBoundary.tsx"),
   source("src/lib/home/editorial-limits.ts"),
@@ -39,9 +41,9 @@ const [
   source("src/lib/admin/request-security.ts"),
 ]);
 
-for (const [label, editor, minimumInertRegions] of [
-  ["Curaduría", curationEditor, 4],
-  ["Presentación", presentationEditor, 3],
+for (const [label, editor, minimumInertRegions, key] of [
+  ["Curaduría", curationEditor, 4, "CURATION_DRAFT_KEY"],
+  ["Presentación", presentationEditor, 3, "PRESENTATION_DRAFT_KEY"],
 ]) {
   assert(
     editor.includes("const recoveryRequiresDecision = Boolean(recovery)") &&
@@ -62,7 +64,25 @@ for (const [label, editor, minimumInertRegions] of [
       editor.includes("if (!recoveryMatchesRevision) return"),
     `${label} nunca debe permitir recuperar una copia obsoleta sobre una revisión posterior.`,
   );
+
+  assert(
+    editor.includes("useInitialSessionStorageSnapshot") &&
+      editor.includes(`useInitialSessionStorageSnapshot(${key})`) &&
+      !editor.includes("useSyncExternalStore(") &&
+      !editor.includes("readRecoveryRaw"),
+    `${label} debe capturar el recovery una sola vez al montar; no puede releer en vivo la misma clave de sessionStorage que escribe durante la edición activa.`,
+  );
 }
+
+assert(
+  recoverySnapshotHook.includes("function createInitialSessionStorageStore(key: string)") &&
+    recoverySnapshotHook.includes("if (captured) return snapshot") &&
+    recoverySnapshotHook.includes("snapshot = sessionStorage.getItem(key)") &&
+    recoverySnapshotHook.includes("useState(() => createInitialSessionStorageStore(key))") &&
+    recoverySnapshotHook.includes("useSyncExternalStore(") &&
+    recoverySnapshotHook.includes("store.getSnapshot"),
+  "El helper de recovery de Resto debe congelar el snapshot inicial por montaje, conservando hidratación SSR segura y sin observar las escrituras de la misma sesión.",
+);
 
 assert(
   heroEditor.includes("const recoveryRequiresDecision = Boolean(recovery)") &&
@@ -149,6 +169,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home recovery/save gate: OK (Curaduría, Presentación y Hero exigen resolver cualquier copia pendiente; Hero falla cerrado ante copias obsoletas y las rutas de Resto alinean límites HTTP con sus contratos Zod sin ampliar el Admin global).",
+    "Home recovery/save gate: OK (Curaduría y Presentación capturan recovery inicial sin auto-bloquear la edición activa; Hero falla cerrado ante copias obsoletas y las rutas de Resto alinean límites HTTP con sus contratos Zod sin ampliar el Admin global).",
   );
 }
