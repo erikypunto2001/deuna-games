@@ -65,12 +65,14 @@ export default function HomeHeroLivePreview({
   playing,
   background,
   showSpacingGuide = false,
+  onNavigationPositionChange,
 }: {
   games: Game[];
   presentation: HomeHeroPresentation;
   device: HomeHeroDevice;
   playing: boolean;
   onSelectPosition?: () => void;
+  onNavigationPositionChange?: (x: number, y: number) => void;
   background?: Omit<
     PublicPageBackgroundProps,
     "children" | "previewPathname"
@@ -219,6 +221,14 @@ export default function HomeHeroLivePreview({
             games={games}
             presentation={effectivePresentation}
             autoplaySuspended={!playing}
+            navigationEditor={
+              !playing && onNavigationPositionChange
+                ? {
+                    device,
+                    onPositionChange: onNavigationPositionChange,
+                  }
+                : undefined
+            }
           />
           {showSpacingGuide && (
             <div
