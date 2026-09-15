@@ -1,3 +1,7 @@
+.arrowBridge {
+  --hero-arrow-overrides-loaded: 1;
+}
+
 :global(button[data-arrow-shape][data-hero-spacing-boundary="control"]) {
   top: var(--hero-desktop-arrow-y, 50%);
   transform: translateY(-50%) scale(var(--hero-desktop-arrow-scale, 1));
