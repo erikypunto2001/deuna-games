@@ -316,15 +316,32 @@ async function main() {
 
   const setRange = async (label, value) => {
     const numberLabel = `${label}: valor numérico`;
-    const prepared = await cdp.evaluate(`(() => {
+    const point = await cdp.evaluate(`(() => {
       const input = document.querySelector('input[type="number"][aria-label=${JSON.stringify(numberLabel)}]');
-      if (!(input instanceof HTMLInputElement)) return false;
-      input.focus();
-      input.select();
-      return document.activeElement === input;
+      if (!(input instanceof HTMLInputElement)) return null;
+      input.scrollIntoView({ block: 'center', inline: 'nearest' });
+      const rect = input.getBoundingClientRect();
+      if (!(rect.width > 0) || !(rect.height > 0)) return null;
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     })()`);
-    requireCheck(prepared, `No se pudo enfocar ${label}.`);
+    requireCheck(point, `No se pudo ubicar ${label}.`);
 
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: point.x, y: point.y,
+      button: 'left', buttons: 1, clickCount: 1,
+    });
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: point.x, y: point.y,
+      button: 'left', buttons: 0, clickCount: 1,
+    });
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', key: 'a', code: 'KeyA', modifiers: 2,
+      windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65,
+    });
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'a', code: 'KeyA', modifiers: 2,
+      windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65,
+    });
     await cdp.send('Input.insertText', { text: String(value) });
     await waitUntil(
       cdp,
