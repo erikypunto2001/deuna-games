@@ -9,6 +9,7 @@ const [
   heroLayout,
   heroSource,
   heroStyles,
+  heroArtworkStyles,
 ] = await Promise.all([
   readFile(
     new URL("../src/components/admin/HomeHeroEditor.tsx", import.meta.url),
@@ -36,6 +37,10 @@ const [
   ),
   readFile(
     new URL("../src/components/home/HeroSection.module.css", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/components/home/HeroArtwork.module.css", import.meta.url),
     "utf8"
   ),
 ]);
@@ -206,6 +211,21 @@ assert.match(
   heroStyles,
   /\.arrowRight\{right:var\(--hero-arrow-inset\)\}/,
   "The next Hero arrow must consume the canonical inset."
+);
+assert.doesNotMatch(
+  heroArtworkStyles,
+  /aria-label="Juego anterior"\]\)\s*\{[^}]*\bleft\s*:/,
+  "Hero artwork styling must not pin the previous arrow outside the canonical HeroSection contract."
+);
+assert.doesNotMatch(
+  heroArtworkStyles,
+  /aria-label="Juego siguiente"\]\)\s*\{[^}]*\bright\s*:/,
+  "Hero artwork styling must not pin the next arrow outside the canonical HeroSection contract."
+);
+assert.doesNotMatch(
+  heroSource,
+  /arrowStyles|previousArrowStyle|nextArrowStyle|style=\{previousArrowStyle\}|style=\{nextArrowStyle\}/,
+  "HeroSection must keep arrow position and scale in the canonical per-device CSS-variable contract, not duplicate them inline."
 );
 for (const shape of ["circle", "rounded", "square", "none"]) {
   assert.match(

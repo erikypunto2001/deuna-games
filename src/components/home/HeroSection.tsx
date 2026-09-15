@@ -65,7 +65,6 @@ import {
 } from "@/lib/site/hero-image";
 import type { Game } from "@/types/game";
 
-import arrowStyles from "./HeroArrowOverrides.module.css";
 import artworkStyles from "./HeroArtwork.module.css";
 import motionStyles from "./HeroMotion.module.css";
 import styles from "./HeroSection.module.css";
@@ -354,20 +353,6 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const autoplayDelay = !presentation.autoplay || presentation.autoplayMs === 0 ? null : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
   const direction = presentation.direction === "reverse" ? -1 : 1;
   const rootStyle = useMemo(() => ({ ...deviceVariables(presentation, games.length), "--hero-drag-offset": `${dragOffset}px` }) as CSSProperties, [dragOffset, games.length, presentation]);
-  const arrowPlacement = presentation.navigation.arrowResponsive[designDevice];
-  const arrowControlStyle = {
-    top: `${arrowPlacement.y}%`,
-    "--hero-arrow-scale": arrowPlacement.scale / 100,
-    "--hero-arrow-hover-scale": (arrowPlacement.scale * 1.06) / 100,
-  } as CSSProperties;
-  const previousArrowStyle = {
-    ...arrowControlStyle,
-    left: `${arrowPlacement.inset}px`,
-  } as CSSProperties;
-  const nextArrowStyle = {
-    ...arrowControlStyle,
-    right: `${arrowPlacement.inset}px`,
-  } as CSSProperties;
 
   const registerMotionDelta = useCallback((delta: number) => {
     const view = rootRef.current?.ownerDocument.defaultView;
@@ -717,7 +702,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   return (
     <section
       ref={rootRef}
-      className={`${styles.heroSection} ${motionStyles.motionRoot} ${arrowStyles.arrowBridge}`}
+      className={`${styles.heroSection} ${motionStyles.motionRoot}`}
       data-composition={presentation.composition}
       data-motion-style={presentation.motionStyle}
       data-motion-ready={motionReady || undefined}
@@ -780,8 +765,8 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
         </div></div>
       </div>
       {games.length > 1 && <>
-        <button type="button" className={`${styles.arrow} ${styles.arrowLeft}`} style={previousArrowStyle} data-arrow-shape={presentation.navigation.arrowShape} data-arrow-icon={presentation.navigation.arrowIcon} data-hero-spacing-boundary="control" aria-label="Juego anterior" onClick={previousSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}><HeroArrowGlyph icon={presentation.navigation.arrowIcon} direction="left" /></button>
-        <button type="button" className={`${styles.arrow} ${styles.arrowRight}`} style={nextArrowStyle} data-arrow-shape={presentation.navigation.arrowShape} data-arrow-icon={presentation.navigation.arrowIcon} data-hero-spacing-boundary="control" aria-label="Juego siguiente" onClick={nextSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}><HeroArrowGlyph icon={presentation.navigation.arrowIcon} direction="right" /></button>
+        <button type="button" className={`${styles.arrow} ${styles.arrowLeft}`} data-arrow-shape={presentation.navigation.arrowShape} data-arrow-icon={presentation.navigation.arrowIcon} data-hero-spacing-boundary="control" aria-label="Juego anterior" onClick={previousSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}><HeroArrowGlyph icon={presentation.navigation.arrowIcon} direction="left" /></button>
+        <button type="button" className={`${styles.arrow} ${styles.arrowRight}`} data-arrow-shape={presentation.navigation.arrowShape} data-arrow-icon={presentation.navigation.arrowIcon} data-hero-spacing-boundary="control" aria-label="Juego siguiente" onClick={nextSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}><HeroArrowGlyph icon={presentation.navigation.arrowIcon} direction="right" /></button>
         <HeroNavigation games={games} activeIndex={normalizedActiveIndex} config={presentation.navigation} autoplayDelay={autoplayDelay} isPaused={isPaused} manualPaused={manualPaused} atAutoplayEnd={atAutoplayEnd} onSelect={selectSlide} onTogglePause={() => setManualPaused((current) => !current)} editor={navigationEditor} />
       </>}
       <span className={styles.srOnly} aria-hidden="true">{formatHomeHeroPosition(normalizedActiveIndex, games.length)}</span>
