@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [editor, livePreview, adminPage, rankingReference, heroLayout, heroSource] = await Promise.all([
+const [
+  editor,
+  livePreview,
+  adminPage,
+  rankingReference,
+  heroLayout,
+  heroSource,
+  arrowOverrides,
+] = await Promise.all([
   readFile(
     new URL("../src/components/admin/HomeHeroEditor.tsx", import.meta.url),
     "utf8"
@@ -24,6 +32,10 @@ const [editor, livePreview, adminPage, rankingReference, heroLayout, heroSource]
   ),
   readFile(
     new URL("../src/components/home/HeroSection.tsx", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/components/home/HeroArrowOverrides.module.css", import.meta.url),
     "utf8"
   ),
 ]);
@@ -163,6 +175,34 @@ assert.match(
   "The public Hero renderer and Admin preview must consume the shared width resolver."
 );
 assert.match(
+  heroSource,
+  /import arrowStyles from "\.\/HeroArrowOverrides\.module\.css";/,
+  "The public Hero renderer must load the CSS module that consumes persisted arrow placement and shape variables."
+);
+assert.match(
+  heroSource,
+  /className=\{`\$\{styles\.heroSection\}[\s\S]*?\$\{arrowStyles\.arrowBridge\}`\}/,
+  "The Hero root must keep the arrow override module connected to the rendered tree."
+);
+for (const arrowVariable of [
+  "--hero-desktop-arrow-inset",
+  "--hero-tablet-arrow-inset",
+  "--hero-mobile-arrow-inset",
+  "--hero-desktop-arrow-y",
+  "--hero-desktop-arrow-scale",
+]) {
+  assert.match(
+    arrowOverrides,
+    new RegExp(arrowVariable),
+    `The arrow runtime stylesheet must consume ${arrowVariable}.`
+  );
+}
+assert.match(
+  heroSource,
+  /responsive\.cardWidthMode === "fill"[\s\S]*?footprintCards[\s\S]*?HERO_FILL_SEARCH_STEPS[\s\S]*?--hero-card-width[\s\S]*?--hero-anchor/,
+  "Fill mode must resolve the real visual footprint and recenter it between arrows instead of relying only on a nominal card width."
+);
+assert.match(
   editor,
   /onNavigationPositionChange=\{\(x, y\) => \{[\s\S]*?setNavigationPosition\(x, y\)/,
   "The real preview drag handle must persist navigation-cluster placement through the editor state."
@@ -221,5 +261,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (task-oriented editorial surface, width-to-arrows and navigation visuals on the real renderer, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (task-oriented editorial surface, visual-footprint fill, live arrow placement/styles, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
