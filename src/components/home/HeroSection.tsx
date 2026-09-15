@@ -235,13 +235,22 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
 }) {
   const rootRef = useRef<HTMLElement>(null);
   const [designDevice, setDesignDevice] = useState<HomeHeroDevice>("desktop");
+  const [motionReady, setMotionReady] = useState(false);
   useLayoutEffect(() => {
     const view = rootRef.current?.ownerDocument.defaultView;
     if (!view) return;
     const update = () => setDesignDevice(homeHeroDeviceForWidth(view.innerWidth));
     update();
+    let secondFrame: number | null = null;
+    const firstFrame = view.requestAnimationFrame(() => {
+      secondFrame = view.requestAnimationFrame(() => setMotionReady(true));
+    });
     view.addEventListener("resize", update);
-    return () => view.removeEventListener("resize", update);
+    return () => {
+      view.removeEventListener("resize", update);
+      view.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) view.cancelAnimationFrame(secondFrame);
+    };
   }, []);
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
   const fitRef = useRef<HTMLDivElement>(null);
@@ -558,7 +567,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   if (!activeGame) return null;
 
   return (
-    <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>
+    <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-motion-ready={motionReady || undefined} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>
       <h2 className={styles.srOnly}>Juegos destacados</h2>
       <div className={styles.carouselViewport} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onLostPointerCapture={handleLostPointerCapture} onDragStart={(event) => event.preventDefault()} onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }} onPointerCancel={() => resetPointer(true)}>
         <div ref={fitRef} className={styles.stageFit}><div className={styles.stage}>
