@@ -72,7 +72,7 @@ export default function HeroNavigation({
   const placement = editor ? config.responsive[editor.device] : null;
   const integratedProgress = config.showIndicators && (config.style === "integrated" || config.style === "timeline");
   const progressVisible = config.showProgress && autoplayDelay !== null;
-  const pauseVisible = autoplayDelay !== null;
+  const pauseVisible = config.showPause && autoplayDelay !== null;
   const activeGame = games[activeIndex];
   const announceSlideChanges = isPaused;
 
