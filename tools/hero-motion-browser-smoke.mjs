@@ -315,17 +315,35 @@ async function main() {
   };
 
   const setRange = async (label, value) => {
-    const changed = await cdp.evaluate(`(() => {
-      const input = document.querySelector('input[type="range"][aria-label=${JSON.stringify(label)}]');
+    const numberLabel = `${label}: valor numérico`;
+    const prepared = await cdp.evaluate(`(() => {
+      const input = document.querySelector('input[type="number"][aria-label=${JSON.stringify(numberLabel)}]');
       if (!(input instanceof HTMLInputElement)) return false;
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      if (!setter) return false;
-      setter.call(input, ${JSON.stringify(String(value))});
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
+      input.focus();
+      input.select();
+      return document.activeElement === input;
     })()`);
-    requireCheck(changed, `No se pudo editar ${label}.`);
+    requireCheck(prepared, `No se pudo enfocar ${label}.`);
+
+    await cdp.send('Input.insertText', { text: String(value) });
+    await waitUntil(
+      cdp,
+      `document.querySelector('input[type="number"][aria-label=${JSON.stringify(numberLabel)}]')?.value === ${JSON.stringify(String(value))}`,
+      `entrada real de ${label}`
+    );
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', key: 'Enter', code: 'Enter',
+      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
+    });
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'Enter', code: 'Enter',
+      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
+    });
+    await waitUntil(
+      cdp,
+      `document.querySelector('input[type="range"][aria-label=${JSON.stringify(label)}]')?.value === ${JSON.stringify(String(value))}`,
+      `persistencia editorial de ${label}`
+    );
     await delay(220);
   };
 
@@ -420,6 +438,9 @@ async function main() {
       const mr = main.getBoundingClientRect();
       const pr = previous.getBoundingClientRect();
       const nr = next.getBoundingClientRect();
+      const rootStyle = getComputedStyle(root);
+      const previousStyle = getComputedStyle(previous);
+      const nextStyle = getComputedStyle(next);
       const visibleRects = visible.map((node) => node.getBoundingClientRect());
       const visibleLeft = Math.min(...visibleRects.map((box) => box.left));
       const visibleRight = Math.max(...visibleRects.map((box) => box.right));
@@ -436,6 +457,9 @@ async function main() {
         previousCenter: pr.left + pr.width / 2,
         nextLeft: nr.left,
         nextCenter: nr.left + nr.width / 2,
+        rootArrowInset: rootStyle.getPropertyValue('--hero-desktop-arrow-inset').trim(),
+        previousCssLeft: previousStyle.left,
+        nextCssRight: nextStyle.right,
       };
     })()`);
 
