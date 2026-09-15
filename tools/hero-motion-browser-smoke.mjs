@@ -296,6 +296,24 @@ async function main() {
     await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style="${style}"]')`, `motionStyle ${style}`);
   };
 
+  const selectWorkspace = async (label, workspace) => {
+    const clicked = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('nav[aria-label="Tareas del editor"] button')).find((node) => node.textContent?.trim() === ${JSON.stringify(label)});
+      if (!(button instanceof HTMLButtonElement)) return false;
+      const rect = button.getBoundingClientRect();
+      if (!(rect.width > 0) || !(rect.height > 0)) return false;
+      button.click();
+      return true;
+    })()`);
+    requireCheck(clicked, `No se pudo abrir la tarea ${label}.`);
+    await waitUntil(
+      cdp,
+      `document.querySelector('[data-workspace="${workspace}"]')`,
+      `workspace ${workspace}`
+    );
+    await delay(120);
+  };
+
   const selectLayout = async (label, expectedPositions) => {
     const clicked = await cdp.evaluate(`(() => {
       const strong = Array.from(document.querySelectorAll('button strong')).find((node) => node.textContent?.trim() === ${JSON.stringify(label)});
@@ -441,6 +459,7 @@ async function main() {
     await loginAdmin(cdp);
     await navigate(cdp, `${baseUrl}/admin/portada?seccion=hero`);
     await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');
+    await selectWorkspace('2. Diseño', 'design');
 
     const heroGeometry = async () => cdp.evaluate(`(() => {
       const frame = document.querySelector('iframe[title^="Hero real"]');
@@ -592,6 +611,7 @@ async function main() {
       outside: arrowsOutside,
     };
 
+    await selectWorkspace('3. Movimiento', 'motion');
     const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);
     requireCheck(JSON.stringify(labels) === JSON.stringify(['Momentum','Morph','Parallax Sweep']), `El Admin debe exponer exactamente tres movimientos y expuso ${JSON.stringify(labels)}.`);
     report.checks.motionOptions = labels;
