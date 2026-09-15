@@ -517,13 +517,27 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
             const roundedWidth = Math.round(best * 100) / 100;
             const filledBounds = measure(roundedWidth);
             const currentAnchor = Number.parseFloat(getComputedStyle(mainCard).left);
+            const targetCenter = (targetLeft + targetRight) / 2;
             const centerOffset =
-              (targetLeft + targetRight - filledBounds.left - filledBounds.right) / 2;
+              targetCenter - (filledBounds.left + filledBounds.right) / 2;
             if (Number.isFinite(currentAnchor) && Number.isFinite(centerOffset)) {
-              root.style.setProperty(
-                "--hero-anchor",
-                `${Math.round((currentAnchor + centerOffset) * 100) / 100}px`
-              );
+              const adjustedAnchor =
+                Math.round((currentAnchor + centerOffset) * 100) / 100;
+              root.style.setProperty("--hero-anchor", `${adjustedAnchor}px`);
+
+              // Perspective/rotation makes the projected footprint slightly non-linear
+              // when the anchor moves. Measure once more after the real browser layout
+              // and correct the remaining projected-center error instead of widening a
+              // visual-test tolerance around an actually off-center composition.
+              const adjustedBounds = horizontalBounds(footprintCards);
+              const residualCenterOffset =
+                targetCenter - (adjustedBounds.left + adjustedBounds.right) / 2;
+              if (Number.isFinite(residualCenterOffset)) {
+                root.style.setProperty(
+                  "--hero-anchor",
+                  `${Math.round((adjustedAnchor + residualCenterOffset) * 100) / 100}px`
+                );
+              }
             }
           }
         }

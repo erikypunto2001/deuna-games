@@ -240,6 +240,8 @@ for (const fillRuntimeInvariant of [
   /responsive\.cardWidthMode === "fill"[\s\S]*?const footprintCards = oneSided \? cards : \[mainCard\];/,
   /root\.style\.setProperty\("--hero-card-width", `\$\{width\}px`\);/,
   /root\.style\.setProperty\([\s\S]*?"--hero-anchor"/,
+  /const adjustedBounds = horizontalBounds\(footprintCards\);/,
+  /const residualCenterOffset =[\s\S]*?adjustedBounds\.left[\s\S]*?adjustedBounds\.right/,
 ]) {
   assert.match(
     heroSource,

@@ -447,69 +447,6 @@ async function main() {
       const visible = Array.from(root?.querySelectorAll('[data-hero-visible="true"]') ?? []).filter((node) => node.getClientRects().length > 0);
       if (!root || !main || !previous || !next || !visible.length) return null;
 
-      const positioningProperties = [
-        'position', 'left', 'right', 'top', 'bottom', 'inset',
-        'inset-inline', 'inset-inline-start', 'inset-inline-end',
-        'inset-block', 'inset-block-start', 'inset-block-end',
-        'animation', 'animation-name', 'transition', 'transition-property'
-      ];
-      const matchingPositionRules = [];
-      const visitRules = (rules, href, context = []) => {
-        for (const rule of Array.from(rules ?? [])) {
-          if (typeof rule.selectorText === 'string') {
-            let matches = false;
-            try { matches = previous.matches(rule.selectorText); } catch {}
-            if (matches) {
-              for (const property of positioningProperties) {
-                const value = rule.style?.getPropertyValue(property)?.trim();
-                if (!value) continue;
-                matchingPositionRules.push({
-                  selector: rule.selectorText,
-                  property,
-                  value,
-                  priority: rule.style.getPropertyPriority(property),
-                  href,
-                  context,
-                });
-              }
-            }
-          }
-          if (rule.cssRules) {
-            let label = null;
-            try {
-              label = rule.conditionText ?? rule.name ?? null;
-            } catch {}
-            try {
-              visitRules(rule.cssRules, href, label ? [...context, String(label)] : context);
-            } catch {}
-          }
-        }
-      };
-      for (const sheet of Array.from(doc.styleSheets ?? [])) {
-        try { visitRules(sheet.cssRules, sheet.href ?? 'inline'); } catch {}
-      }
-
-      const animations = previous.getAnimations().map((animation) => {
-        let keyframes = [];
-        try { keyframes = animation.effect?.getKeyframes?.() ?? []; } catch {}
-        return {
-          playState: animation.playState,
-          currentTime: animation.currentTime,
-          startTime: animation.startTime,
-          playbackRate: animation.playbackRate,
-          id: animation.id,
-          keyframes: keyframes.map((frame) => ({
-            offset: frame.offset,
-            left: frame.left ?? null,
-            right: frame.right ?? null,
-            inset: frame.inset ?? null,
-            insetInlineStart: frame.insetInlineStart ?? null,
-            insetInlineEnd: frame.insetInlineEnd ?? null,
-            transform: frame.transform ?? null,
-          })),
-        };
-      });
-
       const rr = root.getBoundingClientRect();
       const mr = main.getBoundingClientRect();
       const pr = previous.getBoundingClientRect();
@@ -536,25 +473,6 @@ async function main() {
         rootArrowInset: rootStyle.getPropertyValue('--hero-desktop-arrow-inset').trim(),
         previousCssLeft: previousStyle.left,
         nextCssRight: nextStyle.right,
-        rootCount: roots.length,
-        previousCount: root.querySelectorAll('button[aria-label="Juego anterior"]').length,
-        nextCount: root.querySelectorAll('button[aria-label="Juego siguiente"]').length,
-        rootMotionStyle: root.getAttribute('data-motion-style'),
-        frameInnerWidth: frame?.contentWindow?.innerWidth ?? null,
-        previousClass: previous.className,
-        previousInlineLeft: previous.style.left,
-        previousInlineLeftPriority: previous.style.getPropertyPriority('left'),
-        nextInlineRight: next.style.right,
-        nextInlineRightPriority: next.style.getPropertyPriority('right'),
-        previousPosition: previousStyle.position,
-        previousInset: previousStyle.inset,
-        previousInsetInline: previousStyle.insetInline,
-        previousInsetInlineStart: previousStyle.insetInlineStart,
-        previousInsetInlineEnd: previousStyle.insetInlineEnd,
-        previousAnimationName: previousStyle.animationName,
-        previousTransitionProperty: previousStyle.transitionProperty,
-        matchingPositionRules,
-        animations,
       };
     })()`);
 
