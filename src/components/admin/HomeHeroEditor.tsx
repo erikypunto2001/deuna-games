@@ -32,6 +32,8 @@ import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
 import type { PublicPageBackgroundProps } from "@/components/site/PublicPageBackground";
 import type {
   HomeCurationMode,
+  HomeHeroArrowIcon,
+  HomeHeroArrowShape,
   HomeHeroDevice,
   HomeHeroNavigationStyle,
   HomeHeroPresentation,
@@ -159,6 +161,27 @@ const navigationStyles: Array<{
   { id: "minimal", label: "Minimal" },
   { id: "glass", label: "Glass" },
   { id: "rail", label: "Rail" },
+];
+
+const arrowIcons: Array<{
+  id: HomeHeroArrowIcon;
+  label: string;
+}> = [
+  { id: "chevron", label: "Chevron" },
+  { id: "arrow", label: "Flecha" },
+  { id: "double-chevron", label: "Doble chevron" },
+  { id: "long-arrow", label: "Flecha larga" },
+  { id: "triangle", label: "Triángulo" },
+];
+
+const arrowShapes: Array<{
+  id: HomeHeroArrowShape;
+  label: string;
+}> = [
+  { id: "circle", label: "Círculo" },
+  { id: "rounded", label: "Cuadrado redondeado" },
+  { id: "square", label: "Cuadrado" },
+  { id: "none", label: "Sin contenedor" },
 ];
 
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -559,6 +582,8 @@ export default function HomeHeroEditor({
 
   const shown = resolveHeroDeviceDesign(state.presentation, device);
   const responsive = shown.responsive[device];
+  const navigationPlacement = shown.navigation.responsive[device];
+  const arrowPlacement = shown.navigation.arrowResponsive[device];
   const visiblePositions = homeHeroVisiblePositions(
     responsive,
     shown.direction,
@@ -695,11 +720,46 @@ export default function HomeHeroEditor({
     });
 
   const setNavigationToggle = (
-    key: "showIndicators" | "showProgress",
+    key: "showIndicators" | "showPause" | "showProgress",
     value: boolean
   ) =>
     commit((current) => {
       current.presentation.navigation[key] = value;
+      return current;
+    });
+
+  const setNavigationPlacement = (
+    key: "x" | "y" | "scale",
+    value: number
+  ) =>
+    commit((current) => {
+      current.presentation.navigation.responsive[device][key] = value;
+      return current;
+    });
+
+  const setNavigationPosition = (x: number, y: number) =>
+    commit((current) => {
+      const placement = current.presentation.navigation.responsive[device];
+      placement.x = x;
+      placement.y = y;
+      return current;
+    });
+
+  const setArrowAppearance = <Key extends "arrowIcon" | "arrowShape">(
+    key: Key,
+    value: HomeHeroPresentation["navigation"][Key]
+  ) =>
+    commit((current) => {
+      current.presentation.navigation[key] = value;
+      return current;
+    });
+
+  const setArrowPlacement = (
+    key: "inset" | "y" | "scale",
+    value: number
+  ) =>
+    commit((current) => {
+      current.presentation.navigation.arrowResponsive[device][key] = value;
       return current;
     });
 
@@ -973,6 +1033,13 @@ export default function HomeHeroEditor({
                 panel === "size" &&
                 !preview
               }
+              onNavigationPositionChange={(x, y) => {
+                if (!preview) {
+                  setWorkspace("design");
+                  setPanel("navigation");
+                  setNavigationPosition(x, y);
+                }
+              }}
               onSelectPosition={() => {
                 if (!preview) {
                   setWorkspace("design");
@@ -1513,9 +1580,102 @@ export default function HomeHeroEditor({
                     setNavigationToggle("showProgress", value)
                   }
                 />
+                <Switch
+                  label="Mostrar pausa"
+                  value={shown.navigation.showPause}
+                  change={(value) =>
+                    setNavigationToggle("showPause", value)
+                  }
+                />
+                <label className={styles.select}>
+                  <span>Icono de flecha</span>
+                  <select
+                    value={shown.navigation.arrowIcon}
+                    onChange={(event) =>
+                      setArrowAppearance(
+                        "arrowIcon",
+                        event.target.value as HomeHeroArrowIcon
+                      )
+                    }
+                  >
+                    {arrowIcons.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={styles.select}>
+                  <span>Contenedor de flecha</span>
+                  <select
+                    value={shown.navigation.arrowShape}
+                    onChange={(event) =>
+                      setArrowAppearance(
+                        "arrowShape",
+                        event.target.value as HomeHeroArrowShape
+                      )
+                    }
+                  >
+                    {arrowShapes.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Range
+                  label="Altura de las flechas"
+                  value={arrowPlacement.y}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  change={(value) => setArrowPlacement("y", value)}
+                />
+                <Range
+                  label="Distancia al borde"
+                  value={arrowPlacement.inset}
+                  min={-40}
+                  max={160}
+                  unit="px"
+                  change={(value) => setArrowPlacement("inset", value)}
+                />
+                <Range
+                  label="Tamaño de las flechas"
+                  value={arrowPlacement.scale}
+                  min={70}
+                  max={160}
+                  unit="%"
+                  change={(value) => setArrowPlacement("scale", value)}
+                />
+                <Range
+                  label="Posición horizontal"
+                  value={navigationPlacement.x}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  change={(value) => setNavigationPlacement("x", value)}
+                />
+                <Range
+                  label="Posición vertical"
+                  value={navigationPlacement.y}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  change={(value) => setNavigationPlacement("y", value)}
+                />
+                <Range
+                  label="Escala de controles"
+                  value={navigationPlacement.scale}
+                  min={50}
+                  max={180}
+                  unit="%"
+                  change={(value) => setNavigationPlacement("scale", value)}
+                />
                 <p className={styles.help}>
-                  La posición y escala usan el diseño recomendado para cada
-                  dispositivo. Así los controles no terminan fuera del Hero.
+                  Puedes mover el bloque completo de indicadores, progreso y
+                  pausa arrastrando el asa que aparece sobre él en la vista
+                  previa. Las flechas y el bloque guardan su posición y tamaño
+                  por dispositivo.
                 </p>
               </>
             )}
