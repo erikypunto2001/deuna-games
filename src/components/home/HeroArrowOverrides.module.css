@@ -1,14 +1,6 @@
 .arrowBridge {
   --hero-arrow-overrides-loaded: 1;
-}
-
-/* Temporary diagnostic: prove whether this CSS module reaches and matches the
- * physical Hero controls inside the isolated Admin preview. Remove after the
- * browser smoke establishes the cascade path. */
-.arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego anterior"]) {
-  left: 73px !important;
-}
-
-.arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego siguiente"]) {
-  right: 73px !important;
+  /* Temporary diagnostic: if the isolated preview cloned/matched this module,
+   * heroGeometry() must read 73px from the Hero root. */
+  --hero-desktop-arrow-inset: 73px !important;
 }
