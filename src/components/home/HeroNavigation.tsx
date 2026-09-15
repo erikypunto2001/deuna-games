@@ -16,6 +16,7 @@ import type {
 } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
+import "./HeroArrowOverrides.module.css";
 import styles from "./HeroNavigation.module.css";
 
 export type HeroNavigationEditor = {
