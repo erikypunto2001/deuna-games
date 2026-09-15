@@ -231,20 +231,88 @@ async function clickButtonByText(cdp, text) {
 async function switchDeviceAndRequireReplay(cdp, label, frameTitle) {
   const before = await currentMain(cdp);
   requireCheck(before, `No se pudo leer el Hero antes de cambiar a ${label}.`);
+  const probeArmed = await cdp.evaluate(`(() => {
+    const frame = document.querySelector('iframe[title^="Hero real"]');
+    const doc = frame?.contentDocument;
+    const view = frame?.contentWindow;
+    if (!doc?.body || !view) return false;
+    view.__deunaHeroReplayProbe?.observer?.disconnect?.();
+    const probe = {
+      events: [],
+      rootChanges: 0,
+      lastRoot: null,
+      lastEventKey: '',
+      observer: null,
+    };
+    const sample = () => {
+      const root = doc.querySelector('[data-motion-style]');
+      const label = root?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null;
+      if (root && root !== probe.lastRoot) {
+        probe.rootChanges += 1;
+        probe.lastRoot = root;
+      }
+      if (!label || !probe.rootChanges) return;
+      const key = probe.rootChanges + ':' + label;
+      if (key === probe.lastEventKey) return;
+      probe.lastEventKey = key;
+      probe.events.push({ rootVersion: probe.rootChanges, label });
+    };
+    const observer = new view.MutationObserver(sample);
+    probe.observer = observer;
+    view.__deunaHeroReplayProbe = probe;
+    sample();
+    observer.observe(doc.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['aria-label', 'data-position'],
+    });
+    return true;
+  })()`);
+  requireCheck(probeArmed, `No se pudo observar el replay contextual antes de cambiar a ${label}.`);
   requireCheck(await clickButtonByText(cdp, label), `No se encontró el botón ${label}.`);
   await waitUntil(cdp, `document.querySelector('iframe')?.title === ${JSON.stringify(frameTitle)}`, `viewport ${label}`);
   await waitUntil(
     cdp,
-    `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') !== ${JSON.stringify(before)}`,
+    `(() => {
+      const frame = document.querySelector('iframe[title^="Hero real"]');
+      const probe = frame?.contentWindow?.__deunaHeroReplayProbe;
+      if (!probe?.rootChanges) return false;
+      const currentLabels = probe.events
+        .filter((event) => event.rootVersion === probe.rootChanges)
+        .map((event) => event.label);
+      return new Set(currentLabels).size >= 2;
+    })()`,
     `replay automático al cambiar a ${label}`,
     2500
   );
   await delay(950);
   const after = await currentMain(cdp);
+  const replayTrace = await cdp.evaluate(`(() => {
+    const frame = document.querySelector('iframe[title^="Hero real"]');
+    const view = frame?.contentWindow;
+    const probe = view?.__deunaHeroReplayProbe;
+    if (!probe) return null;
+    probe.observer?.disconnect?.();
+    const events = probe.events.map((event) => ({ ...event }));
+    const currentRootLabels = events
+      .filter((event) => event.rootVersion === probe.rootChanges)
+      .map((event) => event.label);
+    delete view.__deunaHeroReplayProbe;
+    return {
+      rootChanges: probe.rootChanges,
+      events,
+      currentRootLabels,
+    };
+  })()`);
   const edgeWrapCount = await cdp.evaluate(`document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelectorAll('[data-edge-wrap="true"]').length ?? 0`);
-  requireCheck(after && after !== before, `${label} no confirmó un nuevo slide tras el replay contextual.`);
+  requireCheck(after, `${label} quedó sin slide principal tras el replay contextual.`);
+  requireCheck(
+    replayTrace && new Set(replayTrace.currentRootLabels).size >= 2,
+    `${label} no confirmó un cambio de slide en el Hero montado tras el cambio de dispositivo: ${JSON.stringify(replayTrace)}.`
+  );
   requireCheck(edgeWrapCount === 0, `${label} dejó ${edgeWrapCount} edge-wrap residual(es).`);
-  return { before, after, edgeWrapCount };
+  return { before, after, edgeWrapCount, replayTrace };
 }
 
 async function main() {
