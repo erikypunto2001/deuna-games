@@ -1,0 +1,169 @@
+name: Temporary Hero width contract patch v2
+
+on:
+  push:
+    branches:
+      - feat/hero-fill-width
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'apply hero fill width contract'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/hero-fill-width
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply focused Hero width patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str):
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}\n--- old ---\n{old}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          def replace_first(path: str, old: str, new: str):
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"{path}: expected at least one match\n--- old ---\n{old}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "src/data/home-config.ts",
+              '  hiddenPositions?: Array<Exclude<HomeHeroPosition, "all" | "main">>;\n  cardWidth: number;\n',
+              '  hiddenPositions?: Array<Exclude<HomeHeroPosition, "all" | "main">>;\n  cardWidthMode: "fixed" | "fill";\n  cardWidth: number;\n',
+          )
+          replace_once(
+              "src/data/home-config.ts",
+              '    desktop: { visibleCards: 5, cardWidth: 1000, cardHeight: 450, gap: 24, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },\n    tablet: { visibleCards: 3, cardWidth: 760, cardHeight: 420, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },\n    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38, spacingReference: "visual" },\n',
+              '    desktop: { visibleCards: 5, cardWidthMode: "fixed", cardWidth: 1000, cardHeight: 450, gap: 24, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },\n    tablet: { visibleCards: 3, cardWidthMode: "fixed", cardWidth: 760, cardHeight: 420, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },\n    mobile: { visibleCards: 3, cardWidthMode: "fixed", cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38, spacingReference: "visual" },\n',
+          )
+
+          width_schema = '      hiddenPositions: hiddenPositionsSchema().optional(),\n      cardWidth: z.number().int().min(260).max(1800),\n'
+          replace_first(
+              "src/lib/home/hero-schema.ts",
+              width_schema,
+              '      hiddenPositions: hiddenPositionsSchema().optional(),\n      cardWidthMode: z.enum(["fixed", "fill"]).optional(),\n      cardWidth: z.number().int().min(260).max(1800),\n',
+          )
+          replace_once(
+              "src/lib/home/hero-schema.ts",
+              width_schema,
+              '      hiddenPositions: hiddenPositionsSchema().optional(),\n      cardWidthMode: z.enum(["fixed", "fill"]).default("fixed"),\n      cardWidth: z.number().int().min(260).max(1800),\n',
+          )
+
+          replace_once(
+              "src/lib/home/hero-layout.ts",
+              'import type {\n  HomeHeroPosition,\n  HomeHeroPositionStyle,\n  HomeHeroPresentation,\n  HomeHeroResponsiveStyle,\n} from "@/data/home-config";\n',
+              'import type {\n  HomeHeroArrowPlacement,\n  HomeHeroDevice,\n  HomeHeroPosition,\n  HomeHeroPositionStyle,\n  HomeHeroPresentation,\n  HomeHeroResponsiveStyle,\n} from "@/data/home-config";\n',
+          )
+          replace_once(
+              "src/lib/home/hero-layout.ts",
+              '''export function homeHeroSlotCSS(position: HomeHeroVisualPosition) {\n  const geometry = slotGeometry[position];\n  if (!geometry.widthFactor && !geometry.gapFactor) return "0px";\n  const sign = Math.sign(geometry.widthFactor || geometry.gapFactor);\n  return `calc((var(--hero-card-width) * ${Math.abs(geometry.widthFactor)} + var(--hero-gap) * ${Math.abs(geometry.gapFactor)}) * ${sign})`;\n}\n''',
+              '''export function homeHeroSlotCSS(position: HomeHeroVisualPosition) {\n  const geometry = slotGeometry[position];\n  if (!geometry.widthFactor && !geometry.gapFactor) return "0px";\n  const sign = Math.sign(geometry.widthFactor || geometry.gapFactor);\n  return `calc((var(--hero-card-width) * ${Math.abs(geometry.widthFactor)} + var(--hero-gap) * ${Math.abs(geometry.gapFactor)}) * ${sign})`;\n}\n\nconst heroArrowControlSize: Record<HomeHeroDevice, number> = {\n  desktop: 48,\n  tablet: 48,\n  mobile: 40,\n};\nconst HERO_CARD_ARROW_GAP = 8;\n\n/**\n * Resolve the real rendered card width. Fixed mode preserves historical pixel\n * geometry. Fill mode uses the Hero container and reserves the visible space\n * occupied by each arrow control, including editorial inset and scale.\n */\nexport function homeHeroCardWidthCSS(\n  responsive: HomeHeroResponsiveStyle,\n  arrows: HomeHeroArrowPlacement,\n  device: HomeHeroDevice,\n  hasArrows: boolean\n) {\n  if (responsive.cardWidthMode !== "fill") {\n    return `${responsive.cardWidth}px`;\n  }\n  if (!hasArrows) return "100cqw";\n\n  const controlSize = heroArrowControlSize[device];\n  const scale = arrows.scale / 100;\n  const visibleInnerEdge =\n    arrows.inset + controlSize / 2 + (controlSize * scale) / 2;\n  const safeInset = Math.max(0, visibleInnerEdge + HERO_CARD_ARROW_GAP);\n  const totalInset = Math.round(safeInset * 200) / 100;\n  return `max(1px, calc(100cqw - ${totalInset}px))`;\n}\n''',
+          )
+
+          replace_once(
+              "src/components/home/HeroSection.tsx",
+              '  HOME_HERO_VISUAL_POSITIONS,\n  homeHeroPositionDisplay,\n  homeHeroAnchor,\n',
+              '  HOME_HERO_VISUAL_POSITIONS,\n  homeHeroPositionDisplay,\n  homeHeroAnchor,\n  homeHeroCardWidthCSS,\n',
+          )
+          replace_once(
+              "src/components/home/HeroSection.tsx",
+              '    variables[`--hero-${device}-card-width`] = `${responsive.cardWidth}px`;\n',
+              '    variables[`--hero-${device}-card-width`] = homeHeroCardWidthCSS(\n      responsive,\n      arrows,\n      device,\n      totalGames > 1\n    );\n',
+          )
+
+          replace_once(
+              "src/components/admin/HomeHeroEditor.tsx",
+              '  const restoreBasicLayout = () =>\n',
+              '  const setCardWidthMode = (value: "fixed" | "fill") =>\n    commit((current) => {\n      current.presentation.responsive[device].cardWidthMode = value;\n      current.presentation.preset = "custom";\n      return current;\n    });\n\n  const restoreBasicLayout = () =>\n',
+          )
+          replace_once(
+              "src/components/admin/HomeHeroEditor.tsx",
+              '          settings.cardWidth = original.cardWidth;\n',
+              '          settings.cardWidthMode = original.cardWidthMode;\n          settings.cardWidth = original.cardWidth;\n',
+          )
+          replace_once(
+              "src/components/admin/HomeHeroEditor.tsx",
+              '                {responsive.cardWidth} × {responsive.cardHeight} px ·{" "}\n                {visiblePositions.length} posiciones visibles\n',
+              '                {responsive.cardWidthMode === "fill"\n                  ? "Hasta las flechas"\n                  : `${responsive.cardWidth}px`}{" "}\n                × {responsive.cardHeight}px ·{" "}\n                {visiblePositions.length} posiciones visibles\n',
+          )
+          replace_once(
+              "src/components/admin/HomeHeroEditor.tsx",
+              '''                <p className={styles.help}>\n                  Ajusta sólo la geometría esencial de {deviceLabel.toLowerCase()}.\n                  El layout resuelve cuántas tarjetas se ven y su perspectiva.\n                </p>\n                <Range\n                  label="Ancho"\n                  value={responsive.cardWidth}\n                  min={HERO_FRAME_MIN_WIDTH}\n                  max={HERO_FRAME_MAX_WIDTH}\n                  unit="px"\n                  change={(value) => setResponsive("cardWidth", value)}\n                />\n''',
+              '''                <p className={styles.help}>\n                  Ajusta sólo la geometría esencial de {deviceLabel.toLowerCase()}.\n                  El ancho manual usa píxeles reales del sitio; la vista previa\n                  puede verse reducida para entrar en el panel.\n                </p>\n                <Switch\n                  label="Extender hasta las flechas"\n                  value={responsive.cardWidthMode === "fill"}\n                  change={(value) =>\n                    setCardWidthMode(value ? "fill" : "fixed")\n                  }\n                />\n                {responsive.cardWidthMode === "fixed" ? (\n                  <Range\n                    label="Ancho manual"\n                    value={responsive.cardWidth}\n                    min={HERO_FRAME_MIN_WIDTH}\n                    max={HERO_FRAME_MAX_WIDTH}\n                    unit="px"\n                    change={(value) => setResponsive("cardWidth", value)}\n                  />\n                ) : (\n                  <p className={styles.help}>\n                    La tarjeta usa automáticamente el espacio real entre las\n                    flechas. Todas las diapositivas comparten este ancho cuando\n                    pasan por la posición principal; el ancho manual se conserva\n                    para volver atrás.\n                  </p>\n                )}\n''',
+          )
+
+          replace_once(
+              "tools/check-home-hero-schema.mjs",
+              '''assert(\n  current.navigation.arrowIcon === "chevron" &&\n    current.navigation.arrowShape === "circle" &&\n    current.navigation.arrowResponsive.desktop.y === 50 &&\n    current.navigation.arrowResponsive.mobile.y === 46,\n  "La configuración fuente debe conservar el aspecto y posición históricos de las flechas como defaults explícitos."\n);\n''',
+              '''assert(\n  current.navigation.arrowIcon === "chevron" &&\n    current.navigation.arrowShape === "circle" &&\n    current.navigation.arrowResponsive.desktop.y === 50 &&\n    current.navigation.arrowResponsive.mobile.y === 46,\n  "La configuración fuente debe conservar el aspecto y posición históricos de las flechas como defaults explícitos."\n);\nassert(\n  ["desktop", "tablet", "mobile"].every(\n    (device) => current.responsive[device].cardWidthMode === "fixed"\n  ),\n  "Los defaults actuales deben preservar el ancho fijo para no alterar revisiones existentes."\n);\n''',
+          )
+          replace_once(
+              "tools/check-home-hero-schema.mjs",
+              '  delete oldEditorDraft.responsive[device].spaceBefore;\n',
+              '  delete oldEditorDraft.responsive[device].cardWidthMode;\n  delete oldEditorDraft.responsive[device].spaceBefore;\n',
+          )
+          replace_once(
+              "tools/check-home-hero-schema.mjs",
+              '    migratedDraft.data.responsive.desktop.spaceBefore === 28 &&\n    migratedDraft.data.responsive.mobile.spaceAfter === 38,\n',
+              '    migratedDraft.data.responsive.desktop.cardWidthMode === "fixed" &&\n    migratedDraft.data.responsive.mobile.cardWidthMode === "fixed" &&\n    migratedDraft.data.responsive.desktop.spaceBefore === 28 &&\n    migratedDraft.data.responsive.mobile.spaceAfter === 38,\n',
+          )
+          replace_once(
+              "tools/check-home-hero-schema.mjs",
+              'const invalidArrowScale = clone(current);\n',
+              '''const fillWidth = clone(current);\nfillWidth.responsive.desktop.cardWidthMode = "fill";\nassert(\n  homeHeroPresentationEditorSchema.safeParse(fillWidth).success &&\n    homeHeroPresentationInputSchema.safeParse(fillWidth).success,\n  "El modo de ancho hasta las flechas debe ser válido en editor y persistencia."\n);\n\nconst invalidWidthMode = clone(current);\ninvalidWidthMode.responsive.desktop.cardWidthMode = "viewport";\nassert(\n  !homeHeroPresentationEditorSchema.safeParse(invalidWidthMode).success &&\n    !homeHeroPresentationInputSchema.safeParse(invalidWidthMode).success,\n  "Modos de ancho desconocidos deben rechazarse en ambos límites."\n);\n\nconst invalidArrowScale = clone(current);\n''',
+          )
+          replace_once(
+              "tools/check-home-hero-schema.mjs",
+              '    "Hero schema: OK (motor V3 único, flechas y controles editables con defaults compatibles, autoplay configurable, límites compartidos y compatibilidad histórica)."\n',
+              '    "Hero schema: OK (motor V3 único, ancho fijo o hasta flechas con compatibilidad histórica, navegación editable, autoplay configurable y límites compartidos)."\n',
+          )
+
+          replace_once(
+              "tools/check-hero-admin-state.mjs",
+              'const [editor, livePreview, adminPage, rankingReference] = await Promise.all([\n',
+              'const [editor, livePreview, adminPage, rankingReference, heroLayout, heroSource] = await Promise.all([\n',
+          )
+          replace_once(
+              "tools/check-hero-admin-state.mjs",
+              '''  readFile(\n    new URL("../src/lib/home/server-ranking-reference.ts", import.meta.url),\n    "utf8"\n  ),\n]);\n''',
+              '''  readFile(\n    new URL("../src/lib/home/server-ranking-reference.ts", import.meta.url),\n    "utf8"\n  ),\n  readFile(\n    new URL("../src/lib/home/hero-layout.ts", import.meta.url),\n    "utf8"\n  ),\n  readFile(\n    new URL("../src/components/home/HeroSection.tsx", import.meta.url),\n    "utf8"\n  ),\n]);\n''',
+          )
+          replace_once(
+              "tools/check-hero-admin-state.mjs",
+              '  "Separación entre tarjetas",\n',
+              '  "Separación entre tarjetas",\n  "Extender hasta las flechas",\n',
+          )
+          replace_once(
+              "tools/check-hero-admin-state.mjs",
+              '''assert.match(\n  editor,\n  /settings\\.spacingReference = "visual";/,\n  "Exterior spacing edited by the simple UI must always use the stable visual reference."\n);\n''',
+              '''assert.match(\n  editor,\n  /settings\\.spacingReference = "visual";/,\n  "Exterior spacing edited by the simple UI must always use the stable visual reference."\n);\nassert.match(\n  editor,\n  /responsive\\.cardWidthMode === "fill"[\\s\\S]*?setCardWidthMode\\(value \\? "fill" : "fixed"\\)/,\n  "The width-to-arrows control must persist through the canonical responsive Hero state."\n);\nassert.match(\n  heroLayout,\n  /export function homeHeroCardWidthCSS\\([\\s\\S]*?100cqw[\\s\\S]*?arrows\\.scale[\\s\\S]*?arrows\\.inset/,\n  "Fill width must be resolved from the real Hero container and current arrow geometry."\n);\nassert.match(\n  heroSource,\n  /homeHeroCardWidthCSS\\([\\s\\S]*?responsive,[\\s\\S]*?arrows,[\\s\\S]*?device,[\\s\\S]*?totalGames > 1/,\n  "The public Hero renderer and Admin preview must consume the shared width resolver."\n);\n''',
+          )
+          replace_once(
+              "tools/check-hero-admin-state.mjs",
+              '  "Hero Admin state: OK (task-oriented editorial surface, editable navigation visuals, automatic preview viewport, stable ranking hydration and context-aware preview replay)."\n',
+              '  "Hero Admin state: OK (task-oriented editorial surface, width-to-arrows and navigation visuals on the real renderer, automatic preview viewport, stable ranking hydration and context-aware preview replay)."\n',
+          )
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/home-config.ts src/lib/home/hero-schema.ts src/lib/home/hero-layout.ts src/components/home/HeroSection.tsx src/components/admin/HomeHeroEditor.tsx tools/check-home-hero-schema.mjs tools/check-hero-admin-state.mjs
+          git commit -m "apply hero fill width contract"
+          git push origin HEAD:feat/hero-fill-width
