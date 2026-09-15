@@ -18,6 +18,21 @@ assert.match(
 );
 assert.match(
   hero,
+  /const \[motionReady, setMotionReady\] = useState\(false\)/,
+  "Hero debe empezar con el motor de movimiento desarmado durante la resolución responsive inicial."
+);
+assert.match(
+  hero,
+  /requestAnimationFrame\(\(\) => \{[\s\S]*?requestAnimationFrame\(\(\) => setMotionReady\(true\)\)/,
+  "Hero debe armar el motor sólo después de dos frames del layout responsive inicial."
+);
+assert.match(
+  hero,
+  /data-motion-ready=\{motionReady \|\| undefined\}/,
+  "Hero debe exponer explícitamente cuándo el motor V3 quedó listo."
+);
+assert.match(
+  hero,
   /data-motion-buffer=\{!isVisible \|\| undefined\}/,
   "Las tarjetas físicas fuera del viewport lógico deben identificarse como buffers de movimiento."
 );
@@ -48,18 +63,18 @@ assert.match(
 );
 assert.match(
   motionCss,
-  /--hero-motion-live-duration:\s*0ms;[\s\S]*?animation:\s*heroMotionArm\s+1ms\s+steps\(1, end\)\s+80ms\s+forwards/,
-  "El motor V3 debe arrancar desarmado durante el bootstrap responsive para no crear transiciones pendientes antes de la primera pintura."
+  /\.motionRoot:not\(\[data-motion-ready="true"\]\) \.motionCard,[\s\S]*?\.motionRoot:not\(\[data-motion-ready="true"\]\) \.motionArtwork \{[\s\S]*?transition:\s*none/,
+  "El bootstrap responsive debe suprimir transiciones sólo mientras data-motion-ready no esté armado."
+);
+assert.doesNotMatch(
+  motionCss,
+  /heroMotionArm|--hero-motion-live-duration|--hero-artwork-live-duration/,
+  "El readiness no debe depender de animar custom properties CSS."
 );
 assert.match(
   motionCss,
-  /@keyframes heroMotionArm[\s\S]*?--hero-motion-live-duration:\s*var\(--hero-motion-duration\)[\s\S]*?--hero-artwork-live-duration:\s*var\(--hero-artwork-duration\)/,
-  "El armado inicial debe recuperar las duraciones reales del perfil V3 sin fijarlas a un modo concreto."
-);
-assert.match(
-  motionCss,
-  /transform var\(--hero-motion-live-duration\)[\s\S]*?opacity var\(--hero-motion-live-duration\)/,
-  "Las tarjetas deben usar exclusivamente la duración V3 armada después del bootstrap."
+  /transform var\(--hero-motion-duration\)[\s\S]*?opacity var\(--hero-motion-duration\)/,
+  "Una vez armado, el motor debe usar directamente la duración real del perfil V3."
 );
 assert.match(
   motionCss,
@@ -73,5 +88,5 @@ assert.doesNotMatch(
 );
 
 console.log(
-  "Hero motion continuity structure: OK (bootstrap armado, DOM canónico, transición V3 única para buffers, fitting visible-only y edge-wrap visible-only)."
+  "Hero motion continuity structure: OK (readiness explícito, DOM canónico, transición V3 única para buffers, fitting visible-only y edge-wrap visible-only)."
 );
