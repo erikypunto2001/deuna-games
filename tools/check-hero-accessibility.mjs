@@ -20,8 +20,9 @@ assert.match(source, /aria-live=\{announceSlideChanges \? "polite" : "off"\}/);
 assert.doesNotMatch(source, /aria-live="polite"/);
 assert.match(source, /aria-current=\{active \? "true" : undefined\}/);
 assert.match(source, /aria-pressed=\{manualPaused\}/);
-assert.match(source, /const pauseVisible = autoplayDelay !== null;/);
-assert.match(schema, /showPause:\s*autoplay \|\| presentation\.navigation\.showPause/);
+assert.match(source, /const pauseVisible = config\.showPause && autoplayDelay !== null;/);
+assert.match(schema, /showPause:\s*z\.boolean\(\)\.default\(true\)/);
+assert.doesNotMatch(schema, /showPause:\s*autoplay \|\| presentation\.navigation\.showPause/);
 assert.match(schema, /motionStyle:\s*presentation\.motionStyle \?\? legacyTransitionToMotionStyle\(legacyTransition\)/);
 assert.match(css, /--hero-navigation-target-size:\s*max\(24px,\s*calc\(2400px \/ var\(--hero-navigation-scale\)\)\);/);
 assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition:\s*none/);
@@ -57,9 +58,26 @@ assert.match(motionCss, /data-motion-style="morph"[\s\S]*?--hero-motion-scale-x/
 assert.match(motionCss, /data-motion-style="parallax"[\s\S]*?\.motionArtwork[\s\S]*?translate3d/);
 assert.match(motionCss, /data-dragging="true"[\s\S]*?transition:\s*none/);
 assert.match(motionCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition:\s*none !important/);
+
+// Pointer clicks must not leave autoplay permanently paused just because the
+// clicked arrow/button retains DOM focus. Keyboard focus remains a valid pause
+// signal through :focus-visible so the accessibility behavior is preserved.
+assert.doesNotMatch(heroSource, /onFocusCapture=\{\(\) => setFocused\(true\)\}/);
+assert.match(heroSource, /onPointerDownCapture=\{\(\) => setFocused\(false\)\}/);
+assert.match(heroSource, /target\.matches\(":focus-visible"\)/);
+assert.match(heroSource, /const isPaused = \(hovered && presentation\.pauseOnHover\) \|\| focused \|\| manualPaused/);
+
+assert.match(heroSource, /function HeroArrowGlyph/);
+assert.match(heroSource, /data-arrow-shape=\{presentation\.navigation\.arrowShape\}/);
+assert.match(heroSource, /data-arrow-icon=\{presentation\.navigation\.arrowIcon\}/);
+assert.match(heroSource, /presentation\.navigation\.arrowResponsive\[device\]/);
+assert.match(deviceDesign, /arrowResponsive:\s*\{/);
+assert.match(deviceDesign, /"arrowNavigation"/);
+
 assert.match(deviceDesign, /motionStyle:\s*base\.motionStyle/);
 assert.match(livePreview, /<HeroSection[\s\S]*?presentation=\{effectivePresentation\}/);
 assert.match(livePreview, /const effectivePresentation = presentation;/);
+assert.match(livePreview, /navigationEditor=\{[\s\S]*?onPositionChange:\s*onNavigationPositionChange/);
 assert.match(livePreview, /Repetir movimiento ahora/);
 assert.match(livePreview, /Movimiento global \{motionLabel\}:\s*se aplica a escritorio,\s*tableta y móvil\./i);
 assert.match(livePreview, /los cambios\s+editoriales que hagas aquí llegan a la Home pública sólo al\s+publicar Inicio\./i);
@@ -84,4 +102,4 @@ for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);
   assert.ok(target >= 24 - Number.EPSILON);
 }
-console.log('Hero accessibility/motion: OK (single V3 engine, continuous drag commit, physical motion buffers, edge-wrap detection, runtime Parallax geometry, three profiles, panoramic fitting and canonical save ownership).');
+console.log('Hero accessibility/motion: OK (single V3 engine, pointer-safe autoplay focus, editable navigation contract, continuous drag commit, physical motion buffers, Parallax geometry and canonical save ownership).');
