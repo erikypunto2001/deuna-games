@@ -1,0 +1,56 @@
+name: Temporary Hero fill visual patch
+
+on:
+  push:
+    branches:
+      - feat/hero-fill-width
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'test hero fill width in browser'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/hero-fill-width
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Add browser regression
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str):
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}")
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "tools/hero-motion-browser-smoke.mjs",
+              '''    await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');\n\n    const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);\n''',
+              '''    await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');\n\n    const heroGeometry = async () => cdp.evaluate(`(() => {\n      const frame = document.querySelector('iframe[title^="Hero real"]');\n      const doc = frame?.contentDocument;\n      const root = doc?.querySelector('[data-motion-style]');\n      const main = doc?.querySelector('[data-position="main"]');\n      const previous = doc?.querySelector('button[aria-label="Juego anterior"]');\n      const next = doc?.querySelector('button[aria-label="Juego siguiente"]');\n      if (!root || !main || !previous || !next) return null;\n      const rr = root.getBoundingClientRect();\n      const mr = main.getBoundingClientRect();\n      const pr = previous.getBoundingClientRect();\n      const nr = next.getBoundingClientRect();\n      return {\n        heroWidth: rr.width,\n        mainWidth: mr.width,\n        cssWidth: parseFloat(getComputedStyle(main).width),\n        leftGap: mr.left - pr.right,\n        rightGap: nr.left - mr.right,\n      };\n    })()`);\n\n    const fixedGeometry = await heroGeometry();\n    requireCheck(fixedGeometry, 'No se pudo medir la geometría fija del Hero.');\n    const fillEnabled = await cdp.evaluate(`(() => {\n      const label = Array.from(document.querySelectorAll('label')).find((node) =>\n        node.textContent?.includes('Extender hasta las flechas')\n      );\n      const input = label?.querySelector('input[type="checkbox"]');\n      if (!(input instanceof HTMLInputElement)) return false;\n      if (!input.checked) input.click();\n      return true;\n    })()`);\n    requireCheck(fillEnabled, 'No se pudo activar Extender hasta las flechas.');\n    await waitUntil(cdp, `document.body.innerText.includes('Hasta las flechas')`, 'modo de ancho hasta las flechas');\n    await delay(180);\n    const fillGeometry = await heroGeometry();\n    requireCheck(fillGeometry, 'No se pudo medir el Hero en modo hasta las flechas.');\n    requireCheck(\n      fillGeometry.cssWidth > fixedGeometry.cssWidth + 100,\n      `El modo fill no amplió realmente la tarjeta: ${JSON.stringify({ fixedGeometry, fillGeometry })}.`\n    );\n    requireCheck(\n      fillGeometry.leftGap >= 0 && fillGeometry.rightGap >= 0,\n      `La tarjeta fill se superpuso con las flechas: ${JSON.stringify(fillGeometry)}.`\n    );\n    requireCheck(\n      fillGeometry.leftGap <= 20 && fillGeometry.rightGap <= 20,\n      `La tarjeta fill no llegó hasta las flechas: ${JSON.stringify(fillGeometry)}.`\n    );\n    requireCheck(\n      Math.abs(fillGeometry.leftGap - fillGeometry.rightGap) <= 2,\n      `El ancho fill quedó descentrado entre las flechas: ${JSON.stringify(fillGeometry)}.`\n    );\n    report.checks.fillWidth = { fixed: fixedGeometry, fill: fillGeometry };\n\n    const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);\n''',
+          )
+
+          replace_once(
+              "tools/check-hero-accessibility.mjs",
+              '''assert.match(browserSmoke, /El drag no confirmó el cambio del juego principal al soltar/);\n\nfor (const scale of [50, 92, 100, 180]) {\n''',
+              '''assert.match(browserSmoke, /El drag no confirmó el cambio del juego principal al soltar/);\nassert.match(browserSmoke, /Extender hasta las flechas/);\nassert.match(browserSmoke, /fillGeometry\\.leftGap/);\nassert.match(browserSmoke, /fillGeometry\\.rightGap/);\n\nfor (const scale of [50, 92, 100, 180]) {\n''',
+          )
+          PY
+      - name: Commit regression
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/hero-motion-browser-smoke.mjs tools/check-hero-accessibility.mjs
+          git commit -m "test hero fill width in browser"
+          git push origin HEAD:feat/hero-fill-width
