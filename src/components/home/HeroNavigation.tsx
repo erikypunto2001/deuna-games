@@ -16,7 +16,7 @@ import type {
 } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
-import "./HeroArrowOverrides.module.css";
+import arrowStyles from "./HeroArrowOverrides.module.css";
 import styles from "./HeroNavigation.module.css";
 
 export type HeroNavigationEditor = {
@@ -134,7 +134,7 @@ export default function HeroNavigation({
   return (
     <div
       ref={rootRef}
-      className={`${styles.navigation} ${touchStyles.heroNavigation}`}
+      className={`${styles.navigation} ${touchStyles.heroNavigation} ${arrowStyles.arrowBridge}`}
       data-hero-spacing-boundary="navigation"
       data-style={config.style}
       data-editor={editor ? "true" : undefined}
