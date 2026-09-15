@@ -18,8 +18,13 @@ assert.doesNotMatch(
 );
 assert.match(
   editor,
-  /label="Ancho"[\s\S]*?label="Alto"/,
-  'El tamaño del Hero debe seguir siendo editable directamente mediante ancho y alto.'
+  /label="Extender hasta las flechas"[\s\S]*?label="Ancho manual"[\s\S]*?label="Alto"/,
+  'El tamaño del Hero debe seguir siendo editable mediante ancho manual o ancho hasta las flechas, conservando el alto como control independiente.'
+);
+assert.match(
+  editor,
+  /responsive\.cardWidthMode === "fixed"[\s\S]*?<Range[\s\S]*?label="Ancho manual"/,
+  'El ancho manual debe permanecer disponible cuando el modo adaptable está desactivado.'
 );
 
-console.log('Hero frame aspect: OK (el editor usa tamaño directo; no mantiene un segundo sistema de aspecto).');
+console.log('Hero frame aspect: OK (ancho fijo o hasta flechas + alto independiente, sin segundo sistema de aspecto).');
