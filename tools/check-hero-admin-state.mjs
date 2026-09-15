@@ -197,11 +197,18 @@ for (const arrowVariable of [
     `The arrow runtime stylesheet must consume ${arrowVariable}.`
   );
 }
-assert.match(
-  heroSource,
-  /responsive\.cardWidthMode === "fill"[\s\S]*?footprintCards[\s\S]*?HERO_FILL_SEARCH_STEPS[\s\S]*?--hero-card-width[\s\S]*?--hero-anchor/,
-  "Fill mode must resolve the real visual footprint and recenter it between arrows instead of relying only on a nominal card width."
-);
+for (const fillRuntimeInvariant of [
+  /const HERO_FILL_SEARCH_STEPS = 12;/,
+  /responsive\.cardWidthMode === "fill"[\s\S]*?const footprintCards = oneSided \? cards : \[mainCard\];/,
+  /root\.style\.setProperty\("--hero-card-width", `\$\{width\}px`\);/,
+  /root\.style\.setProperty\([\s\S]*?"--hero-anchor"/,
+]) {
+  assert.match(
+    heroSource,
+    fillRuntimeInvariant,
+    "Fill mode must resolve the real visual footprint and recenter it between arrows instead of relying only on a nominal card width."
+  );
+}
 assert.match(
   editor,
   /onNavigationPositionChange=\{\(x, y\) => \{[\s\S]*?setNavigationPosition\(x, y\)/,
