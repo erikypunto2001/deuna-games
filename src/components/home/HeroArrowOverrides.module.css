@@ -1,14 +1,3 @@
 .arrowBridge {
   --hero-arrow-overrides-loaded: 1;
 }
-
-/* Temporary diagnostic: CSS Modules localizes only .arrowBridge. Type and
- * attribute selectors are already global CSS, so :global(...) is unnecessary
- * here and was preventing the rendered direct-child controls from matching. */
-.arrowBridge > button[data-hero-spacing-boundary="control"][aria-label="Juego anterior"] {
-  left: 73px !important;
-}
-
-.arrowBridge > button[data-hero-spacing-boundary="control"][aria-label="Juego siguiente"] {
-  right: 73px !important;
-}
