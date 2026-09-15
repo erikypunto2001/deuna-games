@@ -8,6 +8,8 @@ const HERO_DEVICES = ["desktop", "tablet", "mobile"] as const;
 type HeroResponsivePatch = Partial<
   Record<HomeHeroDevice, Record<string, unknown>>
 >;
+type ResponsiveGroupKey = "responsive" | "navigation" | "arrowNavigation";
+type ResponsiveGroup = Record<HomeHeroDevice, Record<string, unknown>>;
 
 function heroBasePresentation(
   presentation: HomeHeroPresentation
@@ -15,6 +17,19 @@ function heroBasePresentation(
   const { deviceOverrides: _overrides, ...base } = presentation;
   void _overrides;
   return base;
+}
+
+function responsiveGroup(
+  design: HomeHeroBasePresentation,
+  key: ResponsiveGroupKey
+): ResponsiveGroup {
+  const group =
+    key === "responsive"
+      ? design.responsive
+      : key === "navigation"
+        ? design.navigation.responsive
+        : design.navigation.arrowResponsive;
+  return group as unknown as ResponsiveGroup;
 }
 
 /**
@@ -60,6 +75,17 @@ export function resolveHeroDeviceDesign(
           presentation.deviceOverrides?.mobile?.navigation.responsive.mobile ??
           base.navigation.responsive.mobile,
       },
+      arrowResponsive: {
+        desktop:
+          presentation.deviceOverrides?.desktop?.navigation.arrowResponsive.desktop ??
+          base.navigation.arrowResponsive.desktop,
+        tablet:
+          presentation.deviceOverrides?.tablet?.navigation.arrowResponsive.tablet ??
+          base.navigation.arrowResponsive.tablet,
+        mobile:
+          presentation.deviceOverrides?.mobile?.navigation.arrowResponsive.mobile ??
+          base.navigation.arrowResponsive.mobile,
+      },
     },
   };
 }
@@ -75,25 +101,19 @@ export function updateHeroDeviceDesign(
     "desktop"
   );
   const sharedChanges: Partial<
-    Record<"responsive" | "navigation", Record<string, unknown>>
+    Record<ResponsiveGroupKey, Record<string, unknown>>
   > = {};
   const sourceDeviceChanges: Partial<
-    Record<"responsive" | "navigation", HeroResponsivePatch>
+    Record<ResponsiveGroupKey, HeroResponsivePatch>
   > = {};
 
   if (scope === "all") {
     const source = resolveHeroDeviceDesign(presentation, sourceDevice);
     const updated = update(structuredClone(source));
 
-    for (const key of ["responsive", "navigation"] as const) {
-      const before =
-        key === "responsive"
-          ? source.responsive
-          : source.navigation.responsive;
-      const after =
-        key === "responsive"
-          ? updated.responsive
-          : updated.navigation.responsive;
+    for (const key of ["responsive", "navigation", "arrowNavigation"] as const) {
+      const before = responsiveGroup(source, key);
+      const after = responsiveGroup(updated, key);
       const patches: HeroResponsivePatch = {};
 
       for (const device of HERO_DEVICES) {
@@ -101,9 +121,7 @@ export function updateHeroDeviceDesign(
           Object.entries(after[device]).filter(
             ([field, value]) =>
               JSON.stringify(value) !==
-              JSON.stringify(
-                (before[device] as unknown as Record<string, unknown>)[field]
-              )
+              JSON.stringify(before[device][field])
           )
         );
         if (Object.keys(patch).length > 0) {
@@ -130,11 +148,8 @@ export function updateHeroDeviceDesign(
     );
 
     if (scope === "all") {
-      for (const key of ["responsive", "navigation"] as const) {
-        const after =
-          key === "responsive"
-            ? clean.responsive
-            : clean.navigation.responsive;
+      for (const key of ["responsive", "navigation", "arrowNavigation"] as const) {
+        const after = responsiveGroup(clean, key);
         const patches = sourceDeviceChanges[key];
 
         if (patches) {
