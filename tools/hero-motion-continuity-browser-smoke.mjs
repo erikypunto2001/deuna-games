@@ -19,13 +19,7 @@ function requireCheck(condition, message) {
 }
 
 function findChrome() {
-  const candidates = [
-    process.env.CHROME_BIN,
-    "google-chrome-stable",
-    "google-chrome",
-    "chromium",
-    "chromium-browser",
-  ].filter(Boolean);
+  const candidates = [process.env.CHROME_BIN, "google-chrome-stable", "google-chrome", "chromium", "chromium-browser"].filter(Boolean);
   for (const candidate of candidates) {
     const result = spawnSync("sh", ["-lc", `command -v ${JSON.stringify(candidate)}`], {
       encoding: "utf8",
@@ -42,9 +36,7 @@ async function waitForDebugger(profileDir, browser) {
   const deadline = Date.now() + 30_000;
   let lastError = null;
   while (Date.now() < deadline) {
-    if (browser.exitCode !== null) {
-      throw new Error(`Chrome terminó antes de exponer DevTools (exit ${browser.exitCode}).`);
-    }
+    if (browser.exitCode !== null) throw new Error(`Chrome terminó antes de exponer DevTools (exit ${browser.exitCode}).`);
     try {
       const { readFile } = await import("node:fs/promises");
       const raw = await readFile(activePortPath, "utf8");
@@ -177,6 +169,35 @@ function closeEnough(a, b, tolerance = 0.035) {
   return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= tolerance;
 }
 
+function opacityTransition(sample) {
+  return sample.animations?.find((animation) =>
+    animation.type === "CSSTransition" && animation.transitionProperty === "opacity"
+  );
+}
+
+function hasLiveOpacityProgress(sample) {
+  const animation = opacityTransition(sample);
+  return Boolean(
+    animation &&
+    animation.playState === "running" &&
+    Number.isFinite(animation.currentTime) &&
+    Number.isFinite(animation.duration) &&
+    animation.currentTime > 0 &&
+    animation.currentTime < animation.duration
+  );
+}
+
+function hasIntermediateOpacity(sample) {
+  if (!sample.retained) return false;
+  if (!sample.previousVisible && sample.visible) {
+    return sample.opacity > 0.01 && sample.opacity < sample.targetOpacity - 0.01;
+  }
+  if (sample.previousVisible && !sample.visible) {
+    return sample.opacity > 0.01 && sample.opacity < sample.previousOpacity - 0.01;
+  }
+  return hasLiveOpacityProgress(sample);
+}
+
 async function capturePhase(cdp) {
   return cdp.evaluate(`(() => {
     const root = document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
@@ -192,7 +213,7 @@ async function capturePhase(cdp) {
           type: animation.constructor?.name ?? null,
           playState: animation.playState,
           currentTime: typeof animation.currentTime === 'number' ? animation.currentTime : null,
-          duration: typeof timing.duration === 'number' ? timing.duration : String(timing.duration ?? ''),
+          duration: typeof timing.duration === 'number' ? timing.duration : null,
           transitionProperty: typeof animation.transitionProperty === 'string' ? animation.transitionProperty : null,
           animationName: typeof animation.animationName === 'string' ? animation.animationName : null,
         };
@@ -230,6 +251,31 @@ async function capturePhase(cdp) {
   })()`);
 }
 
+async function waitForRealMotionProgress(cdp, viewportId, needsBufferPair, timeoutMs = 700) {
+  const deadline = Date.now() + timeoutMs;
+  let latest = null;
+  while (Date.now() < deadline) {
+    latest = await capturePhase(cdp);
+    const anyOpacityProgress = latest.samples.some((sample) => hasLiveOpacityProgress(sample));
+    const buffersProgress = !needsBufferPair || (
+      latest.entering.length > 0 &&
+      latest.leaving.length > 0 &&
+      latest.entering.every((sample) => hasIntermediateOpacity(sample)) &&
+      latest.leaving.every((sample) => hasIntermediateOpacity(sample))
+    );
+    if (latest.ready && latest.running > 0 && anyOpacityProgress && buffersProgress) return latest;
+    await delay(35);
+  }
+  const compact = latest?.samples?.map((sample) => ({
+    from: sample.previousPosition,
+    to: sample.position,
+    opacity: sample.opacity,
+    target: sample.targetOpacity,
+    opacityTransition: opacityTransition(sample) ?? null,
+  }));
+  throw new Error(`${viewportId}: las transiciones no mostraron progreso real a tiempo: ${JSON.stringify(compact)}`);
+}
+
 async function verifyViewport(cdp, viewport) {
   await setViewport(cdp, viewport);
   await navigate(cdp, `${baseUrl}/`);
@@ -239,7 +285,6 @@ async function verifyViewport(cdp, viewport) {
     `document.querySelector('${rootSelector}[data-motion-ready="true"] [data-position="main"]')`,
     `Hero público ${viewport.id} con motor V3 listo`
   );
-  await delay(34);
 
   const before = await cdp.evaluate(`(() => {
     const root = document.querySelector('${rootSelector}');
@@ -283,10 +328,13 @@ async function verifyViewport(cdp, viewport) {
   })()`);
   requireCheck(clicked, `${viewport.id}: no se pudo iniciar la navegación del Hero listo.`);
 
-  await delay(70);
-  const early = await capturePhase(cdp);
+  const early = await waitForRealMotionProgress(cdp, viewport.id, before.bufferCount > 0);
+
+  // El resize se provoca sólo después de comprobar que el compositor está
+  // interpolando de verdad. Así validamos que el fitting no corte una transición
+  // real en curso, sin depender de milisegundos de CPU del runner headless.
   await setViewport(cdp, { ...viewport, height: viewport.height + 1 });
-  await delay(95);
+  await delay(25);
   const mid = await capturePhase(cdp);
 
   const result = { before, early, mid, settled: null, errors: [] };
@@ -297,17 +345,22 @@ async function verifyViewport(cdp, viewport) {
   check(early.retained === before.cards && mid.retained === before.cards, `${viewport.id}: se desmontaron tarjetas durante la transición.`);
   check(early.stableDomOrder && mid.stableDomOrder, `${viewport.id}: React reordenó físicamente nodos Hero durante el cambio de slot.`);
   check(mid.moved >= Math.min(2, before.cards), `${viewport.id}: no hay suficientes nodos físicos recorriendo slots (${mid.moved}).`);
-  check(mid.running > 0, `${viewport.id}: no hay animaciones/transiciones activas a mitad del recorrido.`);
+  check(mid.running > 0, `${viewport.id}: el resize cortó todas las animaciones/transiciones activas.`);
   check(mid.visibleDurations.some((value) => Number.parseFloat(value) > 0), `${viewport.id}: un resize durante el movimiento dejó la duración de transición en 0.`);
 
   if (before.bufferCount > 0) {
-    check(mid.entering.length >= 1, `${viewport.id}: ninguna tarjeta buffer entra físicamente al área visible.`);
-    check(mid.leaving.length >= 1, `${viewport.id}: ninguna tarjeta visible sale físicamente hacia un buffer.`);
+    check(early.entering.length >= 1 && early.leaving.length >= 1, `${viewport.id}: faltó el cruce físico entre visible y buffer.`);
+    for (const sample of early.entering) {
+      check(hasLiveOpacityProgress(sample) && hasIntermediateOpacity(sample), `${viewport.id}: tarjeta entrante no interpoló opacity hacia ${sample.targetOpacity} (actual=${sample.opacity}).`);
+    }
+    for (const sample of early.leaving) {
+      check(hasLiveOpacityProgress(sample) && hasIntermediateOpacity(sample), `${viewport.id}: tarjeta saliente no interpoló opacity desde ${sample.previousOpacity} (actual=${sample.opacity}).`);
+    }
     for (const sample of mid.entering) {
-      check(sample.opacity > 0.01 && sample.opacity < sample.targetOpacity - 0.01, `${viewport.id}: tarjeta entrante saltó a opacity=${sample.targetOpacity} sin interpolación (mid=${sample.opacity}).`);
+      check(opacityTransition(sample)?.playState === "running", `${viewport.id}: el resize canceló la transición de opacity de una tarjeta entrante.`);
     }
     for (const sample of mid.leaving) {
-      check(sample.opacity > 0.01 && sample.opacity < sample.previousOpacity - 0.01, `${viewport.id}: tarjeta saliente desapareció sin completar interpolación (prev=${sample.previousOpacity}, mid=${sample.opacity}).`);
+      check(opacityTransition(sample)?.playState === "running", `${viewport.id}: el resize canceló la transición de opacity de una tarjeta saliente.`);
     }
   }
 
@@ -373,7 +426,7 @@ async function main() {
 
     requireCheck(report.runtimeIssues.length === 0, `Errores runtime: ${report.runtimeIssues.join(" | ")}`);
     await persistReport(report);
-    console.log("Hero motion continuity browser: OK (readiness explícito, orden DOM estable, desktop/tablet/mobile, entrada/salida interpolada y resize sin cortar transición).");
+    console.log("Hero motion continuity browser: OK (readiness explícito, orden DOM estable, progreso real desktop/tablet/mobile y resize sin cortar transición).");
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
     await persistReport(report).catch(() => {});
