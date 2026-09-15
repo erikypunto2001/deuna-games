@@ -35,6 +35,13 @@ assert(
   "El contrato resuelto actual no debe reintroducir controles del motor V2."
 );
 assert(
+  current.navigation.arrowIcon === "chevron" &&
+    current.navigation.arrowShape === "circle" &&
+    current.navigation.arrowResponsive.desktop.y === 50 &&
+    current.navigation.arrowResponsive.mobile.y === 46,
+  "La configuración fuente debe conservar el aspecto y posición históricos de las flechas como defaults explícitos."
+);
+assert(
   homeHeroPresentationEditorSchema.safeParse(current).success,
   "La presentación fuente del Hero debe cumplir el contrato completo del editor."
 );
@@ -127,41 +134,67 @@ const migratedDraft = homeHeroPresentationEditorSchema.safeParse(oldEditorDraft)
 assert(
   migratedDraft.success &&
     migratedDraft.data.navigation.style === "segmented-pro" &&
+    migratedDraft.data.navigation.arrowIcon === "chevron" &&
+    migratedDraft.data.navigation.arrowShape === "circle" &&
+    migratedDraft.data.navigation.arrowResponsive.mobile.y === 46 &&
     migratedDraft.data.responsive.desktop.spaceBefore === 28 &&
     migratedDraft.data.responsive.mobile.spaceAfter === 38,
   "El contrato del editor debe migrar borradores locales anteriores sin inventar geometría distinta de los defaults actuales."
 );
 
-const legacyUnsafeAutoplay = clone(current);
-legacyUnsafeAutoplay.autoplay = true;
-legacyUnsafeAutoplay.navigation.showPause = false;
-const persistedUnsafeAutoplay =
-  homeHeroPresentationInputSchema.safeParse(
-    legacyUnsafeAutoplay
-  );
-const normalizedUnsafeAutoplay =
-  homeHeroPresentationEditorSchema.safeParse(
-    legacyUnsafeAutoplay
-  );
+const preArrowNavigation = clone(current);
+delete preArrowNavigation.navigation.arrowIcon;
+delete preArrowNavigation.navigation.arrowShape;
+delete preArrowNavigation.navigation.arrowResponsive;
+const persistedPreArrowNavigation =
+  homeHeroPresentationInputSchema.safeParse(preArrowNavigation);
+const normalizedPreArrowNavigation =
+  homeHeroPresentationEditorSchema.safeParse(preArrowNavigation);
+const resolvedPreArrowNavigation = resolveHomeConfig({
+  ...sourceHomeConfig,
+  heroPresentation: preArrowNavigation,
+}).heroPresentation;
 assert(
-  persistedUnsafeAutoplay.success &&
-    persistedUnsafeAutoplay.data.navigation?.showPause === false,
-  "El contrato persistido debe seguir leyendo snapshots históricos que ocultaban pausa durante autoplay."
+  persistedPreArrowNavigation.success,
+  "Snapshots publicados anteriores a los controles de flecha deben seguir siendo legibles."
 );
 assert(
-  normalizedUnsafeAutoplay.success &&
-    normalizedUnsafeAutoplay.data.autoplay === true &&
-    normalizedUnsafeAutoplay.data.navigation.showPause === true,
-  "El contrato del editor debe normalizar pausa/reanudar como obligatoria cuando autoplay está activo."
+  normalizedPreArrowNavigation.success &&
+    normalizedPreArrowNavigation.data.navigation.arrowIcon === "chevron" &&
+    normalizedPreArrowNavigation.data.navigation.arrowShape === "circle" &&
+    normalizedPreArrowNavigation.data.navigation.arrowResponsive.desktop.inset === -4,
+  "Borradores anteriores a los controles de flecha deben recibir defaults visualmente compatibles."
+);
+assert(
+  resolvedPreArrowNavigation.navigation.arrowIcon === "chevron" &&
+    resolvedPreArrowNavigation.navigation.arrowResponsive.mobile.y === 46,
+  "El reader público debe resolver snapshots históricos con el aspecto actual de flechas."
+);
+
+const hiddenPauseAutoplay = clone(current);
+hiddenPauseAutoplay.autoplay = true;
+hiddenPauseAutoplay.navigation.showPause = false;
+const persistedHiddenPause =
+  homeHeroPresentationInputSchema.safeParse(hiddenPauseAutoplay);
+const normalizedHiddenPause =
+  homeHeroPresentationEditorSchema.safeParse(hiddenPauseAutoplay);
+assert(
+  persistedHiddenPause.success &&
+    persistedHiddenPause.data.navigation?.showPause === false,
+  "El contrato persistido debe conservar la decisión editorial de ocultar pausa durante autoplay."
+);
+assert(
+  normalizedHiddenPause.success &&
+    normalizedHiddenPause.data.autoplay === true &&
+    normalizedHiddenPause.data.navigation.showPause === false,
+  "El editor no debe volver a activar el botón de pausa cuando el usuario decidió ocultarlo."
 );
 
 const manualPlayback = clone(current);
 manualPlayback.autoplay = false;
 manualPlayback.navigation.showPause = false;
 const normalizedManualPlayback =
-  homeHeroPresentationEditorSchema.safeParse(
-    manualPlayback
-  );
+  homeHeroPresentationEditorSchema.safeParse(manualPlayback);
 assert(
   normalizedManualPlayback.success &&
     normalizedManualPlayback.data.autoplay === false &&
@@ -181,29 +214,25 @@ assert(
   "Un intervalo histórico de cero debe seguir resolviendo reproducción manual en el contrato del editor."
 );
 
-const overrideUnsafeAutoplay = clone(current);
-overrideUnsafeAutoplay.deviceOverrides = {
+const overrideHiddenPause = clone(current);
+overrideHiddenPause.deviceOverrides = {
   mobile: clone(current),
 };
-overrideUnsafeAutoplay.deviceOverrides.mobile.autoplay = true;
-overrideUnsafeAutoplay.deviceOverrides.mobile.navigation.showPause = false;
+overrideHiddenPause.deviceOverrides.mobile.autoplay = true;
+overrideHiddenPause.deviceOverrides.mobile.navigation.showPause = false;
 const persistedOverride =
-  homeHeroPresentationInputSchema.safeParse(
-    overrideUnsafeAutoplay
-  );
+  homeHeroPresentationInputSchema.safeParse(overrideHiddenPause);
 const normalizedOverride =
-  homeHeroPresentationEditorSchema.safeParse(
-    overrideUnsafeAutoplay
-  );
+  homeHeroPresentationEditorSchema.safeParse(overrideHiddenPause);
 assert(
   persistedOverride.success &&
     persistedOverride.data.deviceOverrides?.mobile?.navigation.showPause === false,
-  "Los overrides históricos deben conservar compatibilidad de lectura aunque ocultaran pausa."
+  "Los overrides deben conservar la preferencia de visibilidad del botón de pausa."
 );
 assert(
   normalizedOverride.success &&
-    normalizedOverride.data.deviceOverrides?.mobile?.navigation.showPause === true,
-  "Cada override de dispositivo debe normalizar el control de pausa cuando activa autoplay."
+    normalizedOverride.data.deviceOverrides?.mobile?.navigation.showPause === false,
+  "Cada override de dispositivo debe respetar la preferencia de pausa sin normalizarla a true."
 );
 
 const invalidScale = clone(current);
@@ -220,6 +249,22 @@ assert(
   !homeHeroPresentationEditorSchema.safeParse(invalidFrame).success &&
     !homeHeroPresentationInputSchema.safeParse(invalidFrame).success,
   "Editor y contrato persistido deben rechazar anchos de tarjeta fuera del límite compartido."
+);
+
+const invalidArrowScale = clone(current);
+invalidArrowScale.navigation.arrowResponsive.mobile.scale = 161;
+assert(
+  !homeHeroPresentationEditorSchema.safeParse(invalidArrowScale).success &&
+    !homeHeroPresentationInputSchema.safeParse(invalidArrowScale).success,
+  "Editor y persistencia deben rechazar escalas de flecha fuera del contrato compartido."
+);
+
+const invalidArrowIcon = clone(current);
+invalidArrowIcon.navigation.arrowIcon = "rocket";
+assert(
+  !homeHeroPresentationEditorSchema.safeParse(invalidArrowIcon).success &&
+    !homeHeroPresentationInputSchema.safeParse(invalidArrowIcon).success,
+  "Editor y persistencia deben rechazar iconos de flecha desconocidos."
 );
 
 const unknownPosition = clone(current);
@@ -248,6 +293,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Hero schema: OK (motor V3 único, migración histórica a tres movimientos, autoplay seguro, límites compartidos y compatibilidad de borradores antiguos)."
+    "Hero schema: OK (motor V3 único, flechas y controles editables con defaults compatibles, autoplay configurable, límites compartidos y compatibilidad histórica)."
   );
 }
