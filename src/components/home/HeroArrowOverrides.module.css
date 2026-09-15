@@ -1,3 +1,38 @@
 .arrowBridge {
   --hero-arrow-overrides-loaded: 1;
 }
+
+/*
+ * Arrow placement is persisted per device on the Hero root. Bind the physical
+ * controls directly to those source variables instead of going through the
+ * generic --hero-arrow-inset alias: the Admin preview and public Home both use
+ * this same HeroSection root, so the rendered geometry follows the editorial
+ * value immediately.
+ */
+.arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego anterior"]) {
+  left: var(--hero-desktop-arrow-inset, -4px) !important;
+}
+
+.arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego siguiente"]) {
+  right: var(--hero-desktop-arrow-inset, -4px) !important;
+}
+
+@media (max-width: 1100px) {
+  .arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego anterior"]) {
+    left: var(--hero-tablet-arrow-inset, 0px) !important;
+  }
+
+  .arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego siguiente"]) {
+    right: var(--hero-tablet-arrow-inset, 0px) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego anterior"]) {
+    left: var(--hero-mobile-arrow-inset, 0px) !important;
+  }
+
+  .arrowBridge > :global(button[data-hero-spacing-boundary="control"][aria-label="Juego siguiente"]) {
+    right: var(--hero-mobile-arrow-inset, 0px) !important;
+  }
+}
