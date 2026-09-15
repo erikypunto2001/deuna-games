@@ -177,6 +177,7 @@ export type HomeHeroResponsiveStyle = {
   visibleCards: 1 | 2 | 3 | 4 | 5;
   alignment?: "left" | "center" | "right";
   hiddenPositions?: Array<Exclude<HomeHeroPosition, "all" | "main">>;
+  cardWidthMode: "fixed" | "fill";
   cardWidth: number;
   cardHeight: number;
   gap: number;
@@ -345,9 +346,9 @@ const defaultHeroPresentation: HomeHeroPresentation = {
     right2: { scale: .68, rotateX: 0, rotateY: -22, rotateZ: 0, translateX: 126, translateY: 15, translateZ: -180, opacity: 42, blur: 1, brightness: 58, contrast: 105, saturation: 62 },
   },
   responsive: {
-    desktop: { visibleCards: 5, cardWidth: 1000, cardHeight: 450, gap: 24, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },
-    tablet: { visibleCards: 3, cardWidth: 760, cardHeight: 420, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },
-    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38, spacingReference: "visual" },
+    desktop: { visibleCards: 5, cardWidthMode: "fixed", cardWidth: 1000, cardHeight: 450, gap: 24, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },
+    tablet: { visibleCards: 3, cardWidthMode: "fixed", cardWidth: 760, cardHeight: 420, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },
+    mobile: { visibleCards: 3, cardWidthMode: "fixed", cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38, spacingReference: "visual" },
   },
   navigation: {
     style: "segmented-pro",

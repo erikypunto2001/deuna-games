@@ -42,6 +42,12 @@ assert(
   "La configuración fuente debe conservar el aspecto y posición históricos de las flechas como defaults explícitos."
 );
 assert(
+  ["desktop", "tablet", "mobile"].every(
+    (device) => current.responsive[device].cardWidthMode === "fixed"
+  ),
+  "Los defaults actuales deben preservar el ancho fijo para no alterar revisiones existentes."
+);
+assert(
   homeHeroPresentationEditorSchema.safeParse(current).success,
   "La presentación fuente del Hero debe cumplir el contrato completo del editor."
 );
@@ -126,6 +132,7 @@ assert(
 const oldEditorDraft = clone(current);
 delete oldEditorDraft.navigation;
 for (const device of ["desktop", "tablet", "mobile"]) {
+  delete oldEditorDraft.responsive[device].cardWidthMode;
   delete oldEditorDraft.responsive[device].spaceBefore;
   delete oldEditorDraft.responsive[device].spaceAfter;
   delete oldEditorDraft.responsive[device].spacingReference;
@@ -137,6 +144,8 @@ assert(
     migratedDraft.data.navigation.arrowIcon === "chevron" &&
     migratedDraft.data.navigation.arrowShape === "circle" &&
     migratedDraft.data.navigation.arrowResponsive.mobile.y === 46 &&
+    migratedDraft.data.responsive.desktop.cardWidthMode === "fixed" &&
+    migratedDraft.data.responsive.mobile.cardWidthMode === "fixed" &&
     migratedDraft.data.responsive.desktop.spaceBefore === 28 &&
     migratedDraft.data.responsive.mobile.spaceAfter === 38,
   "El contrato del editor debe migrar borradores locales anteriores sin inventar geometría distinta de los defaults actuales."
@@ -251,6 +260,22 @@ assert(
   "Editor y contrato persistido deben rechazar anchos de tarjeta fuera del límite compartido."
 );
 
+const fillWidth = clone(current);
+fillWidth.responsive.desktop.cardWidthMode = "fill";
+assert(
+  homeHeroPresentationEditorSchema.safeParse(fillWidth).success &&
+    homeHeroPresentationInputSchema.safeParse(fillWidth).success,
+  "El modo de ancho hasta las flechas debe ser válido en editor y persistencia."
+);
+
+const invalidWidthMode = clone(current);
+invalidWidthMode.responsive.desktop.cardWidthMode = "viewport";
+assert(
+  !homeHeroPresentationEditorSchema.safeParse(invalidWidthMode).success &&
+    !homeHeroPresentationInputSchema.safeParse(invalidWidthMode).success,
+  "Modos de ancho desconocidos deben rechazarse en ambos límites."
+);
+
 const invalidArrowScale = clone(current);
 invalidArrowScale.navigation.arrowResponsive.mobile.scale = 161;
 assert(
@@ -293,6 +318,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Hero schema: OK (motor V3 único, flechas y controles editables con defaults compatibles, autoplay configurable, límites compartidos y compatibilidad histórica)."
+    "Hero schema: OK (motor V3 único, ancho fijo o hasta flechas con compatibilidad histórica, navegación editable, autoplay configurable y límites compartidos)."
   );
 }

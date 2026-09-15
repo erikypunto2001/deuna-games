@@ -686,6 +686,13 @@ export default function HomeHeroEditor({
       return current;
     });
 
+  const setCardWidthMode = (value: "fixed" | "fill") =>
+    commit((current) => {
+      current.presentation.responsive[device].cardWidthMode = value;
+      current.presentation.preset = "custom";
+      return current;
+    });
+
   const restoreBasicLayout = () =>
     commit(
       (current) => {
@@ -700,6 +707,7 @@ export default function HomeHeroEditor({
           ).responsive[targetDevice];
           const settings =
             current.presentation.responsive[targetDevice];
+          settings.cardWidthMode = original.cardWidthMode;
           settings.cardWidth = original.cardWidth;
           settings.cardHeight = original.cardHeight;
           settings.gap = original.gap;
@@ -1017,7 +1025,10 @@ export default function HomeHeroEditor({
                 </select>
               </label>
               <span>
-                {responsive.cardWidth} × {responsive.cardHeight} px ·{" "}
+                {responsive.cardWidthMode === "fill"
+                  ? "Hasta las flechas"
+                  : `${responsive.cardWidth}px`}{" "}
+                × {responsive.cardHeight}px ·{" "}
                 {visiblePositions.length} posiciones visibles
               </span>
             </div>
@@ -1496,16 +1507,33 @@ export default function HomeHeroEditor({
               <>
                 <p className={styles.help}>
                   Ajusta sólo la geometría esencial de {deviceLabel.toLowerCase()}.
-                  El layout resuelve cuántas tarjetas se ven y su perspectiva.
+                  El ancho manual usa píxeles reales del sitio; la vista previa
+                  puede verse reducida para entrar en el panel.
                 </p>
-                <Range
-                  label="Ancho"
-                  value={responsive.cardWidth}
-                  min={HERO_FRAME_MIN_WIDTH}
-                  max={HERO_FRAME_MAX_WIDTH}
-                  unit="px"
-                  change={(value) => setResponsive("cardWidth", value)}
+                <Switch
+                  label="Extender hasta las flechas"
+                  value={responsive.cardWidthMode === "fill"}
+                  change={(value) =>
+                    setCardWidthMode(value ? "fill" : "fixed")
+                  }
                 />
+                {responsive.cardWidthMode === "fixed" ? (
+                  <Range
+                    label="Ancho manual"
+                    value={responsive.cardWidth}
+                    min={HERO_FRAME_MIN_WIDTH}
+                    max={HERO_FRAME_MAX_WIDTH}
+                    unit="px"
+                    change={(value) => setResponsive("cardWidth", value)}
+                  />
+                ) : (
+                  <p className={styles.help}>
+                    La tarjeta usa automáticamente el espacio real entre las
+                    flechas. Todas las diapositivas comparten este ancho cuando
+                    pasan por la posición principal; el ancho manual se conserva
+                    para volver atrás.
+                  </p>
+                )}
                 <Range
                   label="Alto"
                   value={responsive.cardHeight}
