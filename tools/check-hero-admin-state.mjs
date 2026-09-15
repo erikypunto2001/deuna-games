@@ -184,6 +184,21 @@ assert.match(
   /className=\{`\$\{styles\.heroSection\}[\s\S]*?\$\{arrowStyles\.arrowBridge\}`\}/,
   "The Hero root must keep the arrow override module connected to the rendered tree."
 );
+assert.match(
+  arrowOverrides,
+  /\.arrowBridge\s*>\s*button\[data-arrow-shape\]\[data-hero-spacing-boundary="control"\]/,
+  "The arrow stylesheet must bind directly to the rendered Hero arrow buttons instead of relying on an unscoped descendant selector."
+);
+assert.match(
+  arrowOverrides,
+  /\.arrowBridge\s*>\s*button\[data-arrow-shape\]\[data-hero-spacing-boundary="control"\]\[aria-label="Juego anterior"\][\s\S]*?left:\s*var\(--hero-desktop-arrow-inset/,
+  "The previous Hero control must consume the persisted desktop inset on the rendered button itself."
+);
+assert.match(
+  arrowOverrides,
+  /\.arrowBridge\s*>\s*button\[data-arrow-shape\]\[data-hero-spacing-boundary="control"\]\[aria-label="Juego siguiente"\][\s\S]*?right:\s*var\(--hero-desktop-arrow-inset/,
+  "The next Hero control must consume the persisted desktop inset on the rendered button itself."
+);
 for (const arrowVariable of [
   "--hero-desktop-arrow-inset",
   "--hero-tablet-arrow-inset",
@@ -268,5 +283,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (task-oriented editorial surface, visual-footprint fill, live arrow placement/styles, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (task-oriented editorial surface, visual-footprint fill, direct live arrow binding, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
