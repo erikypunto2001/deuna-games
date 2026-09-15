@@ -61,9 +61,9 @@ assert.doesNotMatch(
   "Hero Admin ranking must not recompute wall-clock time during client hydration."
 );
 
-// The editorial surface is intentionally simple. Runtime compatibility keeps
-// understanding historical advanced values, but the current editor must not
-// re-expose engine-level controls that duplicate layouts, presets or movement.
+// The editorial surface stays task-oriented. Engine internals remain hidden,
+// while visual controls explicitly requested by the editor (arrows, pause and
+// placement of the navigation cluster) are part of the supported design contract.
 for (const removedControl of [
   "Comparar con guardado",
   "Transformación 3D",
@@ -93,7 +93,7 @@ for (const removedControl of [
 assert.doesNotMatch(
   editor,
   /HomeHeroNavigationControls|HomeHeroSpacingControls|simplifyHeroFrameRatio/,
-  "The simplified Hero editor must not depend on the old advanced inspector helpers."
+  "The Hero editor must not depend on the old advanced inspector helpers."
 );
 assert.doesNotMatch(
   editor,
@@ -110,6 +110,15 @@ for (const essentialControl of [
   "Estilo de controles",
   "Mostrar indicadores",
   "Mostrar progreso",
+  "Mostrar pausa",
+  "Icono de flecha",
+  "Contenedor de flecha",
+  "Altura de las flechas",
+  "Distancia al borde",
+  "Tamaño de las flechas",
+  "Posición horizontal",
+  "Posición vertical",
+  "Escala de controles",
   "Elige cómo cambia de juego",
   "Avance automático",
   "Tiempo por juego",
@@ -120,7 +129,7 @@ for (const essentialControl of [
   assert.match(
     editor,
     new RegExp(essentialControl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `The simplified Hero editor must keep ${essentialControl}.`
+    `The Hero editor must keep ${essentialControl}.`
   );
 }
 
@@ -128,6 +137,11 @@ assert.match(
   editor,
   /settings\.spacingReference = "visual";/,
   "Exterior spacing edited by the simple UI must always use the stable visual reference."
+);
+assert.match(
+  editor,
+  /onNavigationPositionChange=\{\(x, y\) => \{[\s\S]*?setNavigationPosition\(x, y\)/,
+  "The real preview drag handle must persist navigation-cluster placement through the editor state."
 );
 assert.match(
   editor,
@@ -149,6 +163,11 @@ assert.match(
   livePreview,
   /clampHomeHeroViewport\(device, browserViewport\)/,
   "When browser and selected device match, preview must follow the real browser viewport safely."
+);
+assert.match(
+  livePreview,
+  /navigationEditor=\{[\s\S]*?!playing && onNavigationPositionChange/,
+  "The shared public Hero renderer must own navigation dragging in edit mode."
 );
 
 assert.doesNotMatch(
@@ -178,5 +197,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (simple editorial surface, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (task-oriented editorial surface, editable navigation visuals, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
