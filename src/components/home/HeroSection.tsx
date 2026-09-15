@@ -47,6 +47,7 @@ import {
   HOME_HERO_VISUAL_POSITIONS,
   homeHeroPositionDisplay,
   homeHeroAnchor,
+  homeHeroCardWidthCSS,
   homeHeroPositionOffset,
   homeHeroPositionTransform,
   homeHeroSlotCSS,
@@ -257,7 +258,12 @@ function deviceVariables(presentation: HomeHeroPresentation, totalGames: number)
     const navigation = presentation.navigation.responsive[device];
     const arrows = presentation.navigation.arrowResponsive[device];
     variables[`--hero-${device}-anchor`] = homeHeroAnchor(responsive);
-    variables[`--hero-${device}-card-width`] = `${responsive.cardWidth}px`;
+    variables[`--hero-${device}-card-width`] = homeHeroCardWidthCSS(
+      responsive,
+      arrows,
+      device,
+      totalGames > 1
+    );
     variables[`--hero-${device}-card-height`] = `${responsive.cardHeight}px`;
     variables[`--hero-${device}-gap`] = `${responsive.gap}px`;
     variables[`--hero-${device}-perspective`] = `${responsive.perspective}px`;

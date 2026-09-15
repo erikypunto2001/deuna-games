@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [editor, livePreview, adminPage, rankingReference] = await Promise.all([
+const [editor, livePreview, adminPage, rankingReference, heroLayout, heroSource] = await Promise.all([
   readFile(
     new URL("../src/components/admin/HomeHeroEditor.tsx", import.meta.url),
     "utf8"
@@ -16,6 +16,14 @@ const [editor, livePreview, adminPage, rankingReference] = await Promise.all([
   ),
   readFile(
     new URL("../src/lib/home/server-ranking-reference.ts", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/lib/home/hero-layout.ts", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/components/home/HeroSection.tsx", import.meta.url),
     "utf8"
   ),
 ]);
@@ -107,6 +115,7 @@ for (const essentialControl of [
   "Estilo visual",
   "Tamaño y espacio",
   "Separación entre tarjetas",
+  "Extender hasta las flechas",
   "Estilo de controles",
   "Mostrar indicadores",
   "Mostrar progreso",
@@ -137,6 +146,21 @@ assert.match(
   editor,
   /settings\.spacingReference = "visual";/,
   "Exterior spacing edited by the simple UI must always use the stable visual reference."
+);
+assert.match(
+  editor,
+  /responsive\.cardWidthMode === "fill"[\s\S]*?setCardWidthMode\(value \? "fill" : "fixed"\)/,
+  "The width-to-arrows control must persist through the canonical responsive Hero state."
+);
+assert.match(
+  heroLayout,
+  /export function homeHeroCardWidthCSS\([\s\S]*?100cqw[\s\S]*?arrows\.scale[\s\S]*?arrows\.inset/,
+  "Fill width must be resolved from the real Hero container and current arrow geometry."
+);
+assert.match(
+  heroSource,
+  /homeHeroCardWidthCSS\([\s\S]*?responsive,[\s\S]*?arrows,[\s\S]*?device,[\s\S]*?totalGames > 1/,
+  "The public Hero renderer and Admin preview must consume the shared width resolver."
 );
 assert.match(
   editor,
@@ -197,5 +221,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (task-oriented editorial surface, editable navigation visuals, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (task-oriented editorial surface, width-to-arrows and navigation visuals on the real renderer, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
