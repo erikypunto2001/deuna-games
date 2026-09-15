@@ -296,6 +296,64 @@ async function main() {
     await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style="${style}"]')`, `motionStyle ${style}`);
   };
 
+  const selectWorkspace = async (label, workspace) => {
+    const clicked = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('nav[aria-label="Tareas del editor"] button')).find((node) => node.textContent?.trim() === ${JSON.stringify(label)});
+      if (!(button instanceof HTMLButtonElement)) return false;
+      const rect = button.getBoundingClientRect();
+      if (!(rect.width > 0) || !(rect.height > 0)) return false;
+      button.click();
+      return true;
+    })()`);
+    requireCheck(clicked, `No se pudo abrir la tarea ${label}.`);
+    await waitUntil(
+      cdp,
+      `document.querySelector('[data-workspace="${workspace}"]')`,
+      `workspace ${workspace}`
+    );
+    await delay(120);
+  };
+
+  const selectLayout = async (label, expectedPositions) => {
+    const clicked = await cdp.evaluate(`(() => {
+      const strong = Array.from(document.querySelectorAll('button strong')).find((node) => node.textContent?.trim() === ${JSON.stringify(label)});
+      const button = strong?.closest('button');
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`);
+    requireCheck(clicked, `No se encontró la composición ${label}.`);
+    const expected = JSON.stringify([...expectedPositions].sort());
+    await waitUntil(
+      cdp,
+      `JSON.stringify(Array.from(document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelectorAll('[data-hero-visible="true"]') ?? []).map((node) => node.getAttribute('data-position')).filter(Boolean).sort()) === ${JSON.stringify(expected)}`,
+      `composición ${label}`
+    );
+    await delay(220);
+  };
+
+  const setRange = async (label, value) => {
+    const changed = await cdp.evaluate(`(() => {
+      const input = document.querySelector('input[type="range"][aria-label=${JSON.stringify(label)}]');
+      if (!(input instanceof HTMLInputElement)) return false;
+      const rect = input.getBoundingClientRect();
+      if (!(rect.width > 0) || !(rect.height > 0)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      if (!setter) return false;
+      setter.call(input, ${JSON.stringify(String(value))});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    requireCheck(changed, `No se pudo editar ${label}.`);
+    await waitUntil(
+      cdp,
+      `document.querySelector('input[type="range"][aria-label=${JSON.stringify(label)}]')?.value === ${JSON.stringify(String(value))}`,
+      `estado editorial de ${label}`
+    );
+    await delay(220);
+  };
+
   const play = async () => {
     const beforeMain = await cdp.evaluate(`document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') ?? null`);
     requireCheck(beforeMain, 'No se pudo identificar el juego principal antes de iniciar la prueba interactiva.');
@@ -312,9 +370,6 @@ async function main() {
       `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-position="main"]')?.getAttribute('aria-label') !== ${JSON.stringify(beforeMain)}`,
       'transición automática inicial del modo de prueba'
     );
-    // HomeHeroLivePreview demuestra el movimiento al entrar en modo de prueba.
-    // Deja terminar esa transición completa antes de medir una repetición manual;
-    // así no se mezclan dos recorridos físicos ni dos ventanas de edge-wrap.
     await delay(950);
     await waitUntil(
       cdp,
@@ -376,25 +431,48 @@ async function main() {
     await loginAdmin(cdp);
     await navigate(cdp, `${baseUrl}/admin/portada?seccion=hero`);
     await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');
+    await selectWorkspace('2. Diseño', 'design');
 
     const heroGeometry = async () => cdp.evaluate(`(() => {
       const frame = document.querySelector('iframe[title^="Hero real"]');
       const doc = frame?.contentDocument;
-      const root = doc?.querySelector('[data-motion-style]');
-      const main = doc?.querySelector('[data-position="main"]');
-      const previous = doc?.querySelector('button[aria-label="Juego anterior"]');
-      const next = doc?.querySelector('button[aria-label="Juego siguiente"]');
-      if (!root || !main || !previous || !next) return null;
+      const roots = Array.from(doc?.querySelectorAll('[data-motion-style]') ?? []).filter((node) => node.getClientRects().length > 0);
+      const root = roots.find((node) =>
+        node.querySelector('button[aria-label="Juego anterior"]') &&
+        node.querySelector('button[aria-label="Juego siguiente"]')
+      ) ?? roots[0] ?? null;
+      const main = root?.querySelector('[data-position="main"]');
+      const previous = root?.querySelector('button[aria-label="Juego anterior"]');
+      const next = root?.querySelector('button[aria-label="Juego siguiente"]');
+      const visible = Array.from(root?.querySelectorAll('[data-hero-visible="true"]') ?? []).filter((node) => node.getClientRects().length > 0);
+      if (!root || !main || !previous || !next || !visible.length) return null;
+
       const rr = root.getBoundingClientRect();
       const mr = main.getBoundingClientRect();
       const pr = previous.getBoundingClientRect();
       const nr = next.getBoundingClientRect();
+      const rootStyle = getComputedStyle(root);
+      const previousStyle = getComputedStyle(previous);
+      const nextStyle = getComputedStyle(next);
+      const visibleRects = visible.map((node) => node.getBoundingClientRect());
+      const visibleLeft = Math.min(...visibleRects.map((box) => box.left));
+      const visibleRight = Math.max(...visibleRects.map((box) => box.right));
       return {
         heroWidth: rr.width,
         mainWidth: mr.width,
         cssWidth: parseFloat(getComputedStyle(main).width),
         leftGap: mr.left - pr.right,
         rightGap: nr.left - mr.right,
+        visibleWidth: visibleRight - visibleLeft,
+        visibleLeftGap: visibleLeft - pr.right,
+        visibleRightGap: nr.left - visibleRight,
+        previousLeft: pr.left,
+        previousCenter: pr.left + pr.width / 2,
+        nextLeft: nr.left,
+        nextCenter: nr.left + nr.width / 2,
+        rootArrowInset: rootStyle.getPropertyValue('--hero-desktop-arrow-inset').trim(),
+        previousCssLeft: previousStyle.left,
+        nextCssRight: nextStyle.right,
       };
     })()`);
 
@@ -411,27 +489,106 @@ async function main() {
     })()`);
     requireCheck(fillEnabled, 'No se pudo activar Extender hasta las flechas.');
     await waitUntil(cdp, `document.body.innerText.includes('Hasta las flechas')`, 'modo de ancho hasta las flechas');
-    await delay(180);
+    await delay(220);
     const fillGeometry = await heroGeometry();
     requireCheck(fillGeometry, 'No se pudo medir el Hero en modo hasta las flechas.');
     requireCheck(
       fillGeometry.cssWidth > fixedGeometry.cssWidth + 100,
-      `El modo fill no amplió realmente la tarjeta: ${JSON.stringify({ fixedGeometry, fillGeometry })}.`
+      `El modo fill centrado no amplió realmente la tarjeta: ${JSON.stringify({ fixedGeometry, fillGeometry })}.`
     );
     requireCheck(
       fillGeometry.leftGap >= 0 && fillGeometry.rightGap >= 0,
-      `La tarjeta fill se superpuso con las flechas: ${JSON.stringify(fillGeometry)}.`
+      `La tarjeta fill centrada se superpuso con las flechas: ${JSON.stringify(fillGeometry)}.`
     );
     requireCheck(
       fillGeometry.leftGap <= 20 && fillGeometry.rightGap <= 20,
-      `La tarjeta fill no llegó hasta las flechas: ${JSON.stringify(fillGeometry)}.`
+      `La tarjeta fill centrada no llegó hasta las flechas: ${JSON.stringify(fillGeometry)}.`
     );
     requireCheck(
       Math.abs(fillGeometry.leftGap - fillGeometry.rightGap) <= 2,
-      `El ancho fill quedó descentrado entre las flechas: ${JSON.stringify(fillGeometry)}.`
+      `El ancho fill centrado quedó descentrado entre las flechas: ${JSON.stringify(fillGeometry)}.`
     );
-    report.checks.fillWidth = { fixed: fixedGeometry, fill: fillGeometry };
 
+    await selectLayout('Principal a la izquierda', ['main', 'right1', 'right2']);
+    const leftLayoutGeometry = await heroGeometry();
+    requireCheck(leftLayoutGeometry, 'No se pudo medir Principal a la izquierda.');
+    requireCheck(
+      leftLayoutGeometry.visibleLeftGap >= 0 && leftLayoutGeometry.visibleRightGap >= 0,
+      `Principal a la izquierda se superpuso con las flechas: ${JSON.stringify(leftLayoutGeometry)}.`
+    );
+    requireCheck(
+      leftLayoutGeometry.visibleLeftGap <= 20 && leftLayoutGeometry.visibleRightGap <= 20,
+      `Principal a la izquierda no extendió la huella visual hasta ambas flechas: ${JSON.stringify(leftLayoutGeometry)}.`
+    );
+    requireCheck(
+      Math.abs(leftLayoutGeometry.visibleLeftGap - leftLayoutGeometry.visibleRightGap) <= 3,
+      `Principal a la izquierda quedó descentrado dentro del corredor: ${JSON.stringify(leftLayoutGeometry)}.`
+    );
+
+    await selectLayout('Principal a la derecha', ['left2', 'left1', 'main']);
+    const rightLayoutGeometry = await heroGeometry();
+    requireCheck(rightLayoutGeometry, 'No se pudo medir Principal a la derecha.');
+    requireCheck(
+      rightLayoutGeometry.visibleLeftGap >= 0 && rightLayoutGeometry.visibleRightGap >= 0,
+      `Principal a la derecha se superpuso con las flechas: ${JSON.stringify(rightLayoutGeometry)}.`
+    );
+    requireCheck(
+      rightLayoutGeometry.visibleLeftGap <= 20 && rightLayoutGeometry.visibleRightGap <= 20,
+      `Principal a la derecha no extendió la huella visual hasta ambas flechas: ${JSON.stringify(rightLayoutGeometry)}.`
+    );
+    requireCheck(
+      Math.abs(rightLayoutGeometry.visibleLeftGap - rightLayoutGeometry.visibleRightGap) <= 3,
+      `Principal a la derecha quedó descentrado dentro del corredor: ${JSON.stringify(rightLayoutGeometry)}.`
+    );
+
+    await selectLayout('Centrado', ['left2', 'left1', 'main', 'right1', 'right2']);
+    const controlsOpened = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Controles del carrusel'));
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`);
+    requireCheck(controlsOpened, 'No se pudo abrir Controles del carrusel.');
+    await waitUntil(cdp, `document.querySelector('input[type="range"][aria-label="Distancia al borde"]')`, 'control de distancia de flechas');
+
+    const arrowsDefault = await heroGeometry();
+    await setRange('Distancia al borde', 80);
+    const arrowsInside = await heroGeometry();
+    requireCheck(arrowsDefault && arrowsInside, 'No se pudo medir el desplazamiento interior de flechas.');
+    requireCheck(
+      arrowsInside.previousCenter > arrowsDefault.previousCenter + 60 &&
+      arrowsInside.nextCenter < arrowsDefault.nextCenter - 60,
+      `Las flechas no respondieron físicamente al inset interior: ${JSON.stringify({ arrowsDefault, arrowsInside })}.`
+    );
+    requireCheck(
+      arrowsInside.leftGap >= 0 && arrowsInside.rightGap >= 0 &&
+      arrowsInside.leftGap <= 20 && arrowsInside.rightGap <= 20,
+      `El fill no se reajustó al mover las flechas hacia adentro: ${JSON.stringify(arrowsInside)}.`
+    );
+
+    await setRange('Distancia al borde', -40);
+    const arrowsOutside = await heroGeometry();
+    requireCheck(arrowsOutside, 'No se pudo medir el desplazamiento exterior de flechas.');
+    requireCheck(
+      arrowsOutside.previousCenter < arrowsInside.previousCenter - 100 &&
+      arrowsOutside.nextCenter > arrowsInside.nextCenter + 100,
+      `Las flechas no respondieron al recorrido exterior completo: ${JSON.stringify({ arrowsInside, arrowsOutside })}.`
+    );
+    await setRange('Distancia al borde', -4);
+
+    report.checks.fillWidth = {
+      fixed: fixedGeometry,
+      centered: fillGeometry,
+      left: leftLayoutGeometry,
+      right: rightLayoutGeometry,
+    };
+    report.checks.arrowPlacement = {
+      default: arrowsDefault,
+      inside: arrowsInside,
+      outside: arrowsOutside,
+    };
+
+    await selectWorkspace('3. Movimiento', 'motion');
     const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);
     requireCheck(JSON.stringify(labels) === JSON.stringify(['Momentum','Morph','Parallax Sweep']), `El Admin debe exponer exactamente tres movimientos y expuso ${JSON.stringify(labels)}.`);
     report.checks.motionOptions = labels;
@@ -491,7 +648,7 @@ async function main() {
     await capture(cdp, path.join(outputDir, 'hero-motion-v3-desktop.png'));
     requireCheck(report.runtimeIssues.length === 0, `Errores runtime V3: ${report.runtimeIssues.join(' | ')}`);
     await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-    console.log(`[hero-motion-runtime] OK: 3 perfiles V3, nodos físicos estables, edge-wrap transitorio, drag continuo confirmado y reduced motion.`);
+    console.log(`[hero-motion-runtime] OK: fill centro/izquierda/derecha, flechas editoriales reales, 3 perfiles V3, nodos físicos estables, edge-wrap transitorio, drag continuo y reduced motion.`);
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
     await writeFile(path.join(outputDir, 'hero-motion-runtime.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8').catch(() => {});

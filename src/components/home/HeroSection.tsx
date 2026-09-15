@@ -73,6 +73,10 @@ const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 const HERO_PRIMARY_ACTION = "Ver juego";
 const HERO_SECONDARY_ACTION = "Más información";
 const HERO_EDGE_WRAP_RESET_MS = 220;
+const HERO_CARD_ARROW_GAP = 8;
+const HERO_FILL_MIN_CARD_WIDTH = 260;
+const HERO_FILL_MAX_CARD_WIDTH = 1800;
+const HERO_FILL_SEARCH_STEPS = 12;
 
 type HeroFact = {
   kind: "rating" | "developer" | "release" | "platforms" | "version";
@@ -284,6 +288,15 @@ function deviceVariables(presentation: HomeHeroPresentation, totalGames: number)
   return variables as CSSProperties;
 }
 
+function horizontalBounds(elements: HTMLElement[]) {
+  const bounds = elements.map((element) => element.getBoundingClientRect());
+  return {
+    left: Math.min(...bounds.map((box) => box.left)),
+    right: Math.max(...bounds.map((box) => box.right)),
+    width: Math.max(...bounds.map((box) => box.right)) - Math.min(...bounds.map((box) => box.left)),
+  };
+}
+
 export default function HeroSection({ games, presentation: sourcePresentation, imageEffect = false, imageTuning, autoplaySuspended = false, onSelectPosition, navigationEditor }: {
   games: Game[];
   presentation: HomeHeroPresentation;
@@ -453,16 +466,89 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
       root.style.setProperty("--hero-visual-inset-top", "0px");
       root.style.setProperty("--hero-visual-inset-bottom", "0px");
     };
+    const resetFillOverrides = () => {
+      root.style.removeProperty("--hero-card-width");
+      root.style.removeProperty("--hero-anchor");
+    };
     const update = () => {
       fit.style.transform = "none";
+      resetFillOverrides();
       const origin = viewport.getBoundingClientRect();
       const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-hero-visible='true']")).filter((card) => card.getClientRects().length > 0);
       if (!cards.length || !origin.width || !origin.height) { resetVisualInsets(); return; }
       const responsive = presentation.responsive[designDevice];
+      const mainCard = cards.find((card) => card.dataset.position === "main") ?? cards[0];
+
+      if (responsive.cardWidthMode === "fill" && mainCard) {
+        const previous = root.querySelector<HTMLElement>('button[aria-label="Juego anterior"]');
+        const next = root.querySelector<HTMLElement>('button[aria-label="Juego siguiente"]');
+        if (previous?.getClientRects().length && next?.getClientRects().length) {
+          const previousBounds = previous.getBoundingClientRect();
+          const nextBounds = next.getBoundingClientRect();
+          const targetLeft = previousBounds.right + HERO_CARD_ARROW_GAP;
+          const targetRight = nextBounds.left - HERO_CARD_ARROW_GAP;
+          const targetWidth = targetRight - targetLeft;
+          const oneSided = responsive.alignment === "left" || responsive.alignment === "right";
+          const footprintCards = oneSided ? cards : [mainCard];
+
+          if (targetWidth > 0 && footprintCards.length) {
+            const minWidth = Math.min(HERO_FILL_MIN_CARD_WIDTH, responsive.cardWidth);
+            let low = Math.max(1, minWidth);
+            let high = HERO_FILL_MAX_CARD_WIDTH;
+            let best = low;
+            const measure = (width: number) => {
+              root.style.setProperty("--hero-card-width", `${width}px`);
+              return horizontalBounds(footprintCards);
+            };
+            const minimumBounds = measure(low);
+            if (minimumBounds.width <= targetWidth) {
+              for (let step = 0; step < HERO_FILL_SEARCH_STEPS; step += 1) {
+                const candidate = (low + high) / 2;
+                const candidateBounds = measure(candidate);
+                if (candidateBounds.width <= targetWidth) {
+                  best = candidate;
+                  low = candidate;
+                } else {
+                  high = candidate;
+                }
+              }
+            }
+
+            const roundedWidth = Math.round(best * 100) / 100;
+            const filledBounds = measure(roundedWidth);
+            const currentAnchor = Number.parseFloat(getComputedStyle(mainCard).left);
+            const targetCenter = (targetLeft + targetRight) / 2;
+            const centerOffset =
+              targetCenter - (filledBounds.left + filledBounds.right) / 2;
+            if (Number.isFinite(currentAnchor) && Number.isFinite(centerOffset)) {
+              const adjustedAnchor =
+                Math.round((currentAnchor + centerOffset) * 100) / 100;
+              root.style.setProperty("--hero-anchor", `${adjustedAnchor}px`);
+
+              // Perspective/rotation makes the projected footprint slightly non-linear
+              // when the anchor moves. Measure once more after the real browser layout
+              // and correct the remaining projected-center error instead of widening a
+              // visual-test tolerance around an actually off-center composition.
+              const adjustedBounds = horizontalBounds(footprintCards);
+              const residualCenterOffset =
+                targetCenter - (adjustedBounds.left + adjustedBounds.right) / 2;
+              if (Number.isFinite(residualCenterOffset)) {
+                root.style.setProperty(
+                  "--hero-anchor",
+                  `${Math.round((adjustedAnchor + residualCenterOffset) * 100) / 100}px`
+                );
+              }
+            }
+          }
+        }
+      }
+
       const fittedCards = cards.filter((card) => card.dataset.position === "main");
       const bounds = fittedCards.map((card) => card.getBoundingClientRect());
-      const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
-      fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+      if (responsive.cardWidthMode !== "fill") {
+        const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
+        fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+      }
       if (responsive.spacingReference === "canvas") { resetVisualInsets(); return; }
       const rootBounds = root.getBoundingClientRect();
       const viewportBounds = viewport.getBoundingClientRect();
@@ -493,6 +579,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     return () => {
       observer.disconnect();
       view?.removeEventListener("resize", update);
+      resetFillOverrides();
       root.style.removeProperty("--hero-visual-inset-top");
       root.style.removeProperty("--hero-visual-inset-bottom");
     };

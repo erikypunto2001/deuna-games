@@ -107,6 +107,17 @@ export default function HomeHeroLivePreview({
   const { width, height } = selectedViewport;
   const scale = Math.min(1, availableWidth / width);
   const effectivePresentation = presentation;
+  const devicePresentation = resolveHeroDeviceDesign(
+    effectivePresentation,
+    device
+  );
+  const previewGeometryKey = JSON.stringify({
+    device,
+    composition: devicePresentation.composition,
+    direction: devicePresentation.direction,
+    responsive: devicePresentation.responsive[device],
+    positions: devicePresentation.positions,
+  });
   const playbackKey = `${device}:${presentation.motionStyle}:${games
     .map((game) => game.id)
     .join(",")}`;
@@ -206,10 +217,7 @@ export default function HomeHeroLivePreview({
     };
   }, [playing, playbackKey, previewEnd, replayTransition]);
 
-  const responsive = resolveHeroDeviceDesign(
-    effectivePresentation,
-    device
-  ).responsive[device];
+  const responsive = devicePresentation.responsive[device];
   const visiblePreviewHeight =
     contentEnd !== null ? Math.min(height, contentEnd) : height;
 
@@ -218,6 +226,7 @@ export default function HomeHeroLivePreview({
       {games.length ? (
         <>
           <HeroSection
+            key={previewGeometryKey}
             games={games}
             presentation={effectivePresentation}
             autoplaySuspended={!playing}

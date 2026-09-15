@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [editor, livePreview, adminPage, rankingReference, heroLayout, heroSource] = await Promise.all([
+const [
+  editor,
+  livePreview,
+  adminPage,
+  rankingReference,
+  heroLayout,
+  heroSource,
+  heroStyles,
+  heroArtworkStyles,
+] = await Promise.all([
   readFile(
     new URL("../src/components/admin/HomeHeroEditor.tsx", import.meta.url),
     "utf8"
@@ -24,6 +33,14 @@ const [editor, livePreview, adminPage, rankingReference, heroLayout, heroSource]
   ),
   readFile(
     new URL("../src/components/home/HeroSection.tsx", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/components/home/HeroSection.module.css", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/components/home/HeroArtwork.module.css", import.meta.url),
     "utf8"
   ),
 ]);
@@ -162,6 +179,76 @@ assert.match(
   /homeHeroCardWidthCSS\([\s\S]*?responsive,[\s\S]*?arrows,[\s\S]*?device,[\s\S]*?totalGames > 1/,
   "The public Hero renderer and Admin preview must consume the shared width resolver."
 );
+
+// Arrow presentation belongs to HeroSection itself. Keeping position/scale/shape
+// in a second CSS module lets Admin persist one value while another responsive
+// layer wins in the real preview. Guard the single canonical styling contract.
+for (const canonicalArrowVariable of [
+  /--hero-arrow-inset:\s*var\(--hero-desktop-arrow-inset/,
+  /--hero-arrow-y:\s*var\(--hero-desktop-arrow-y/,
+  /--hero-arrow-scale:\s*var\(--hero-desktop-arrow-scale/,
+  /--hero-arrow-hover-scale:\s*var\(--hero-desktop-arrow-hover-scale/,
+  /--hero-arrow-inset:var\(--hero-tablet-arrow-inset/,
+  /--hero-arrow-inset:var\(--hero-mobile-arrow-inset/,
+]) {
+  assert.match(
+    heroStyles,
+    canonicalArrowVariable,
+    "HeroSection.module.css must resolve arrow presentation from the persisted per-device variables."
+  );
+}
+assert.match(
+  heroStyles,
+  /\.arrow\{[\s\S]*?top:var\(--hero-arrow-y\)[\s\S]*?transform:translateY\(-50%\) scale\(var\(--hero-arrow-scale\)\)/,
+  "The canonical Hero arrow rule must own vertical placement and editorial scale."
+);
+assert.match(
+  heroStyles,
+  /\.arrowLeft\{left:var\(--hero-arrow-inset\)\}/,
+  "The previous Hero arrow must consume the canonical inset."
+);
+assert.match(
+  heroStyles,
+  /\.arrowRight\{right:var\(--hero-arrow-inset\)\}/,
+  "The next Hero arrow must consume the canonical inset."
+);
+assert.doesNotMatch(
+  heroArtworkStyles,
+  /aria-label="Juego anterior"\]\)\s*\{[^}]*\bleft\s*:/,
+  "Hero artwork styling must not pin the previous arrow outside the canonical HeroSection contract."
+);
+assert.doesNotMatch(
+  heroArtworkStyles,
+  /aria-label="Juego siguiente"\]\)\s*\{[^}]*\bright\s*:/,
+  "Hero artwork styling must not pin the next arrow outside the canonical HeroSection contract."
+);
+assert.doesNotMatch(
+  heroSource,
+  /arrowStyles|previousArrowStyle|nextArrowStyle|style=\{previousArrowStyle\}|style=\{nextArrowStyle\}/,
+  "HeroSection must keep arrow position and scale in the canonical per-device CSS-variable contract, not duplicate them inline."
+);
+for (const shape of ["circle", "rounded", "square", "none"]) {
+  assert.match(
+    heroStyles,
+    new RegExp(`\\.arrow\\[data-arrow-shape="${shape}"\\]`),
+    `The canonical Hero stylesheet must render the ${shape} arrow container.`
+  );
+}
+
+for (const fillRuntimeInvariant of [
+  /const HERO_FILL_SEARCH_STEPS = 12;/,
+  /responsive\.cardWidthMode === "fill"[\s\S]*?const footprintCards = oneSided \? cards : \[mainCard\];/,
+  /root\.style\.setProperty\("--hero-card-width", `\$\{width\}px`\);/,
+  /root\.style\.setProperty\([\s\S]*?"--hero-anchor"/,
+  /const adjustedBounds = horizontalBounds\(footprintCards\);/,
+  /const residualCenterOffset =[\s\S]*?adjustedBounds\.left[\s\S]*?adjustedBounds\.right/,
+]) {
+  assert.match(
+    heroSource,
+    fillRuntimeInvariant,
+    "Fill mode must resolve the real visual footprint and recenter it between arrows instead of relying only on a nominal card width."
+  );
+}
 assert.match(
   editor,
   /onNavigationPositionChange=\{\(x, y\) => \{[\s\S]*?setNavigationPosition\(x, y\)/,
@@ -221,5 +308,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (task-oriented editorial surface, width-to-arrows and navigation visuals on the real renderer, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (task-oriented editorial surface, visual-footprint fill, canonical live arrow styling, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );

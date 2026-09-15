@@ -16,7 +16,6 @@ import type {
 } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
-import arrowStyles from "./HeroArrowOverrides.module.css";
 import styles from "./HeroNavigation.module.css";
 import pauseFallbackStyles from "./HeroPauseFallback.module.css";
 
@@ -151,7 +150,7 @@ export default function HeroNavigation({
   return (
     <div
       ref={rootRef}
-      className={`${styles.navigation} ${touchStyles.heroNavigation} ${arrowStyles.arrowBridge}`}
+      className={`${styles.navigation} ${touchStyles.heroNavigation}`}
       data-hero-spacing-boundary="navigation"
       data-style={config.style}
       data-editor={editor ? "true" : undefined}

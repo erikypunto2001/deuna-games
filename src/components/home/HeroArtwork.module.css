@@ -14,12 +14,10 @@
 }
 
 :global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] > button[aria-label="Juego anterior"]) {
-  left: 0 !important;
   box-shadow: none !important;
 }
 
 :global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] > button[aria-label="Juego siguiente"]) {
-  right: 0 !important;
   box-shadow: none !important;
 }
 
