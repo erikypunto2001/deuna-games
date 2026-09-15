@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import {
+  ArrowLeft,
+  ArrowRight,
   Building2,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Gamepad2,
   Info,
   Play,
@@ -27,10 +31,14 @@ import {
 import HeroNavigation, { type HeroNavigationEditor } from "@/components/home/HeroNavigation";
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
+import type {
+  HomeHeroArrowIcon,
+  HomeHeroDevice,
+  HomeHeroPresentation,
+} from "@/data/home-config";
 import { formatGameReleaseDate } from "@/lib/games/game-date";
 import { resolveHeroDeviceDesign } from "@/lib/home/hero-device-design";
 import { homeHeroDeviceForWidth } from "@/lib/home/hero-devices";
-import type { HomeHeroDevice, HomeHeroPresentation } from "@/data/home-config";
 import {
   HOME_HERO_AUTOPLAY_MS,
   formatHomeHeroPosition,
@@ -152,6 +160,47 @@ function FactIcon({ kind }: { kind: HeroFact["kind"] }) {
   return <Tag size={17} aria-hidden="true" />;
 }
 
+function HeroArrowGlyph({
+  icon,
+  direction,
+}: {
+  icon: HomeHeroArrowIcon;
+  direction: "left" | "right";
+}) {
+  const left = direction === "left";
+  if (icon === "arrow") {
+    const Icon = left ? ArrowLeft : ArrowRight;
+    return <Icon size={27} aria-hidden="true" />;
+  }
+  if (icon === "double-chevron") {
+    const Icon = left ? ChevronsLeft : ChevronsRight;
+    return <Icon size={27} aria-hidden="true" />;
+  }
+  if (icon === "long-arrow") {
+    return (
+      <svg viewBox="0 0 30 24" width="30" height="24" aria-hidden="true">
+        <path
+          d={left ? "M27 12H5m0 0 7-7M5 12l7 7" : "M3 12h22m0 0-7-7m7 7-7 7"}
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+  if (icon === "triangle") {
+    return (
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d={left ? "M16 4 6 12l10 8z" : "m8 4 10 8-10 8z"} fill="currentColor" />
+      </svg>
+    );
+  }
+  const Icon = left ? ChevronLeft : ChevronRight;
+  return <Icon size={29} aria-hidden="true" />;
+}
+
 function ResponsiveArtwork({ game, alt, active = false, style }: ResponsiveArtworkProps) {
   const src = game.heroImage ?? game.coverImage;
   if (!src) return null;
@@ -206,6 +255,7 @@ function deviceVariables(presentation: HomeHeroPresentation, totalGames: number)
   for (const device of ["desktop", "tablet", "mobile"] as const) {
     const responsive = presentation.responsive[device];
     const navigation = presentation.navigation.responsive[device];
+    const arrows = presentation.navigation.arrowResponsive[device];
     variables[`--hero-${device}-anchor`] = homeHeroAnchor(responsive);
     variables[`--hero-${device}-card-width`] = `${responsive.cardWidth}px`;
     variables[`--hero-${device}-card-height`] = `${responsive.cardHeight}px`;
@@ -216,6 +266,10 @@ function deviceVariables(presentation: HomeHeroPresentation, totalGames: number)
     variables[`--hero-${device}-navigation-x`] = `${navigation.x}%`;
     variables[`--hero-${device}-navigation-y`] = `${navigation.y}%`;
     variables[`--hero-${device}-navigation-scale`] = navigation.scale;
+    variables[`--hero-${device}-arrow-inset`] = `${arrows.inset}px`;
+    variables[`--hero-${device}-arrow-y`] = `${arrows.y}%`;
+    variables[`--hero-${device}-arrow-scale`] = arrows.scale / 100;
+    variables[`--hero-${device}-arrow-hover-scale`] = (arrows.scale * 1.06) / 100;
     for (const position of HOME_HERO_VISUAL_POSITIONS) {
       variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(position, responsive, presentation.direction, totalGames);
       variables[`--hero-${device}-slot-${position}`] = homeHeroSlotCSS(position);
@@ -567,7 +621,33 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   if (!activeGame) return null;
 
   return (
-    <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-motion-ready={motionReady || undefined} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>
+    <section
+      ref={rootRef}
+      className={`${styles.heroSection} ${motionStyles.motionRoot}`}
+      data-composition={presentation.composition}
+      data-motion-style={presentation.motionStyle}
+      data-motion-ready={motionReady || undefined}
+      data-dragging={dragging || undefined}
+      aria-label="Juegos destacados"
+      aria-roledescription="carrusel"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      style={rootStyle}
+      onMouseEnter={startHoverPreview}
+      onMouseLeave={stopHoverPreview}
+      onPointerDownCapture={() => setFocused(false)}
+      onFocusCapture={(event) => {
+        const target = event.target as Element;
+        setFocused(
+          typeof target.matches === "function" && target.matches(":focus-visible")
+        );
+      }}
+      onBlurCapture={(event) => {
+        if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) {
+          setFocused(false);
+        }
+      }}
+    >
       <h2 className={styles.srOnly}>Juegos destacados</h2>
       <div className={styles.carouselViewport} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onLostPointerCapture={handleLostPointerCapture} onDragStart={(event) => event.preventDefault()} onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }} onPointerCancel={() => resetPointer(true)}>
         <div ref={fitRef} className={styles.stageFit}><div className={styles.stage}>
@@ -606,8 +686,8 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
         </div></div>
       </div>
       {games.length > 1 && <>
-        <button type="button" className={`${styles.arrow} ${styles.arrowLeft}`} data-hero-spacing-boundary="control" aria-label="Juego anterior" onClick={previousSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}><ChevronLeft size={29} aria-hidden="true" /></button>
-        <button type="button" className={`${styles.arrow} ${styles.arrowRight}`} data-hero-spacing-boundary="control" aria-label="Juego siguiente" onClick={nextSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}><ChevronRight size={29} aria-hidden="true" /></button>
+        <button type="button" className={`${styles.arrow} ${styles.arrowLeft}`} data-arrow-shape={presentation.navigation.arrowShape} data-arrow-icon={presentation.navigation.arrowIcon} data-hero-spacing-boundary="control" aria-label="Juego anterior" onClick={previousSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}><HeroArrowGlyph icon={presentation.navigation.arrowIcon} direction="left" /></button>
+        <button type="button" className={`${styles.arrow} ${styles.arrowRight}`} data-arrow-shape={presentation.navigation.arrowShape} data-arrow-icon={presentation.navigation.arrowIcon} data-hero-spacing-boundary="control" aria-label="Juego siguiente" onClick={nextSlide} disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}><HeroArrowGlyph icon={presentation.navigation.arrowIcon} direction="right" /></button>
         <HeroNavigation games={games} activeIndex={normalizedActiveIndex} config={presentation.navigation} autoplayDelay={autoplayDelay} isPaused={isPaused} manualPaused={manualPaused} atAutoplayEnd={atAutoplayEnd} onSelect={selectSlide} onTogglePause={() => setManualPaused((current) => !current)} editor={navigationEditor} />
       </>}
       <span className={styles.srOnly} aria-hidden="true">{formatHomeHeroPosition(normalizedActiveIndex, games.length)}</span>

@@ -16,7 +16,9 @@ import type {
 } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
+import arrowStyles from "./HeroArrowOverrides.module.css";
 import styles from "./HeroNavigation.module.css";
+import pauseFallbackStyles from "./HeroPauseFallback.module.css";
 
 export type HeroNavigationEditor = {
   device: HomeHeroDevice;
@@ -70,11 +72,18 @@ export default function HeroNavigation({
   const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const placement = editor ? config.responsive[editor.device] : null;
-  const integratedProgress = config.showIndicators && (config.style === "integrated" || config.style === "timeline");
-  const progressVisible = config.showProgress && autoplayDelay !== null;
-  const pauseVisible = autoplayDelay !== null;
+  const integratedProgress =
+    config.showIndicators &&
+    (config.style === "integrated" || config.style === "timeline");
+  const pauseViaProgress = !config.showPause && autoplayDelay !== null;
+  const progressVisible =
+    autoplayDelay !== null && (config.showProgress || pauseViaProgress);
+  const pauseVisible = config.showPause && autoplayDelay !== null;
   const activeGame = games[activeIndex];
   const announceSlideChanges = isPaused;
+  const pauseLabel = manualPaused
+    ? "Reanudar carrusel automático"
+    : "Pausar carrusel automático";
 
   const navigationStyle = drag
     ? ({ left: `${drag.x}%`, top: `${drag.y}%` } as CSSProperties)
@@ -86,8 +95,16 @@ export default function HeroNavigation({
     const rect = section.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     return {
-      x: clamp(Math.round(((event.clientX - rect.left) / rect.width) * 100), 0, 100),
-      y: clamp(Math.round(((event.clientY - rect.top) / rect.height) * 100), 0, 100),
+      x: clamp(
+        Math.round(((event.clientX - rect.left) / rect.width) * 100),
+        0,
+        100
+      ),
+      y: clamp(
+        Math.round(((event.clientY - rect.top) / rect.height) * 100),
+        0,
+        100
+      ),
     };
   };
 
@@ -112,7 +129,8 @@ export default function HeroNavigation({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    editor.onPositionChange(drag.x, drag.y);
+    const finalPosition = positionFromPointer(event) ?? drag;
+    editor.onPositionChange(finalPosition.x, finalPosition.y);
     setDrag(null);
   };
 
@@ -133,11 +151,18 @@ export default function HeroNavigation({
   return (
     <div
       ref={rootRef}
-      className={`${styles.navigation} ${touchStyles.heroNavigation}`}
+      className={`${styles.navigation} ${touchStyles.heroNavigation} ${arrowStyles.arrowBridge}`}
       data-hero-spacing-boundary="navigation"
       data-style={config.style}
       data-editor={editor ? "true" : undefined}
       data-paused={isPaused || atAutoplayEnd ? "true" : undefined}
+      data-pause-control={
+        autoplayDelay === null
+          ? undefined
+          : config.showPause
+            ? "button"
+            : "progress"
+      }
       style={navigationStyle}
     >
       <span
@@ -145,7 +170,9 @@ export default function HeroNavigation({
         aria-live={announceSlideChanges ? "polite" : "off"}
         aria-atomic="true"
       >
-        {activeGame ? `${activeIndex + 1} de ${games.length}: ${activeGame.title}` : ""}
+        {activeGame
+          ? `${activeIndex + 1} de ${games.length}: ${activeGame.title}`
+          : ""}
       </span>
 
       {editor && (
@@ -157,7 +184,10 @@ export default function HeroNavigation({
           onPointerDown={startDrag}
           onPointerMove={moveDrag}
           onPointerUp={finishDrag}
-          onPointerCancel={(event) => { event.stopPropagation(); setDrag(null); }}
+          onPointerCancel={(event) => {
+            event.stopPropagation();
+            setDrag(null);
+          }}
           onKeyDown={moveWithKeyboard}
         >
           <Move size={14} aria-hidden="true" />
@@ -168,14 +198,19 @@ export default function HeroNavigation({
         <div className={styles.indicators} aria-label="Elegir juego del carrusel">
           {games.map((game, index) => {
             const active = index === activeIndex;
+            const indicatorPauses =
+              active && integratedProgress && pauseViaProgress;
             return (
               <button
                 key={game.id}
                 type="button"
                 className={`${styles.indicator} ${active ? styles.indicatorActive : ""}`}
-                aria-label={`Mostrar ${game.title}`}
+                aria-label={indicatorPauses ? pauseLabel : `Mostrar ${game.title}`}
                 aria-current={active ? "true" : undefined}
-                onClick={() => onSelect(index)}
+                aria-pressed={indicatorPauses ? manualPaused : undefined}
+                onClick={() =>
+                  indicatorPauses ? onTogglePause() : onSelect(index)
+                }
               >
                 {active && integratedProgress && progressVisible && (
                   <span
@@ -183,7 +218,8 @@ export default function HeroNavigation({
                     className={styles.integratedProgress}
                     style={{
                       animationDuration: `${autoplayDelay}ms`,
-                      animationPlayState: isPaused || atAutoplayEnd ? "paused" : "running",
+                      animationPlayState:
+                        isPaused || atAutoplayEnd ? "paused" : "running",
                     }}
                     aria-hidden="true"
                   />
@@ -198,7 +234,7 @@ export default function HeroNavigation({
         <button
           type="button"
           className={styles.pauseButton}
-          aria-label={manualPaused ? "Reanudar carrusel automático" : "Pausar carrusel automático"}
+          aria-label={pauseLabel}
           aria-pressed={manualPaused}
           onClick={onTogglePause}
         >
@@ -210,18 +246,40 @@ export default function HeroNavigation({
         </button>
       )}
 
-      {progressVisible && !integratedProgress && (
-        <div className={styles.progress} aria-hidden="true">
-          <span
-            key={`${activeIndex}-${autoplayDelay}`}
-            className={styles.progressBar}
-            style={{
-              animationDuration: `${autoplayDelay}ms`,
-              animationPlayState: isPaused || atAutoplayEnd ? "paused" : "running",
-            }}
-          />
-        </div>
-      )}
+      {progressVisible && !integratedProgress &&
+        (pauseViaProgress ? (
+          <button
+            type="button"
+            className={pauseFallbackStyles.progressButton}
+            aria-label={pauseLabel}
+            aria-pressed={manualPaused}
+            onClick={onTogglePause}
+          >
+            <div className={styles.progress} aria-hidden="true">
+              <span
+                key={`${activeIndex}-${autoplayDelay}`}
+                className={styles.progressBar}
+                style={{
+                  animationDuration: `${autoplayDelay}ms`,
+                  animationPlayState:
+                    isPaused || atAutoplayEnd ? "paused" : "running",
+                }}
+              />
+            </div>
+          </button>
+        ) : (
+          <div className={styles.progress} aria-hidden="true">
+            <span
+              key={`${activeIndex}-${autoplayDelay}`}
+              className={styles.progressBar}
+              style={{
+                animationDuration: `${autoplayDelay}ms`,
+                animationPlayState:
+                  isPaused || atAutoplayEnd ? "paused" : "running",
+              }}
+            />
+          </div>
+        ))}
     </div>
   );
 }

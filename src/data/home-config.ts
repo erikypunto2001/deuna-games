@@ -136,10 +136,27 @@ export const homeHeroNavigationStyleIds = [
   "rail",
 ] as const;
 
+export const homeHeroArrowIconIds = [
+  "chevron",
+  "arrow",
+  "double-chevron",
+  "long-arrow",
+  "triangle",
+] as const;
+
+export const homeHeroArrowShapeIds = [
+  "circle",
+  "rounded",
+  "square",
+  "none",
+] as const;
+
 export type HomeHeroDevice = "desktop" | "tablet" | "mobile";
 export type HomeHeroPosition = "all" | "main" | "left1" | "left2" | "right1" | "right2";
 export type HomeHeroMotionStyle = (typeof homeHeroMotionStyleIds)[number];
 export type HomeHeroNavigationStyle = (typeof homeHeroNavigationStyleIds)[number];
+export type HomeHeroArrowIcon = (typeof homeHeroArrowIconIds)[number];
+export type HomeHeroArrowShape = (typeof homeHeroArrowShapeIds)[number];
 
 export type HomeHeroPositionStyle = {
   scale: number;
@@ -175,12 +192,21 @@ export type HomeHeroNavigationPlacement = {
   scale: number;
 };
 
+export type HomeHeroArrowPlacement = {
+  inset: number;
+  y: number;
+  scale: number;
+};
+
 export type HomeHeroNavigationConfig = {
   style: HomeHeroNavigationStyle;
   showIndicators: boolean;
   showPause: boolean;
   showProgress: boolean;
+  arrowIcon: HomeHeroArrowIcon;
+  arrowShape: HomeHeroArrowShape;
   responsive: Record<HomeHeroDevice, HomeHeroNavigationPlacement>;
+  arrowResponsive: Record<HomeHeroDevice, HomeHeroArrowPlacement>;
 };
 
 export type HomeHeroBasePresentation = {
@@ -234,9 +260,14 @@ export type HomeHeroBasePresentationInput = Omit<
   easing?: "ease" | "ease-in" | "ease-out" | "ease-in-out" | "linear";
   positions?: Partial<Record<HomeHeroPosition, HomeHeroPositionStyle>>;
   responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroResponsiveStyle>>>;
-  navigation?: Partial<Omit<HomeHeroNavigationConfig, "responsive">> & {
+  navigation?: Partial<
+    Omit<HomeHeroNavigationConfig, "responsive" | "arrowResponsive">
+  > & {
     responsive?: Partial<
       Record<HomeHeroDevice, Partial<HomeHeroNavigationPlacement>>
+    >;
+    arrowResponsive?: Partial<
+      Record<HomeHeroDevice, Partial<HomeHeroArrowPlacement>>
     >;
   };
 };
@@ -323,10 +354,17 @@ const defaultHeroPresentation: HomeHeroPresentation = {
     showIndicators: true,
     showPause: true,
     showProgress: true,
+    arrowIcon: "chevron",
+    arrowShape: "circle",
     responsive: {
       desktop: { x: 50, y: 91, scale: 100 },
       tablet: { x: 50, y: 91, scale: 100 },
       mobile: { x: 50, y: 92, scale: 92 },
+    },
+    arrowResponsive: {
+      desktop: { inset: -4, y: 50, scale: 100 },
+      tablet: { inset: 0, y: 50, scale: 100 },
+      mobile: { inset: 0, y: 46, scale: 100 },
     },
   },
 };
@@ -606,6 +644,20 @@ function resolveHeroPresentation(
         mobile: {
           ...defaultHeroPresentation.navigation.responsive.mobile,
           ...presentation?.navigation?.responsive?.mobile,
+        },
+      },
+      arrowResponsive: {
+        desktop: {
+          ...defaultHeroPresentation.navigation.arrowResponsive.desktop,
+          ...presentation?.navigation?.arrowResponsive?.desktop,
+        },
+        tablet: {
+          ...defaultHeroPresentation.navigation.arrowResponsive.tablet,
+          ...presentation?.navigation?.arrowResponsive?.tablet,
+        },
+        mobile: {
+          ...defaultHeroPresentation.navigation.arrowResponsive.mobile,
+          ...presentation?.navigation?.arrowResponsive?.mobile,
         },
       },
     },
