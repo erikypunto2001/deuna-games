@@ -1,6 +1,8 @@
 .arrowBridge {
   --hero-arrow-overrides-loaded: 1;
-  /* Temporary diagnostic: if the isolated preview cloned/matched this module,
-   * heroGeometry() must read 73px from the Hero root. */
-  --hero-desktop-arrow-inset: 73px !important;
+  /* Temporary diagnostic: HeroSection.module.css reads this generic alias in
+   * .arrowLeft/.arrowRight. If physical controls move to 73px, the remaining
+   * bug is the device-source -> generic-alias cascade rather than stylesheet
+   * synchronization or selector matching. */
+  --hero-arrow-inset: 73px !important;
 }
