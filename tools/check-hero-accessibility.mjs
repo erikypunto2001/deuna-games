@@ -105,6 +105,9 @@ assert.doesNotMatch(browserSmoke, /viewportNode instanceof HTMLElement/);
 assert.match(browserSmoke, /beforeDragMain/);
 assert.match(browserSmoke, /commit del drag real/);
 assert.match(browserSmoke, /El drag no confirmó el cambio del juego principal al soltar/);
+assert.match(browserSmoke, /Extender hasta las flechas/);
+assert.match(browserSmoke, /fillGeometry\.leftGap/);
+assert.match(browserSmoke, /fillGeometry\.rightGap/);
 
 for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);

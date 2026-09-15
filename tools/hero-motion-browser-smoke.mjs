@@ -377,6 +377,61 @@ async function main() {
     await navigate(cdp, `${baseUrl}/admin/portada?seccion=hero`);
     await waitUntil(cdp, `document.querySelector('iframe[title^="Hero real"]')?.contentDocument?.querySelector('[data-motion-style]')`, 'preview real V3');
 
+    const heroGeometry = async () => cdp.evaluate(`(() => {
+      const frame = document.querySelector('iframe[title^="Hero real"]');
+      const doc = frame?.contentDocument;
+      const root = doc?.querySelector('[data-motion-style]');
+      const main = doc?.querySelector('[data-position="main"]');
+      const previous = doc?.querySelector('button[aria-label="Juego anterior"]');
+      const next = doc?.querySelector('button[aria-label="Juego siguiente"]');
+      if (!root || !main || !previous || !next) return null;
+      const rr = root.getBoundingClientRect();
+      const mr = main.getBoundingClientRect();
+      const pr = previous.getBoundingClientRect();
+      const nr = next.getBoundingClientRect();
+      return {
+        heroWidth: rr.width,
+        mainWidth: mr.width,
+        cssWidth: parseFloat(getComputedStyle(main).width),
+        leftGap: mr.left - pr.right,
+        rightGap: nr.left - mr.right,
+      };
+    })()`);
+
+    const fixedGeometry = await heroGeometry();
+    requireCheck(fixedGeometry, 'No se pudo medir la geometría fija del Hero.');
+    const fillEnabled = await cdp.evaluate(`(() => {
+      const label = Array.from(document.querySelectorAll('label')).find((node) =>
+        node.textContent?.includes('Extender hasta las flechas')
+      );
+      const input = label?.querySelector('input[type="checkbox"]');
+      if (!(input instanceof HTMLInputElement)) return false;
+      if (!input.checked) input.click();
+      return true;
+    })()`);
+    requireCheck(fillEnabled, 'No se pudo activar Extender hasta las flechas.');
+    await waitUntil(cdp, `document.body.innerText.includes('Hasta las flechas')`, 'modo de ancho hasta las flechas');
+    await delay(180);
+    const fillGeometry = await heroGeometry();
+    requireCheck(fillGeometry, 'No se pudo medir el Hero en modo hasta las flechas.');
+    requireCheck(
+      fillGeometry.cssWidth > fixedGeometry.cssWidth + 100,
+      `El modo fill no amplió realmente la tarjeta: ${JSON.stringify({ fixedGeometry, fillGeometry })}.`
+    );
+    requireCheck(
+      fillGeometry.leftGap >= 0 && fillGeometry.rightGap >= 0,
+      `La tarjeta fill se superpuso con las flechas: ${JSON.stringify(fillGeometry)}.`
+    );
+    requireCheck(
+      fillGeometry.leftGap <= 20 && fillGeometry.rightGap <= 20,
+      `La tarjeta fill no llegó hasta las flechas: ${JSON.stringify(fillGeometry)}.`
+    );
+    requireCheck(
+      Math.abs(fillGeometry.leftGap - fillGeometry.rightGap) <= 2,
+      `El ancho fill quedó descentrado entre las flechas: ${JSON.stringify(fillGeometry)}.`
+    );
+    report.checks.fillWidth = { fixed: fixedGeometry, fill: fillGeometry };
+
     const labels = await cdp.evaluate(`Array.from(document.querySelectorAll('[aria-label="Estilo de movimiento del Hero"] button b')).map(node => node.textContent?.trim())`);
     requireCheck(JSON.stringify(labels) === JSON.stringify(['Momentum','Morph','Parallax Sweep']), `El Admin debe exponer exactamente tres movimientos y expuso ${JSON.stringify(labels)}.`);
     report.checks.motionOptions = labels;

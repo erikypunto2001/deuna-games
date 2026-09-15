@@ -1,4 +1,6 @@
 import type {
+  HomeHeroArrowPlacement,
+  HomeHeroDevice,
   HomeHeroPosition,
   HomeHeroPositionStyle,
   HomeHeroPresentation,
@@ -58,6 +60,38 @@ export function homeHeroSlotCSS(position: HomeHeroVisualPosition) {
   if (!geometry.widthFactor && !geometry.gapFactor) return "0px";
   const sign = Math.sign(geometry.widthFactor || geometry.gapFactor);
   return `calc((var(--hero-card-width) * ${Math.abs(geometry.widthFactor)} + var(--hero-gap) * ${Math.abs(geometry.gapFactor)}) * ${sign})`;
+}
+
+const heroArrowControlSize: Record<HomeHeroDevice, number> = {
+  desktop: 48,
+  tablet: 48,
+  mobile: 40,
+};
+const HERO_CARD_ARROW_GAP = 8;
+
+/**
+ * Resolve the real rendered card width. Fixed mode preserves historical pixel
+ * geometry. Fill mode uses the Hero container and reserves the visible space
+ * occupied by each arrow control, including editorial inset and scale.
+ */
+export function homeHeroCardWidthCSS(
+  responsive: HomeHeroResponsiveStyle,
+  arrows: HomeHeroArrowPlacement,
+  device: HomeHeroDevice,
+  hasArrows: boolean
+) {
+  if (responsive.cardWidthMode !== "fill") {
+    return `${responsive.cardWidth}px`;
+  }
+  if (!hasArrows) return "100cqw";
+
+  const controlSize = heroArrowControlSize[device];
+  const scale = arrows.scale / 100;
+  const visibleInnerEdge =
+    arrows.inset + controlSize / 2 + (controlSize * scale) / 2;
+  const safeInset = Math.max(0, visibleInnerEdge + HERO_CARD_ARROW_GAP);
+  const totalInset = Math.round(safeInset * 200) / 100;
+  return `max(1px, calc(100cqw - ${totalInset}px))`;
 }
 
 function defaultVisiblePositions(
