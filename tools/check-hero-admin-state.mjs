@@ -8,7 +8,7 @@ const [
   rankingReference,
   heroLayout,
   heroSource,
-  arrowOverrides,
+  heroStyles,
 ] = await Promise.all([
   readFile(
     new URL("../src/components/admin/HomeHeroEditor.tsx", import.meta.url),
@@ -35,7 +35,7 @@ const [
     "utf8"
   ),
   readFile(
-    new URL("../src/components/home/HeroArrowOverrides.module.css", import.meta.url),
+    new URL("../src/components/home/HeroSection.module.css", import.meta.url),
     "utf8"
   ),
 ]);
@@ -174,44 +174,47 @@ assert.match(
   /homeHeroCardWidthCSS\([\s\S]*?responsive,[\s\S]*?arrows,[\s\S]*?device,[\s\S]*?totalGames > 1/,
   "The public Hero renderer and Admin preview must consume the shared width resolver."
 );
-assert.match(
-  heroSource,
-  /import arrowStyles from "\.\/HeroArrowOverrides\.module\.css";/,
-  "The public Hero renderer must load the CSS module that consumes persisted arrow placement and shape variables."
-);
-assert.match(
-  heroSource,
-  /className=\{`\$\{styles\.heroSection\}[\s\S]*?\$\{arrowStyles\.arrowBridge\}`\}/,
-  "The Hero root must keep the arrow override module connected to the rendered tree."
-);
-assert.match(
-  arrowOverrides,
-  /\.arrowBridge\s*>\s*button\[data-arrow-shape\]\[data-hero-spacing-boundary="control"\]/,
-  "The arrow stylesheet must bind directly to the rendered Hero arrow buttons instead of relying on an unscoped descendant selector."
-);
-assert.match(
-  arrowOverrides,
-  /\.arrowBridge\s*>\s*button\[data-arrow-shape\]\[data-hero-spacing-boundary="control"\]\[aria-label="Juego anterior"\][\s\S]*?left:\s*var\(--hero-desktop-arrow-inset/,
-  "The previous Hero control must consume the persisted desktop inset on the rendered button itself."
-);
-assert.match(
-  arrowOverrides,
-  /\.arrowBridge\s*>\s*button\[data-arrow-shape\]\[data-hero-spacing-boundary="control"\]\[aria-label="Juego siguiente"\][\s\S]*?right:\s*var\(--hero-desktop-arrow-inset/,
-  "The next Hero control must consume the persisted desktop inset on the rendered button itself."
-);
-for (const arrowVariable of [
-  "--hero-desktop-arrow-inset",
-  "--hero-tablet-arrow-inset",
-  "--hero-mobile-arrow-inset",
-  "--hero-desktop-arrow-y",
-  "--hero-desktop-arrow-scale",
+
+// Arrow presentation belongs to HeroSection itself. Keeping position/scale/shape
+// in a second CSS module lets Admin persist one value while another responsive
+// layer wins in the real preview. Guard the single canonical styling contract.
+for (const canonicalArrowVariable of [
+  /--hero-arrow-inset:\s*var\(--hero-desktop-arrow-inset/,
+  /--hero-arrow-y:\s*var\(--hero-desktop-arrow-y/,
+  /--hero-arrow-scale:\s*var\(--hero-desktop-arrow-scale/,
+  /--hero-arrow-hover-scale:\s*var\(--hero-desktop-arrow-hover-scale/,
+  /--hero-arrow-inset:var\(--hero-tablet-arrow-inset/,
+  /--hero-arrow-inset:var\(--hero-mobile-arrow-inset/,
 ]) {
   assert.match(
-    arrowOverrides,
-    new RegExp(arrowVariable),
-    `The arrow runtime stylesheet must consume ${arrowVariable}.`
+    heroStyles,
+    canonicalArrowVariable,
+    "HeroSection.module.css must resolve arrow presentation from the persisted per-device variables."
   );
 }
+assert.match(
+  heroStyles,
+  /\.arrow\{[\s\S]*?top:var\(--hero-arrow-y\)[\s\S]*?transform:translateY\(-50%\) scale\(var\(--hero-arrow-scale\)\)/,
+  "The canonical Hero arrow rule must own vertical placement and editorial scale."
+);
+assert.match(
+  heroStyles,
+  /\.arrowLeft\{left:var\(--hero-arrow-inset\)\}/,
+  "The previous Hero arrow must consume the canonical inset."
+);
+assert.match(
+  heroStyles,
+  /\.arrowRight\{right:var\(--hero-arrow-inset\)\}/,
+  "The next Hero arrow must consume the canonical inset."
+);
+for (const shape of ["circle", "rounded", "square", "none"]) {
+  assert.match(
+    heroStyles,
+    new RegExp(`\\.arrow\\[data-arrow-shape="${shape}"\\]`),
+    `The canonical Hero stylesheet must render the ${shape} arrow container.`
+  );
+}
+
 for (const fillRuntimeInvariant of [
   /const HERO_FILL_SEARCH_STEPS = 12;/,
   /responsive\.cardWidthMode === "fill"[\s\S]*?const footprintCards = oneSided \? cards : \[mainCard\];/,
@@ -283,5 +286,5 @@ assert.match(
 );
 
 console.log(
-  "Hero Admin state: OK (task-oriented editorial surface, visual-footprint fill, direct live arrow binding, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
+  "Hero Admin state: OK (task-oriented editorial surface, visual-footprint fill, canonical live arrow styling, automatic preview viewport, stable ranking hydration and context-aware preview replay)."
 );
