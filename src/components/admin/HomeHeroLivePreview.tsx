@@ -118,7 +118,7 @@ export default function HomeHeroLivePreview({
     responsive: devicePresentation.responsive[device],
     positions: devicePresentation.positions,
   });
-  const playbackKey = `${previewGeometryKey}:${presentation.motionStyle}:${games
+  const playbackKey = `${device}:${presentation.motionStyle}:${games
     .map((game) => game.id)
     .join(",")}`;
 
