@@ -5,12 +5,8 @@ import process from "node:process";
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
-const baseUrl = (
-  process.env.DEUNA_VISUAL_BASE_URL ?? "http://127.0.0.1:3000"
-).replace(/\/$/, "");
-const outputDir = path.resolve(
-  process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
-);
+const baseUrl = (process.env.DEUNA_VISUAL_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+const outputDir = path.resolve(process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke");
 const reportPath = path.join(outputDir, "hero-motion-continuity.json");
 const viewports = [
   { id: "desktop", width: 1440, height: 1000 },
@@ -30,13 +26,11 @@ function findChrome() {
     "chromium",
     "chromium-browser",
   ].filter(Boolean);
-
   for (const candidate of candidates) {
-    const result = spawnSync(
-      "sh",
-      ["-lc", `command -v ${JSON.stringify(candidate)}`],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
-    );
+    const result = spawnSync("sh", ["-lc", `command -v ${JSON.stringify(candidate)}`], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
     const resolved = result.stdout.trim();
     if (result.status === 0 && resolved) return resolved;
   }
@@ -66,9 +60,7 @@ async function waitForDebugger(profileDir, browser) {
     }
     await delay(100);
   }
-  throw new Error(
-    `Chrome no expuso DevTools a tiempo.${lastError instanceof Error ? ` ${lastError.message}` : ""}`
-  );
+  throw new Error(`Chrome no expuso DevTools a tiempo.${lastError instanceof Error ? ` ${lastError.message}` : ""}`);
 }
 
 function openWebSocket(url) {
@@ -102,9 +94,7 @@ class CdpSession {
         else pending.resolve(message.result ?? {});
         return;
       }
-      for (const listener of this.listeners.get(message.method) ?? []) {
-        listener(message.params ?? {});
-      }
+      for (const listener of this.listeners.get(message.method) ?? []) listener(message.params ?? {});
     });
   }
 
@@ -145,11 +135,7 @@ class CdpSession {
       userGesture: true,
     });
     if (result.exceptionDetails) {
-      throw new Error(
-        result.exceptionDetails.exception?.description ??
-          result.exceptionDetails.text ??
-          "Runtime.evaluate falló."
-      );
+      throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text ?? "Runtime.evaluate falló.");
     }
     return result.result?.value;
   }
@@ -182,7 +168,7 @@ async function waitUntil(cdp, expression, label, timeoutMs = 12_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await cdp.evaluate(`Boolean(${expression})`)) return;
-    await delay(80);
+    await delay(50);
   }
   throw new Error(`Timeout esperando ${label}.`);
 }
@@ -196,49 +182,44 @@ async function capturePhase(cdp) {
     const root = document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
     const cards = Array.from(root?.querySelectorAll('[data-position]') ?? []);
     const prior = window.__heroContinuityNodes ?? [];
-    const parseOpacity = (node) => Number.parseFloat(getComputedStyle(node).opacity);
-    const animationInfo = (node) => node.getAnimations().map((animation) => {
-      const timing = animation.effect?.getComputedTiming?.() ?? {};
-      return {
-        type: animation.constructor?.name ?? null,
-        playState: animation.playState,
-        currentTime: typeof animation.currentTime === 'number' ? animation.currentTime : null,
-        progress: typeof timing.progress === 'number' ? timing.progress : null,
-        duration: typeof timing.duration === 'number' ? timing.duration : String(timing.duration ?? ''),
-        transitionProperty: typeof animation.transitionProperty === 'string' ? animation.transitionProperty : null,
-        animationName: typeof animation.animationName === 'string' ? animation.animationName : null,
-      };
-    });
-    const samples = prior.map((item) => {
+    const samples = prior.map((item, order) => {
       const retained = cards.includes(item.node);
-      if (!retained) return { ...item, retained: false };
+      if (!retained) return { previousPosition: item.position, retained: false, order };
       const style = getComputedStyle(item.node);
+      const animations = item.node.getAnimations().map((animation) => {
+        const timing = animation.effect?.getComputedTiming?.() ?? {};
+        return {
+          type: animation.constructor?.name ?? null,
+          playState: animation.playState,
+          currentTime: typeof animation.currentTime === 'number' ? animation.currentTime : null,
+          duration: typeof timing.duration === 'number' ? timing.duration : String(timing.duration ?? ''),
+          transitionProperty: typeof animation.transitionProperty === 'string' ? animation.transitionProperty : null,
+          animationName: typeof animation.animationName === 'string' ? animation.animationName : null,
+        };
+      });
       return {
         previousPosition: item.position,
         previousVisible: item.visible,
         previousOpacity: item.opacity,
         retained: true,
+        sameDomOrder: cards[order] === item.node,
         position: item.node.getAttribute('data-position'),
         visible: item.node.getAttribute('data-hero-visible') === 'true',
         buffer: item.node.getAttribute('data-motion-buffer') === 'true',
         edgeWrap: item.node.getAttribute('data-edge-wrap') === 'true',
-        opacity: parseOpacity(item.node),
-        inlineOpacity: item.node.style.opacity,
+        opacity: Number.parseFloat(style.opacity),
         targetOpacity: Number.parseFloat(item.node.style.opacity || style.opacity),
-        display: style.display,
-        transitionProperty: style.transitionProperty,
         transitionDuration: style.transitionDuration,
-        transitionTimingFunction: style.transitionTimingFunction,
-        animationName: style.animationName,
-        animationDuration: style.animationDuration,
-        animations: animationInfo(item.node),
+        animations,
       };
     });
     const main = root?.querySelector('[data-position="main"]');
     return {
+      ready: root?.getAttribute('data-motion-ready') === 'true',
       main: main?.getAttribute('aria-label') ?? null,
       cards: cards.length,
       retained: samples.filter((sample) => sample.retained).length,
+      stableDomOrder: samples.every((sample) => sample.retained && sample.sameDomOrder),
       moved: samples.filter((sample) => sample.retained && sample.position !== sample.previousPosition).length,
       running: samples.reduce((sum, sample) => sum + (sample.animations?.filter((animation) => animation.playState === 'running').length ?? 0), 0),
       entering: samples.filter((sample) => sample.retained && !sample.previousVisible && sample.visible),
@@ -252,28 +233,29 @@ async function capturePhase(cdp) {
 async function verifyViewport(cdp, viewport) {
   await setViewport(cdp, viewport);
   await navigate(cdp, `${baseUrl}/`);
+  const rootSelector = 'section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]';
   await waitUntil(
     cdp,
-    `document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] [data-position="main"]')`,
-    `Hero público ${viewport.id}`
+    `document.querySelector('${rootSelector}[data-motion-ready="true"] [data-position="main"]')`,
+    `Hero público ${viewport.id} con motor V3 listo`
   );
-  await delay(180);
+  await delay(34);
 
   const before = await cdp.evaluate(`(() => {
-    const root = document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
-    if (!(root instanceof HTMLElement)) return null;
+    const root = document.querySelector('${rootSelector}');
+    if (!(root instanceof HTMLElement) || root.getAttribute('data-motion-ready') !== 'true') return null;
     root.focus();
     const cards = Array.from(root.querySelectorAll('[data-position]'));
-    const parseOpacity = (node) => Number.parseFloat(getComputedStyle(node).opacity);
     window.__heroContinuityNodes = cards.map((node) => ({
       node,
       position: node.getAttribute('data-position'),
       visible: node.getAttribute('data-hero-visible') === 'true',
-      opacity: parseOpacity(node),
+      opacity: Number.parseFloat(getComputedStyle(node).opacity),
     }));
     const main = root.querySelector('[data-position="main"]');
     const match = main?.getAttribute('aria-label')?.match(/ de (\\d+):/);
     return {
+      ready: true,
       motionStyle: root.getAttribute('data-motion-style'),
       main: main?.getAttribute('aria-label') ?? null,
       cards: cards.length,
@@ -282,90 +264,66 @@ async function verifyViewport(cdp, viewport) {
       bufferCount: cards.filter((node) => node.getAttribute('data-motion-buffer') === 'true').length,
     };
   })()`);
-  requireCheck(before, `${viewport.id}: no se pudo medir el estado inicial del Hero.`);
+
+  requireCheck(before?.ready, `${viewport.id}: el motor V3 no estaba listo al tomar la muestra inicial.`);
   requireCheck(before.motionStyle, `${viewport.id}: falta data-motion-style.`);
   requireCheck(before.main, `${viewport.id}: falta tarjeta principal inicial.`);
   requireCheck(before.cards === Math.min(5, before.totalGames), `${viewport.id}: el Hero conserva ${before.cards}/${Math.min(5, before.totalGames)} nodos físicos.`);
-  if (before.totalGames > before.visibleCount) {
-    requireCheck(before.bufferCount >= 1, `${viewport.id}: faltan buffers físicos fuera del área visible.`);
-  }
+  if (before.totalGames > before.visibleCount) requireCheck(before.bufferCount >= 1, `${viewport.id}: faltan buffers físicos fuera del área visible.`);
 
   const clicked = await cdp.evaluate(`(() => {
-    const root = document.querySelector('section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]');
-    const next = root?.querySelector('button[aria-label="Juego siguiente"]:not(:disabled)');
-    const previous = root?.querySelector('button[aria-label="Juego anterior"]:not(:disabled)');
+    const root = document.querySelector('${rootSelector}');
+    if (root?.getAttribute('data-motion-ready') !== 'true') return false;
+    const next = root.querySelector('button[aria-label="Juego siguiente"]:not(:disabled)');
+    const previous = root.querySelector('button[aria-label="Juego anterior"]:not(:disabled)');
     const target = next ?? previous;
     if (!(target instanceof HTMLButtonElement)) return false;
     target.click();
     return true;
   })()`);
-  requireCheck(clicked, `${viewport.id}: no se pudo iniciar la navegación del Hero.`);
+  requireCheck(clicked, `${viewport.id}: no se pudo iniciar la navegación del Hero listo.`);
 
   await delay(70);
   const early = await capturePhase(cdp);
-
-  // Fuerza un resize mínimo durante la transición. El fitting puede recalcularse,
-  // pero nunca debe poner la duración del motor en 0 ni hacer saltar las tarjetas.
   await setViewport(cdp, { ...viewport, height: viewport.height + 1 });
   await delay(95);
   const mid = await capturePhase(cdp);
 
   const result = { before, early, mid, settled: null, errors: [] };
-  const check = (condition, message) => {
-    if (!condition) result.errors.push(message);
-  };
+  const check = (condition, message) => { if (!condition) result.errors.push(message); };
 
+  check(early.ready && mid.ready, `${viewport.id}: el motor V3 perdió readiness durante la transición.`);
   check(early.main && early.main !== before.main, `${viewport.id}: el principal no cambió al iniciar la transición.`);
-  check(early.retained === before.cards, `${viewport.id}: se desmontaron tarjetas al iniciar la transición (${early.retained}/${before.cards}).`);
-  check(mid.retained === before.cards, `${viewport.id}: se desmontaron tarjetas durante la transición (${mid.retained}/${before.cards}).`);
+  check(early.retained === before.cards && mid.retained === before.cards, `${viewport.id}: se desmontaron tarjetas durante la transición.`);
+  check(early.stableDomOrder && mid.stableDomOrder, `${viewport.id}: React reordenó físicamente nodos Hero durante el cambio de slot.`);
   check(mid.moved >= Math.min(2, before.cards), `${viewport.id}: no hay suficientes nodos físicos recorriendo slots (${mid.moved}).`);
   check(mid.running > 0, `${viewport.id}: no hay animaciones/transiciones activas a mitad del recorrido.`);
-  check(
-    mid.visibleDurations.some((value) => Number.parseFloat(value) > 0),
-    `${viewport.id}: un resize durante el movimiento dejó la duración de transición en 0.`
-  );
+  check(mid.visibleDurations.some((value) => Number.parseFloat(value) > 0), `${viewport.id}: un resize durante el movimiento dejó la duración de transición en 0.`);
 
   if (before.bufferCount > 0) {
     check(mid.entering.length >= 1, `${viewport.id}: ninguna tarjeta buffer entra físicamente al área visible.`);
     check(mid.leaving.length >= 1, `${viewport.id}: ninguna tarjeta visible sale físicamente hacia un buffer.`);
     for (const sample of mid.entering) {
-      check(
-        sample.opacity > 0.01 && sample.opacity < sample.targetOpacity - 0.01,
-        `${viewport.id}: tarjeta entrante saltó de opacity 0 a ${sample.targetOpacity} sin interpolación (mid=${sample.opacity}).`
-      );
+      check(sample.opacity > 0.01 && sample.opacity < sample.targetOpacity - 0.01, `${viewport.id}: tarjeta entrante saltó a opacity=${sample.targetOpacity} sin interpolación (mid=${sample.opacity}).`);
     }
     for (const sample of mid.leaving) {
-      check(
-        sample.opacity > 0.01 && sample.opacity < sample.previousOpacity - 0.01,
-        `${viewport.id}: tarjeta saliente desapareció sin completar interpolación (prev=${sample.previousOpacity}, mid=${sample.opacity}).`
-      );
+      check(sample.opacity > 0.01 && sample.opacity < sample.previousOpacity - 0.01, `${viewport.id}: tarjeta saliente desapareció sin completar interpolación (prev=${sample.previousOpacity}, mid=${sample.opacity}).`);
     }
   }
 
   await delay(980);
-  const settled = await cdp.evaluate(`(() => {
-    const prior = window.__heroContinuityNodes ?? [];
-    const parseOpacity = (node) => Number.parseFloat(getComputedStyle(node).opacity);
-    return prior.map((item) => ({
-      retained: item.node?.isConnected === true,
-      position: item.node?.getAttribute('data-position') ?? null,
-      visible: item.node?.getAttribute('data-hero-visible') === 'true',
-      opacity: item.node?.isConnected ? parseOpacity(item.node) : null,
-      targetOpacity: item.node?.isConnected ? Number.parseFloat(item.node.style.opacity || getComputedStyle(item.node).opacity) : null,
-      runningAnimations: item.node?.isConnected ? item.node.getAnimations().filter((animation) => animation.playState === 'running').length : 0,
-    }));
-  })()`);
+  const settled = await cdp.evaluate(`(() => (window.__heroContinuityNodes ?? []).map((item) => ({
+    retained: item.node?.isConnected === true,
+    visible: item.node?.getAttribute('data-hero-visible') === 'true',
+    opacity: item.node?.isConnected ? Number.parseFloat(getComputedStyle(item.node).opacity) : null,
+    targetOpacity: item.node?.isConnected ? Number.parseFloat(item.node.style.opacity || getComputedStyle(item.node).opacity) : null,
+  })))()`);
   result.settled = settled;
-
   check(settled.every((sample) => sample.retained), `${viewport.id}: algún nodo se desmontó antes de completar el settle.`);
   for (const sample of settled) {
-    if (!sample.visible) {
-      check(closeEnough(sample.opacity, 0), `${viewport.id}: buffer asentado quedó visible con opacity=${sample.opacity}.`);
-    } else {
-      check(closeEnough(sample.opacity, sample.targetOpacity), `${viewport.id}: tarjeta visible no terminó en su opacity objetivo (${sample.opacity}/${sample.targetOpacity}).`);
-    }
+    if (!sample.visible) check(closeEnough(sample.opacity, 0), `${viewport.id}: buffer asentado quedó visible con opacity=${sample.opacity}.`);
+    else check(closeEnough(sample.opacity, sample.targetOpacity), `${viewport.id}: tarjeta visible no terminó en su opacity objetivo (${sample.opacity}/${sample.targetOpacity}).`);
   }
-
   return result;
 }
 
@@ -394,11 +352,7 @@ async function main() {
   try {
     const target = await waitForDebugger(profileDir, browser);
     cdp = new CdpSession(await openWebSocket(target.webSocketDebuggerUrl));
-    await Promise.all([
-      cdp.send("Page.enable"),
-      cdp.send("Runtime.enable"),
-      cdp.send("Network.enable"),
-    ]);
+    await Promise.all([cdp.send("Page.enable"), cdp.send("Runtime.enable"), cdp.send("Network.enable")]);
     await cdp.send("Emulation.setEmulatedMedia", {
       media: "",
       features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
@@ -407,26 +361,19 @@ async function main() {
       report.runtimeIssues.push(event.exceptionDetails?.exception?.description ?? event.exceptionDetails?.text ?? "Excepción JavaScript sin detalle.");
     });
     cdp.on("Runtime.consoleAPICalled", (event) => {
-      if (event.type === "error") {
-        report.runtimeIssues.push(event.args?.map((arg) => arg.value ?? arg.description ?? arg.type).join(" ") ?? "console.error");
-      }
+      if (event.type === "error") report.runtimeIssues.push(event.args?.map((arg) => arg.value ?? arg.description ?? arg.type).join(" ") ?? "console.error");
     });
 
     for (const viewport of viewports) {
       const result = await verifyViewport(cdp, viewport);
       report.viewports[viewport.id] = result;
       await persistReport(report);
-      requireCheck(
-        result.errors.length === 0,
-        `${viewport.id}: ${result.errors.join(" | ")}`
-      );
+      requireCheck(result.errors.length === 0, `${viewport.id}: ${result.errors.join(" | ")}`);
     }
 
     requireCheck(report.runtimeIssues.length === 0, `Errores runtime: ${report.runtimeIssues.join(" | ")}`);
     await persistReport(report);
-    console.log(
-      "Hero motion continuity browser: OK (desktop/tablet/mobile, nodos retenidos, entrada/salida interpolada y resize sin cortar transición)."
-    );
+    console.log("Hero motion continuity browser: OK (readiness explícito, orden DOM estable, desktop/tablet/mobile, entrada/salida interpolada y resize sin cortar transición).");
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
     await persistReport(report).catch(() => {});
