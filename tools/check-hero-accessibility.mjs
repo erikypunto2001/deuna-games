@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [source, css, schema, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService, browserSmoke] = await Promise.all([
+const [source, css, pauseFallbackCss, schema, heroSource, heroCss, motionCss, livePreview, saveBoundary, deviceDesign, homeContentService, browserSmoke] = await Promise.all([
   readFile(new URL('../src/components/home/HeroNavigation.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroNavigation.module.css', import.meta.url), 'utf8'),
+  readFile(new URL('../src/components/home/HeroPauseFallback.module.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/lib/home/hero-schema.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroSection.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/home/HeroSection.module.css', import.meta.url), 'utf8'),
@@ -20,7 +21,14 @@ assert.match(source, /aria-live=\{announceSlideChanges \? "polite" : "off"\}/);
 assert.doesNotMatch(source, /aria-live="polite"/);
 assert.match(source, /aria-current=\{active \? "true" : undefined\}/);
 assert.match(source, /aria-pressed=\{manualPaused\}/);
+assert.match(source, /const pauseViaProgress = !config\.showPause && autoplayDelay !== null;/);
+assert.match(source, /config\.showProgress \|\| pauseViaProgress/);
 assert.match(source, /const pauseVisible = config\.showPause && autoplayDelay !== null;/);
+assert.match(source, /data-pause-control=/);
+assert.match(source, /indicatorPauses \? onTogglePause\(\) : onSelect\(index\)/);
+assert.match(source, /className=\{pauseFallbackStyles\.progressButton\}/);
+assert.match(pauseFallbackCss, /height:\s*44px;/);
+assert.match(pauseFallbackCss, /:focus-visible/);
 assert.match(schema, /showPause:\s*z\.boolean\(\)\.default\(true\)/);
 assert.doesNotMatch(schema, /showPause:\s*autoplay \|\| presentation\.navigation\.showPause/);
 assert.match(schema, /motionStyle:\s*presentation\.motionStyle \?\? legacyTransitionToMotionStyle\(legacyTransition\)/);
@@ -102,4 +110,4 @@ for (const scale of [50, 92, 100, 180]) {
   const target = Math.max(24, 2400 / scale) * (scale / 100);
   assert.ok(target >= 24 - Number.EPSILON);
 }
-console.log('Hero accessibility/motion: OK (single V3 engine, pointer-safe autoplay focus, editable navigation contract, continuous drag commit, physical motion buffers, Parallax geometry and canonical save ownership).');
+console.log('Hero accessibility/motion: OK (single V3 engine, pointer-safe autoplay focus, accessible progress pause fallback, editable navigation contract, continuous drag commit, physical motion buffers, Parallax geometry and canonical save ownership).');
