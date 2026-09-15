@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import {
+  homeHeroArrowIconIds,
+  homeHeroArrowShapeIds,
   homeHeroCompositionIds,
   homeHeroLegacyPresetIds,
   homeHeroMotionStyleIds,
@@ -141,6 +143,12 @@ const navigationDefaults = {
   mobile: { x: 50, y: 92, scale: 92 },
 } as const;
 
+const arrowDefaults = {
+  desktop: { inset: -4, y: 50, scale: 100 },
+  tablet: { inset: 0, y: 50, scale: 100 },
+  mobile: { inset: 0, y: 46, scale: 100 },
+} as const;
+
 function navigationPlacementSchema() {
   return z
     .object({
@@ -171,12 +179,39 @@ function editorNavigationPlacementSchema(defaults: {
     .default(defaults);
 }
 
+function arrowPlacementSchema() {
+  return z
+    .object({
+      inset: z.number().int().min(-40).max(160),
+      y: z.number().int().min(0).max(100),
+      scale: z.number().int().min(70).max(160),
+    })
+    .strict();
+}
+
+function editorArrowPlacementSchema(defaults: {
+  inset: number;
+  y: number;
+  scale: number;
+}) {
+  return z
+    .object({
+      inset: z.number().int().min(-40).max(160).default(defaults.inset),
+      y: z.number().int().min(0).max(100).default(defaults.y),
+      scale: z.number().int().min(70).max(160).default(defaults.scale),
+    })
+    .strict()
+    .default(defaults);
+}
+
 const persistedNavigationSchema = z
   .object({
     style: z.enum(homeHeroNavigationStyleIds),
     showIndicators: z.boolean(),
     showPause: z.boolean(),
     showProgress: z.boolean(),
+    arrowIcon: z.enum(homeHeroArrowIconIds).optional(),
+    arrowShape: z.enum(homeHeroArrowShapeIds).optional(),
     responsive: z
       .object({
         desktop: navigationPlacementSchema(),
@@ -184,6 +219,14 @@ const persistedNavigationSchema = z
         mobile: navigationPlacementSchema(),
       })
       .strict(),
+    arrowResponsive: z
+      .object({
+        desktop: arrowPlacementSchema(),
+        tablet: arrowPlacementSchema(),
+        mobile: arrowPlacementSchema(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -195,6 +238,8 @@ const editorNavigationSchema = z
     showIndicators: z.boolean().default(true),
     showPause: z.boolean().default(true),
     showProgress: z.boolean().default(true),
+    arrowIcon: z.enum(homeHeroArrowIconIds).default("chevron"),
+    arrowShape: z.enum(homeHeroArrowShapeIds).default("circle"),
     responsive: z
       .object({
         desktop: editorNavigationPlacementSchema(
@@ -209,6 +254,14 @@ const editorNavigationSchema = z
       })
       .strict()
       .default(navigationDefaults),
+    arrowResponsive: z
+      .object({
+        desktop: editorArrowPlacementSchema(arrowDefaults.desktop),
+        tablet: editorArrowPlacementSchema(arrowDefaults.tablet),
+        mobile: editorArrowPlacementSchema(arrowDefaults.mobile),
+      })
+      .strict()
+      .default(arrowDefaults),
   })
   .strict()
   .default({
@@ -216,7 +269,10 @@ const editorNavigationSchema = z
     showIndicators: true,
     showPause: true,
     showProgress: true,
+    arrowIcon: "chevron",
+    arrowShape: "circle",
     responsive: navigationDefaults,
+    arrowResponsive: arrowDefaults,
   });
 
 const persistedPositionsSchema = z
@@ -376,10 +432,6 @@ const normalizeEditorPlayback = (
     preset: normalizeHeroPreset(sourcePreset),
     motionStyle: presentation.motionStyle ?? legacyTransitionToMotionStyle(legacyTransition),
     autoplay,
-    navigation: {
-      ...presentation.navigation,
-      showPause: autoplay || presentation.navigation.showPause,
-    },
   };
 };
 
