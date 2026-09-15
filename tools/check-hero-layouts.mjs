@@ -187,9 +187,15 @@ assert.ok(
   'Hero fitting must use the same resolved device as rendering instead of recomputing breakpoints independently'
 );
 assert.ok(
-  heroSectionSource.includes('root.style.setProperty("--hero-motion-duration", "0ms")') &&
-    heroSectionSource.includes('void fit.offsetWidth;'),
-  'Hero fitting must measure target geometry with card motion temporarily settled'
+  heroSectionSource.includes('fit.style.transform = "none";') &&
+    heroSectionSource.includes('querySelectorAll<HTMLElement>("[data-hero-visible=\'true\']")') &&
+    heroSectionSource.includes('fitHomeHeroBounds('),
+  'Hero fitting must measure only current visible target geometry before applying the fitted stage transform'
+);
+assert.ok(
+  !heroSectionSource.includes('root.style.setProperty("--hero-motion-duration", "0ms")') &&
+    !heroSectionSource.includes('void fit.offsetWidth;'),
+  'Hero fitting must never cancel an in-flight card transition just to measure geometry'
 );
 assert.ok(
   heroSectionSource.includes('}, [presentation, games.length, designDevice]);'),
@@ -208,4 +214,4 @@ assert.ok(
     /\.heroCard\{[^}]*height:var\(--hero-card-height\)/.test(heroSectionCss),
   'The public/editor shared renderer must keep both viewport and cards on the configured fixed Hero height'
 );
-console.log('Hero height stability: OK (image-independent frame, device-consistent fitting and no slide-triggered geometry remeasurement).');
+console.log('Hero height stability: OK (image-independent frame, device-consistent fitting, visible-only measurement and no transition cancellation).');

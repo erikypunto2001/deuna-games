@@ -41,6 +41,15 @@
   will-change: transform;
 }
 
+/* The server/client bootstrap starts from the desktop contract and resolves the
+ * real responsive device in a layout effect. Suppress transitions only until
+ * that first layout has been painted twice; once data-motion-ready is set the
+ * V3 engine stays armed through later resizes and mode changes. */
+.motionRoot:not([data-motion-ready="true"]) .motionCard,
+.motionRoot:not([data-motion-ready="true"]) .motionArtwork {
+  transition: none;
+}
+
 /* Morph changes the width perception of the same physical card while it
  * travels between slots. Nothing remounts or teleports into the main slot. */
 .motionRoot[data-motion-style="morph"] .motionCard[data-position="left1"],
@@ -75,10 +84,11 @@
   transform: translate3d(-9%, 0, 0) scale(1.085);
 }
 
-/* In a full five-card loop the far card that wraps to the opposite edge must
- * not fly across the center. It teleports only at the dim outer edge and fades
- * in while the other four physical cards keep their continuous trajectory. */
-.motionRoot .motionCard[data-edge-wrap="true"] {
+/* In a full five-card loop the far visible card that wraps to the opposite
+ * edge must not fly across the center. Buffers are excluded deliberately:
+ * they must keep the base V3 transition while entering or leaving the visible
+ * composition, otherwise opacity can freeze or snap at the logical boundary. */
+.motionRoot .motionCard[data-edge-wrap="true"]:not([data-motion-buffer="true"]) {
   transition: none;
   animation: heroEdgeWrap 170ms ease-out both;
 }

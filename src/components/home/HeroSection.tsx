@@ -85,6 +85,14 @@ const PARALLAX_ARTWORK_TRANSFORM: Record<HomeHeroVisualPosition, string> = {
   right2: "translate3d(-9%, 0, 0) scale(1.085)",
 };
 
+function heroMotionRenderPositions(
+  _visiblePositions: readonly HomeHeroVisualPosition[],
+  direction: number
+) {
+  const positions = [...HOME_HERO_VISUAL_POSITIONS];
+  return direction < 0 ? positions.reverse() : positions;
+}
+
 function canUseFineHover() {
   return typeof window !== "undefined" && window.matchMedia(FINE_HOVER_MEDIA).matches;
 }
@@ -227,13 +235,22 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
 }) {
   const rootRef = useRef<HTMLElement>(null);
   const [designDevice, setDesignDevice] = useState<HomeHeroDevice>("desktop");
+  const [motionReady, setMotionReady] = useState(false);
   useLayoutEffect(() => {
     const view = rootRef.current?.ownerDocument.defaultView;
     if (!view) return;
     const update = () => setDesignDevice(homeHeroDeviceForWidth(view.innerWidth));
     update();
+    let secondFrame: number | null = null;
+    const firstFrame = view.requestAnimationFrame(() => {
+      secondFrame = view.requestAnimationFrame(() => setMotionReady(true));
+    });
     view.addEventListener("resize", update);
-    return () => view.removeEventListener("resize", update);
+    return () => {
+      view.removeEventListener("resize", update);
+      view.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) view.cancelAnimationFrame(secondFrame);
+    };
   }, []);
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
   const fitRef = useRef<HTMLDivElement>(null);
@@ -377,46 +394,36 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
       root.style.setProperty("--hero-visual-inset-bottom", "0px");
     };
     const update = () => {
-      const previousMotionDuration = root.style.getPropertyValue("--hero-motion-duration");
-      root.style.setProperty("--hero-motion-duration", "0ms");
-      try {
-        fit.style.transform = "none";
-        // Fitting is geometry, not animation. Force the target slot transforms
-        // before measuring so an in-flight card can never resize the Hero.
-        void fit.offsetWidth;
-        const origin = viewport.getBoundingClientRect();
-        const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
-        if (!cards.length || !origin.width || !origin.height) { resetVisualInsets(); return; }
-        const responsive = presentation.responsive[designDevice];
-        const fittedCards = cards.filter((card) => card.dataset.position === "main");
-        const bounds = fittedCards.map((card) => card.getBoundingClientRect());
-        const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
-        fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
-        if (responsive.spacingReference === "canvas") { resetVisualInsets(); return; }
-        const rootBounds = root.getBoundingClientRect();
-        const viewportBounds = viewport.getBoundingClientRect();
-        const verticalBounds: Array<{ top: number; bottom: number }> = [];
-        for (const card of cards) {
-          const box = card.getBoundingClientRect();
-          const top = Math.max(box.top, viewportBounds.top);
-          const bottom = Math.min(box.bottom, viewportBounds.bottom);
-          if (bottom > top) verticalBounds.push({ top, bottom });
-        }
-        for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
-          if (!control.getClientRects().length) continue;
-          const box = control.getBoundingClientRect();
-          if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
-        }
-        if (!verticalBounds.length) { resetVisualInsets(); return; }
-        const visualTop = Math.min(...verticalBounds.map((box) => box.top));
-        const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
-        const round = (value: number) => Math.round(value * 100) / 100;
-        root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
-        root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
-      } finally {
-        if (previousMotionDuration) root.style.setProperty("--hero-motion-duration", previousMotionDuration);
-        else root.style.removeProperty("--hero-motion-duration");
+      fit.style.transform = "none";
+      const origin = viewport.getBoundingClientRect();
+      const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-hero-visible='true']")).filter((card) => card.getClientRects().length > 0);
+      if (!cards.length || !origin.width || !origin.height) { resetVisualInsets(); return; }
+      const responsive = presentation.responsive[designDevice];
+      const fittedCards = cards.filter((card) => card.dataset.position === "main");
+      const bounds = fittedCards.map((card) => card.getBoundingClientRect());
+      const fitted = fitHomeHeroBounds({ left: Math.min(...bounds.map((box) => box.left)) - origin.left, top: Math.min(...bounds.map((box) => box.top)) - origin.top, right: Math.max(...bounds.map((box) => box.right)) - origin.left, bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top }, origin.width, origin.height, responsive.alignment);
+      fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+      if (responsive.spacingReference === "canvas") { resetVisualInsets(); return; }
+      const rootBounds = root.getBoundingClientRect();
+      const viewportBounds = viewport.getBoundingClientRect();
+      const verticalBounds: Array<{ top: number; bottom: number }> = [];
+      for (const card of cards) {
+        const box = card.getBoundingClientRect();
+        const top = Math.max(box.top, viewportBounds.top);
+        const bottom = Math.min(box.bottom, viewportBounds.bottom);
+        if (bottom > top) verticalBounds.push({ top, bottom });
       }
+      for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
+        if (!control.getClientRects().length) continue;
+        const box = control.getBoundingClientRect();
+        if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
+      }
+      if (!verticalBounds.length) { resetVisualInsets(); return; }
+      const visualTop = Math.min(...verticalBounds.map((box) => box.top));
+      const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
+      const round = (value: number) => Math.round(value * 100) / 100;
+      root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
+      root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
     };
     update();
     const observer = new ResizeObserver(update);
@@ -435,7 +442,8 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const hoverPlayback = heroMode === "hover-video";
   const videoShouldRender = !reducedMotion && heroMode !== "image" && (!hoverPlayback || hoverPreviewActive);
   const visiblePositions = homeHeroVisiblePositions(presentation.responsive[designDevice], presentation.direction, games.length);
-  const renderPositions = visiblePositions;
+  const visiblePositionSet = new Set<HomeHeroVisualPosition>(visiblePositions);
+  const renderPositions = heroMotionRenderPositions(visiblePositions, direction);
   const seenGames = new Set<string>();
   const renderedCards = renderPositions.flatMap((position) => {
     const offset = homeHeroPositionOffset(position);
@@ -446,11 +454,24 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
     if (!game) return [];
     if (seenGames.has(String(game.id))) return [];
     seenGames.add(String(game.id));
-    return [{ position, game, index }];
-  });
+    return [{ position, game, index, isVisible: visiblePositionSet.has(position) }];
+  }).sort((left, right) => left.index - right.index);
   const previousActiveIndex = games.length
     ? ((normalizedActiveIndex - motionDelta) % games.length + games.length) % games.length
     : 0;
+  const previousPositionByGameId = new Map<string, HomeHeroVisualPosition>();
+  if (presentation.loop && motionDelta !== 0) {
+    const previousSeen = new Set<string>();
+    for (const position of renderPositions) {
+      const previousIndex = ((previousActiveIndex + homeHeroPositionOffset(position)) % games.length + games.length) % games.length;
+      const previousGame = games[previousIndex];
+      if (!previousGame) continue;
+      const key = String(previousGame.id);
+      if (previousSeen.has(key)) continue;
+      previousSeen.add(key);
+      previousPositionByGameId.set(key, position);
+    }
+  }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!presentation.keyboard) return;
@@ -546,32 +567,27 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   if (!activeGame) return null;
 
   return (
-    <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>
+    <section ref={rootRef} className={`${styles.heroSection} ${motionStyles.motionRoot}`} data-composition={presentation.composition} data-motion-style={presentation.motionStyle} data-motion-ready={motionReady || undefined} data-dragging={dragging || undefined} aria-label="Juegos destacados" aria-roledescription="carrusel" tabIndex={0} onKeyDown={handleKeyDown} style={rootStyle} onMouseEnter={startHoverPreview} onMouseLeave={stopHoverPreview} onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false); }}>
       <h2 className={styles.srOnly}>Juegos destacados</h2>
       <div className={styles.carouselViewport} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onLostPointerCapture={handleLostPointerCapture} onDragStart={(event) => event.preventDefault()} onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }} onPointerCancel={() => resetPointer(true)}>
         <div ref={fitRef} className={styles.stageFit}><div className={styles.stage}>
-          {renderedCards.map(({ position, game, index }) => {
+          {renderedCards.map(({ position, game, index, isVisible }) => {
             const positionStyle = presentation.positions[position];
             const isMain = position === "main";
             const previousPosition = presentation.loop && motionDelta !== 0
-              ? visiblePositions.find((candidate) => {
-                  const previousIndex = ((previousActiveIndex + homeHeroPositionOffset(candidate)) % games.length + games.length) % games.length;
-                  return previousIndex === index;
-                })
+              ? previousPositionByGameId.get(String(game.id))
               : undefined;
             const edgeWrap = Boolean(
               presentation.loop &&
               motionDelta !== 0 &&
-              (
-                !previousPosition ||
-                homeHeroPositionOffset(position) - homeHeroPositionOffset(previousPosition) !== -motionDelta
-              )
+              previousPosition &&
+              homeHeroPositionOffset(position) - homeHeroPositionOffset(previousPosition) !== -motionDelta
             );
             const parallaxArtworkStyle = presentation.motionStyle === "parallax"
               ? { transform: PARALLAX_ARTWORK_TRANSFORM[position] }
               : undefined;
             return (
-              <article key={game.id} className={`${styles.heroCard} ${motionStyles.motionCard}`} data-position={position} data-main={isMain || undefined} data-edge-wrap={edgeWrap || undefined} onClick={onSelectPosition ? () => onSelectPosition(position) : undefined} role="group" aria-roledescription="slide" aria-label={`${index + 1} de ${games.length}: ${game.title}`} style={{ opacity: positionStyle.opacity / 100, filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`, transform: homeHeroPositionTransform(positionStyle) }}>
+              <article key={game.id} className={`${styles.heroCard} ${motionStyles.motionCard}`} data-position={position} data-main={isMain || undefined} data-hero-visible={isVisible || undefined} data-motion-buffer={!isVisible || undefined} data-edge-wrap={edgeWrap || undefined} onClick={isVisible && onSelectPosition ? () => onSelectPosition(position) : undefined} role="group" aria-hidden={!isVisible || undefined} aria-roledescription="slide" aria-label={`${index + 1} de ${games.length}: ${game.title}`} style={{ display: "block", opacity: isVisible ? positionStyle.opacity / 100 : 0, pointerEvents: isVisible ? undefined : "none", filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`, transform: homeHeroPositionTransform(positionStyle) }}>
                 <div className={motionStyles.motionFrame}><div className={styles.cardSurface}>
                   <div className={`${styles.media} ${motionStyles.motionArtwork}`} style={parallaxArtworkStyle}>
                     {game.heroImage || game.coverImage ? <ResponsiveArtwork game={game} alt={isMain ? game.mediaAccessibility?.hero ?? game.imageAlt : ""} active={isMain} style={artworkStyle} /> : <div className={styles.mediaFallback} aria-hidden="true" />}
@@ -581,7 +597,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
                     {isMain && <div className={styles.readabilityOverlay} aria-hidden="true" />}
                   </div>
                   {isMain ? <>{game.badge && <span className={styles.featuredBadge}>{game.badge}</span>}<MainCardContent game={game} motionEnabled={!reducedMotion} /></> : (
-                    <button type="button" className={styles.sideSelect} aria-label={onSelectPosition ? `Editar posición de ${game.title}` : `Mostrar ${game.title}`} onClick={(event) => { if (onSelectPosition) { event.stopPropagation(); onSelectPosition(position); return; } selectSlide(index); }}><span><strong>{game.shortTitle ?? game.title}</strong><small>{game.category}</small></span></button>
+                    <button type="button" tabIndex={isVisible ? undefined : -1} className={styles.sideSelect} aria-label={onSelectPosition ? `Editar posición de ${game.title}` : `Mostrar ${game.title}`} onClick={(event) => { if (!isVisible) return; if (onSelectPosition) { event.stopPropagation(); onSelectPosition(position); return; } selectSlide(index); }}><span><strong>{game.shortTitle ?? game.title}</strong><small>{game.category}</small></span></button>
                   )}
                 </div></div>
               </article>
