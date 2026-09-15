@@ -333,51 +333,23 @@ async function main() {
   };
 
   const setRange = async (label, value) => {
-    const numberLabel = `${label}: valor numérico`;
-    const point = await cdp.evaluate(`(() => {
-      const input = document.querySelector('input[type="number"][aria-label=${JSON.stringify(numberLabel)}]');
-      if (!(input instanceof HTMLInputElement)) return null;
-      input.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const changed = await cdp.evaluate(`(() => {
+      const input = document.querySelector('input[type="range"][aria-label=${JSON.stringify(label)}]');
+      if (!(input instanceof HTMLInputElement)) return false;
       const rect = input.getBoundingClientRect();
-      if (!(rect.width > 0) || !(rect.height > 0)) return null;
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      if (!(rect.width > 0) || !(rect.height > 0)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      if (!setter) return false;
+      setter.call(input, ${JSON.stringify(String(value))});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
     })()`);
-    requireCheck(point, `No se pudo ubicar ${label}.`);
-
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mousePressed', x: point.x, y: point.y,
-      button: 'left', buttons: 1, clickCount: 1,
-    });
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mouseReleased', x: point.x, y: point.y,
-      button: 'left', buttons: 0, clickCount: 1,
-    });
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyDown', key: 'a', code: 'KeyA', modifiers: 2,
-      windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65,
-    });
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyUp', key: 'a', code: 'KeyA', modifiers: 2,
-      windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65,
-    });
-    await cdp.send('Input.insertText', { text: String(value) });
-    await waitUntil(
-      cdp,
-      `document.querySelector('input[type="number"][aria-label=${JSON.stringify(numberLabel)}]')?.value === ${JSON.stringify(String(value))}`,
-      `entrada real de ${label}`
-    );
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyDown', key: 'Enter', code: 'Enter',
-      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
-    });
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyUp', key: 'Enter', code: 'Enter',
-      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
-    });
+    requireCheck(changed, `No se pudo editar ${label}.`);
     await waitUntil(
       cdp,
       `document.querySelector('input[type="range"][aria-label=${JSON.stringify(label)}]')?.value === ${JSON.stringify(String(value))}`,
-      `persistencia editorial de ${label}`
+      `estado editorial de ${label}`
     );
     await delay(220);
   };
