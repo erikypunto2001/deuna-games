@@ -436,11 +436,15 @@ async function main() {
     const heroGeometry = async () => cdp.evaluate(`(() => {
       const frame = document.querySelector('iframe[title^="Hero real"]');
       const doc = frame?.contentDocument;
-      const root = doc?.querySelector('[data-motion-style]');
-      const main = doc?.querySelector('[data-position="main"]');
-      const previous = doc?.querySelector('button[aria-label="Juego anterior"]');
-      const next = doc?.querySelector('button[aria-label="Juego siguiente"]');
-      const visible = Array.from(doc?.querySelectorAll('[data-hero-visible="true"]') ?? []).filter((node) => node.getClientRects().length > 0);
+      const roots = Array.from(doc?.querySelectorAll('[data-motion-style]') ?? []).filter((node) => node.getClientRects().length > 0);
+      const root = roots.find((node) =>
+        node.querySelector('button[aria-label="Juego anterior"]') &&
+        node.querySelector('button[aria-label="Juego siguiente"]')
+      ) ?? roots[0] ?? null;
+      const main = root?.querySelector('[data-position="main"]');
+      const previous = root?.querySelector('button[aria-label="Juego anterior"]');
+      const next = root?.querySelector('button[aria-label="Juego siguiente"]');
+      const visible = Array.from(root?.querySelectorAll('[data-hero-visible="true"]') ?? []).filter((node) => node.getClientRects().length > 0);
       if (!root || !main || !previous || !next || !visible.length) return null;
       const rr = root.getBoundingClientRect();
       const mr = main.getBoundingClientRect();
@@ -468,6 +472,13 @@ async function main() {
         rootArrowInset: rootStyle.getPropertyValue('--hero-desktop-arrow-inset').trim(),
         previousCssLeft: previousStyle.left,
         nextCssRight: nextStyle.right,
+        rootCount: roots.length,
+        previousCount: root.querySelectorAll('button[aria-label="Juego anterior"]').length,
+        nextCount: root.querySelectorAll('button[aria-label="Juego siguiente"]').length,
+        rootMotionStyle: root.getAttribute('data-motion-style'),
+        frameInnerWidth: frame?.contentWindow?.innerWidth ?? null,
+        previousInlineLeft: previous.style.left,
+        nextInlineRight: next.style.right,
       };
     })()`);
 
