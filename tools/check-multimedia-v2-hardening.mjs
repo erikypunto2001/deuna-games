@@ -93,7 +93,7 @@ assert(
     'name="preview-fps"',
     "checked={fps === option}",
     "onChange={() => onFpsChange(option)}",
-    "Resolución y FPS son ajustes independientes.",
+    "Resolución del master y FPS son ajustes independientes.",
     "Salida seleccionada:",
     "{quality} · {fps} FPS"
   ) &&
