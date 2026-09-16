@@ -16,9 +16,12 @@ import {
 } from "react";
 
 import {
+  DEFAULT_PREVIEW_FPS,
   MAX_PREVIEW_DURATION_SECONDS,
+  PREVIEW_FPS_OPTIONS,
   PREVIEW_QUALITY_OPTIONS,
   parsePreviewTrimWindow,
+  type PreviewFps,
   type PreviewQualityId,
   type PreviewQualityOption,
   type PreviewTrimWindow,
@@ -42,9 +45,11 @@ type VideoTrimEditorProps = {
   src: string;
   sourceLabel: string;
   quality: PreviewQualityId;
+  fps: PreviewFps;
   qualityDisabled?: boolean;
   qualityOptions?: readonly PreviewQualityOption[];
   onQualityChange: (quality: PreviewQualityId) => void;
+  onFpsChange: (fps: PreviewFps) => void;
   onTrimChange: (trim: PreviewTrimWindow | null) => void;
   /*
    * Compatibilidad de llamada durante la transición al motor único de
@@ -77,9 +82,11 @@ export default function VideoTrimEditor({
   src,
   sourceLabel,
   quality,
+  fps,
   qualityDisabled = false,
   qualityOptions = PREVIEW_QUALITY_OPTIONS,
   onQualityChange,
+  onFpsChange,
   onTrimChange,
 }: VideoTrimEditorProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -489,7 +496,7 @@ export default function VideoTrimEditor({
             type="number"
             min="0"
             max={Math.max(0, endSeconds - MIN_SELECTION_SECONDS)}
-            step="0.1"
+            step="0.001"
             value={startSeconds}
             disabled={duration <= 0}
             onChange={(event) => updateEdge("start", Number(event.target.value))}
@@ -501,7 +508,7 @@ export default function VideoTrimEditor({
             type="number"
             min={Math.min(duration, startSeconds + MIN_SELECTION_SECONDS)}
             max={Math.min(duration, startSeconds + MAX_PREVIEW_DURATION_SECONDS)}
-            step="0.1"
+            step="0.001"
             value={endSeconds}
             disabled={duration <= 0}
             onChange={(event) => updateEdge("end", Number(event.target.value))}
@@ -510,9 +517,9 @@ export default function VideoTrimEditor({
       </div>
 
       <fieldset className={styles.qualityPanel} disabled={qualityDisabled}>
-        <legend>Resolución del master</legend>
+        <legend>Salida del master</legend>
         <p>
-          El master conserva el fotograma completo. Portada, Hero y Card aplican después sus encuadres con el único editor de destinos.
+          Resolución y FPS son ajustes independientes. El botón de guardado usa exactamente la combinación seleccionada aquí; el servidor sólo reduce FPS si la fuente original realmente tiene menos cuadros por segundo.
         </p>
         <div className={styles.qualityGrid}>
           {qualityOptions.map((option) => (
@@ -531,19 +538,47 @@ export default function VideoTrimEditor({
               />
               <span>
                 <strong>{option.label}</strong>
-                <small>{option.targetWidth}px · hasta {option.targetFps} FPS</small>
+                <small>{option.targetWidth}px · resolución del master</small>
               </span>
               <em>{option.detail}</em>
             </label>
           ))}
         </div>
+        <p>
+          <strong>FPS del master · máximo 60</strong>. 50 FPS sigue siendo el valor recomendado por equilibrio de peso; si elegís 60, esa selección se conserva hasta el envío.
+        </p>
+        <div className={styles.qualityGrid} role="radiogroup" aria-label="FPS del master">
+          {PREVIEW_FPS_OPTIONS.map((option) => (
+            <label
+              key={option}
+              className={`${styles.qualityOption} ${
+                fps === option ? styles.qualityOptionActive : ""
+              }`}
+            >
+              <input
+                type="radio"
+                name="preview-fps"
+                value={option}
+                checked={fps === option}
+                onChange={() => onFpsChange(option)}
+              />
+              <span>
+                <strong>{option} FPS</strong>
+                <small>{option === DEFAULT_PREVIEW_FPS ? "Recomendado" : "Selección explícita"}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+        <p>
+          Salida seleccionada: <strong>{quality} · {fps} FPS</strong>.
+        </p>
       </fieldset>
 
       {mediaError ? (
         <div className={styles.error} role="alert">{mediaError}</div>
       ) : (
         <p className={styles.help}>
-          Este editor sólo define el tramo temporal del master. No contiene un segundo sistema de recorte espacial: todos los encuadres de imagen y video se realizan después con el mismo editor de destinos.
+          Este editor sólo define el tramo temporal y la salida técnica del master. No contiene un segundo sistema de recorte espacial: todos los encuadres de imagen y video se realizan después con el mismo editor de destinos.
         </p>
       )}
     </div>
