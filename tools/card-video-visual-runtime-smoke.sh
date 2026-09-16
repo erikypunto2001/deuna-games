@@ -26,6 +26,7 @@ export PORT=3000
 export DEUNA_CARD_VIDEO_VISUAL_FIXTURE=1
 
 npm run visual:card-video-fixture
+npm run visual:home-row-static-detail-fixture
 
 kill "$DEUNA_VISUAL_APP_PID" 2>/dev/null || true
 for _ in $(seq 1 50); do
@@ -47,6 +48,7 @@ printf 'DEUNA_VISUAL_APP_PID=%s\n' "$app_pid" >> "$GITHUB_ENV"
 for _ in $(seq 1 90); do
   if curl --insecure --fail --silent --show-error "$DEUNA_VISUAL_BASE_URL/" > /dev/null; then
     npm run visual:card-video-browser
+    npm run visual:home-row-static-detail-browser
     exit 0
   fi
 
@@ -59,5 +61,5 @@ for _ in $(seq 1 90); do
 done
 
 cat "$RUNNER_TEMP/deuna-visual-standalone.log"
-echo "::error::El runtime visual no reinició para el fixture Card video."
+echo "::error::El runtime visual no reinició para los fixtures de Card video/Home static detail."
 exit 1
