@@ -29,6 +29,7 @@ const [
   staticCss,
   hoverPreview,
   hoverPreviewCss,
+  recoveryBrowserSmoke,
 ] = await Promise.all([
   source("src/lib/home/card-row-reveal.ts"),
   source("src/lib/admin/content-validation-core.ts"),
@@ -46,6 +47,7 @@ const [
   source("src/components/ui/UniversalGameCardStaticDetail.module.css"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/HoverPreviewMedia.module.css"),
+  source("tools/home-live-recovery-browser-smoke.mjs"),
 ]);
 
 assert(
@@ -116,6 +118,23 @@ assert(
     contentStyles.includes("position: sticky") &&
     contentStyles.includes('.root form button[type="submit"]'),
   "Resto de Inicio debe presentarse como un flujo único: estructura/textos → curaduría → Cards, con estado dirty coordinado y una sola acción visible de guardado."
+);
+
+assert(
+  has(
+    recoveryBrowserSmoke,
+    "deuna:home-row-reveal-draft:latest",
+    "testCoordinatedSave",
+    "clickCoordinatedSave",
+    "Guardar cambios",
+    "estado",
+    "guardado",
+    "initialRevision + 1",
+    "initialRevision + 2",
+    "smoke guardado coordinado",
+    "sin 403"
+  ),
+  "El smoke real de Admin debe limpiar todos los recoveries y ejercer guardar/restaurar la revisión coordinada desde el navegador autenticado."
 );
 
 assert(
@@ -216,6 +235,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, secure atomic save, coherent Admin flow, public renderer, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, coherent Admin flow, browser save regression, public renderer, visible-only video and no hover geometry)."
   );
 }
