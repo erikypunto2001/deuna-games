@@ -25,7 +25,6 @@ export HOSTNAME=127.0.0.1
 export PORT=3000
 export DEUNA_CARD_VIDEO_VISUAL_FIXTURE=1
 
-node ./tools/home-content-workflow-layout-browser-smoke.mjs
 npm run visual:card-video-fixture
 npm run visual:home-row-static-detail-fixture
 
