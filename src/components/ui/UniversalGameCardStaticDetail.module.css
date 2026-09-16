@@ -1,5 +1,5 @@
 .staticDetailCard.staticDetailCard {
-  transform: none;
+  transform: none !important;
 }
 
 .staticDetailCard.staticDetailCard::before {
@@ -7,7 +7,7 @@
 }
 
 .staticDetailCard [data-card-detail-media="true"] {
-  transform: none;
+  transform: none !important;
 }
 
 .staticDetailCard [data-card-detail-media="true"] img {
