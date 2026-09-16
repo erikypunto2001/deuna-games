@@ -57,6 +57,10 @@ type PageProps = {
   }>;
 };
 
+type GameTaxonomyEditorTerm = GameTaxonomyTerm & {
+  missingFromCatalog?: boolean;
+};
+
 function resolveGameSection(
   value: string | string[] | undefined
 ): GameSection {
@@ -96,7 +100,7 @@ function normalizeClassification(value: string) {
 
 function fallbackTerms(
   values: readonly string[]
-): GameTaxonomyTerm[] {
+): GameTaxonomyEditorTerm[] {
   const labels = new Map<string, string>();
 
   for (const raw of values) {
@@ -111,6 +115,40 @@ function fallbackTerms(
     label,
     active: true,
   }));
+}
+
+function termsForEditor(
+  terms: readonly GameTaxonomyTerm[],
+  currentValues: readonly string[],
+  keyPrefix: string
+): GameTaxonomyEditorTerm[] {
+  const current = new Map<string, string>();
+
+  for (const raw of currentValues) {
+    const label = raw.trim();
+    if (!label) continue;
+    const normalized = normalizeClassification(label);
+    if (!current.has(normalized)) current.set(normalized, label);
+  }
+
+  const known = new Set(
+    terms.map((term) => normalizeClassification(term.label))
+  );
+  const visible = terms.filter(
+    (term) =>
+      term.active ||
+      current.has(normalizeClassification(term.label))
+  );
+  const missing = [...current.entries()]
+    .filter(([normalized]) => !known.has(normalized))
+    .map(([, label], index) => ({
+      key: `legacy-missing-${keyPrefix}-${index}`,
+      label,
+      active: false,
+      missingFromCatalog: true,
+    }));
+
+  return [...visible, ...missing];
 }
 
 export default async function AdminGameEditorPage({
@@ -141,18 +179,20 @@ export default async function AdminGameEditorPage({
     game.category,
     ...(game.genres ?? []),
   ];
-  const currentClassificationSet = new Set(
-    currentClassifications.map(normalizeClassification)
-  );
-  const classificationTerms =
-    taxonomy?.classifications.filter(
-      (term) =>
-        term.active ||
-        currentClassificationSet.has(
-          normalizeClassification(term.label)
-        )
-    ) ?? fallbackTerms(currentClassifications);
-  const tagTerms = taxonomy?.tags ?? fallbackTerms(game.tags ?? []);
+  const classificationTerms = taxonomy
+    ? termsForEditor(
+        taxonomy.classifications,
+        currentClassifications,
+        "classification"
+      )
+    : fallbackTerms(currentClassifications);
+  const tagTerms = taxonomy
+    ? termsForEditor(
+        taxonomy.tags,
+        game.tags ?? [],
+        "tag"
+      )
+    : fallbackTerms(game.tags ?? []);
   const coreAction =
     `/api/admin/content/games/${encodeURIComponent(slug)}`;
   const informationAction = `${coreAction}/information`;
