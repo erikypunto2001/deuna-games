@@ -22,7 +22,6 @@ import {
   DEFAULT_PREVIEW_QUALITY,
   DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_SOURCE_BYTES,
-  PREVIEW_FPS_OPTIONS,
   PREVIEW_HERO_QUALITY_OPTIONS,
   type PreviewFps,
   type PreviewQualityId,
@@ -541,7 +540,7 @@ export default function GameVideoLibraryEditor({
 
     setBusy(true);
     setStatus(
-      `Creando master ${selectedQuality.label} · hasta ${fps} FPS con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`
+      `Creando master ${selectedQuality.label} · ${fps} FPS solicitados con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`
     );
 
     try {
@@ -745,35 +744,17 @@ export default function GameVideoLibraryEditor({
             </span>
           </div>
 
-          <label className={adminStyles.fieldWide}>
-            <span>Fotogramas por segundo · máximo 60</span>
-            <select
-              value={fps}
-              disabled={busy || sourceBusy}
-              onChange={(event) =>
-                setFps(Number(event.target.value) as PreviewFps)
-              }
-            >
-              {PREVIEW_FPS_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option} FPS{option === DEFAULT_PREVIEW_FPS ? " · recomendado" : ""}
-                </option>
-              ))}
-            </select>
-            <small>
-              Default 50 FPS. Si la fuente original tiene menos FPS, no se inventan fotogramas: se conserva su cadencia real.
-            </small>
-          </label>
-
           <VideoTrimEditor
             key={`library:${preparedSource.src}`}
             src={preparedSource.src}
             sourceLabel={preparedSource.label}
             quality={quality}
+            fps={fps}
             qualityOptions={PREVIEW_HERO_QUALITY_OPTIONS}
             viewport={previewViewport}
             qualityDisabled={busy || sourceBusy}
             onQualityChange={setQuality}
+            onFpsChange={setFps}
             onViewportChange={setPreviewViewport}
             onTrimChange={setTrim}
           />
