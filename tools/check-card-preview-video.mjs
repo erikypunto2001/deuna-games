@@ -127,12 +127,19 @@ assert(
     '"X-Deuna-Preview-Target": "library"',
     'target: "library"',
     "VideoTrimEditor",
-    "PREVIEW_FPS_OPTIONS",
     '"X-Deuna-Preview-Fps"',
     "DEFAULT_PREVIEW_FPS",
+    "fps={fps}",
+    "onFpsChange={setFps}",
     'viewportAspect: DEFAULT_PREVIEW_VIEWPORT.aspect'
-  ),
-  "La biblioteca debe crear un master reusable sin asignarlo automáticamente a Card."
+  ) &&
+    has(
+      trimEditor,
+      "PREVIEW_FPS_OPTIONS",
+      'name="preview-fps"',
+      "onFpsChange(option)"
+    ),
+  "La biblioteca debe crear un master reusable sin asignarlo automáticamente a Card y delegar sólo la UI de FPS al editor técnico."
 );
 
 assert(
@@ -143,12 +150,12 @@ assert(
     "parsePreviewTrimWindow",
     "Marcar IN aquí",
     "Marcar OUT aquí",
-    "Resolución del master",
+    "Salida del master",
     "fotograma completo"
   ) &&
     !trimEditor.includes("scheduleViewportDraft") &&
     !trimEditor.includes("resolvePreviewViewportCrop"),
-  "El trim del master debe limitarse al tramo temporal y calidad."
+  "El trim del master debe limitarse al tramo temporal y salida técnica."
 );
 
 assert(
