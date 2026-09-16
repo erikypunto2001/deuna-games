@@ -287,14 +287,15 @@ async function staticCardState(cdp, lookup) {
     const slotRect = slot.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();
     const detailRect = detail.getBoundingClientRect();
+    const cardStyle = getComputedStyle(card);
     return {
       revealMode: card.dataset.cardRevealMode ?? null,
       detailVisible: card.dataset.detailVisible ?? null,
       expanded: card.dataset.cardExpanded ?? null,
       expansionScale: card.dataset.cardExpansionScale ?? null,
       tiltActive: card.hasAttribute("data-tilt-active"),
-      position: getComputedStyle(card).position,
-      transform: getComputedStyle(card).transform,
+      position: cardStyle.position,
+      transform: cardStyle.transform,
       detailOpacity: getComputedStyle(detail).opacity,
       mediaTransform: getComputedStyle(media).transform,
       imageTransform:
@@ -305,6 +306,12 @@ async function staticCardState(cdp, lookup) {
       cardHeight: cardRect.height,
       detailWidth: detailRect.width,
       detailHeight: detailRect.height,
+      cardBorderInline:
+        Number.parseFloat(cardStyle.borderLeftWidth) +
+        Number.parseFloat(cardStyle.borderRightWidth),
+      cardBorderBlock:
+        Number.parseFloat(cardStyle.borderTopWidth) +
+        Number.parseFloat(cardStyle.borderBottomWidth),
       overflowX:
         document.documentElement.scrollWidth -
         document.documentElement.clientWidth,
@@ -331,15 +338,25 @@ function assertStaticState(state, label) {
     );
   }
 
-  const tolerance = 1.5;
+  const footprintTolerance = 1.5;
   if (
-    Math.abs(state.slotWidth - state.cardWidth) > tolerance ||
-    Math.abs(state.slotHeight - state.cardHeight) > tolerance ||
-    Math.abs(state.slotWidth - state.detailWidth) > tolerance ||
-    Math.abs(state.slotHeight - state.detailHeight) > tolerance
+    Math.abs(state.slotWidth - state.cardWidth) > footprintTolerance ||
+    Math.abs(state.slotHeight - state.cardHeight) > footprintTolerance
   ) {
     throw new Error(
-      `${label}: la Card estática alteró su footprint: ${JSON.stringify(state)}.`
+      `${label}: la Card estática alteró su footprint externo: ${JSON.stringify(state)}.`
+    );
+  }
+
+  const contentBoxTolerance = 0.75;
+  const expectedDetailWidth = state.cardWidth - state.cardBorderInline;
+  const expectedDetailHeight = state.cardHeight - state.cardBorderBlock;
+  if (
+    Math.abs(expectedDetailWidth - state.detailWidth) > contentBoxTolerance ||
+    Math.abs(expectedDetailHeight - state.detailHeight) > contentBoxTolerance
+  ) {
+    throw new Error(
+      `${label}: la cara de detalle no coincide con el content box de la Card: ${JSON.stringify(state)}.`
     );
   }
 
