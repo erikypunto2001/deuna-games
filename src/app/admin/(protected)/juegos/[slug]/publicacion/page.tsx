@@ -67,7 +67,7 @@ export default async function AdminGamePublicationPage({
     ? parameters.estado[0]
     : parameters.estado;
   const workspaceRequestState =
-    requestState === "catalogos-sin-publicar"
+    requestState === "catalogos-sin-publicar" && !taxonomyIntegrity.ok
       ? undefined
       : requestState;
   const panelCreated =
