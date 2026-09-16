@@ -77,6 +77,7 @@
 }
 
 .workflow a {
+  min-width: 0;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -120,10 +121,9 @@
 
 .workflow strong {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .saveAction {
@@ -232,7 +232,7 @@
   border-color: color-mix(in srgb, var(--brand) 55%, #fff);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1120px) {
   .saveBar {
     grid-template-columns: 1fr;
   }
@@ -244,6 +244,10 @@
   .saveAction > span {
     max-width: none;
     text-align: left;
+  }
+
+  .step {
+    scroll-margin-top: 126px;
   }
 }
 
@@ -263,13 +267,26 @@
   }
 
   .workflow {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    gap: 6px;
   }
 
   .workflow a {
-    min-width: max-content;
+    min-width: 0;
+    gap: 6px;
+    padding: 7px 6px;
+  }
+
+  .workflow a > span {
+    width: 24px;
+    height: 24px;
+  }
+
+  .workflow strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .saveAction {
@@ -283,7 +300,7 @@
   }
 
   .step {
-    scroll-margin-top: 132px;
+    scroll-margin-top: 170px;
   }
 }
 
