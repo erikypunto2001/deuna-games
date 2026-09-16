@@ -45,8 +45,9 @@ assert(
   publicationPage.includes("inspectPublishedGameTaxonomyIntegrity(item.payload)") &&
     publicationPage.includes("GameTaxonomyPublicationNotice") &&
     publicationPage.includes('requestState === "catalogos-sin-publicar"') &&
+    publicationPage.includes("&& !taxonomyIntegrity.ok") &&
     !publicationPage.includes("taxonomyIntegrity={taxonomyIntegrity}"),
-  "Publicación debe calcular la integridad real de Catálogos, mostrar el diagnóstico dedicado y evitar duplicar el aviso genérico."
+  "Publicación debe calcular la integridad real de Catálogos, mostrar el diagnóstico dedicado y evitar duplicar el aviso genérico sin ocultar fallos de restauración histórica."
 );
 
 assert(
