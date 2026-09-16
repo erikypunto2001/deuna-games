@@ -15,6 +15,10 @@ import type {
 
 import styles from "./GameTaxonomyMultiSelect.module.css";
 
+export type GameTaxonomyEditorTerm = GameTaxonomyTerm & {
+  missingFromCatalog?: boolean;
+};
+
 function normalized(value: string) {
   return value
     .normalize("NFD")
@@ -32,7 +36,7 @@ export default function GameTaxonomyMultiSelect({
 }: {
   name: string;
   label: string;
-  terms: GameTaxonomyTerm[];
+  terms: GameTaxonomyEditorTerm[];
   initialValues: string[];
   maximum: number;
 }) {
@@ -57,7 +61,7 @@ export default function GameTaxonomyMultiSelect({
     });
   }, [query, selectedKeys, terms]);
 
-  function toggle(term: GameTaxonomyTerm) {
+  function toggle(term: GameTaxonomyEditorTerm) {
     const key = normalized(term.label);
     const exists = selectedKeys.has(key);
 
@@ -85,7 +89,7 @@ export default function GameTaxonomyMultiSelect({
         <div>
           <legend>{label}</legend>
           <p>
-            Selecciona valores administrados en Catálogos. Los términos inactivos ya utilizados pueden conservarse o retirarse, pero no volver a añadirse.
+            Selecciona valores administrados en Catálogos. Los términos inactivos o fuera de Catálogos que ya utiliza el juego pueden retirarse, pero no volver a añadirse.
           </p>
         </div>
         <span>
@@ -108,6 +112,11 @@ export default function GameTaxonomyMultiSelect({
       <div className={styles.options}>
         {visibleTerms.map((term) => {
           const active = selectedKeys.has(normalized(term.label));
+          const status = term.missingFromCatalog
+            ? "Fuera de Catálogos"
+            : !term.active
+              ? "Inactivo"
+              : null;
 
           return (
             <button
@@ -115,15 +124,18 @@ export default function GameTaxonomyMultiSelect({
               type="button"
               className={active ? styles.selected : styles.option}
               aria-pressed={active}
+              data-missing-catalog={term.missingFromCatalog ? "true" : undefined}
               onClick={() => toggle(term)}
               title={
-                term.active
-                  ? undefined
-                  : "Término inactivo conservado por compatibilidad"
+                term.missingFromCatalog
+                  ? "Este término sigue guardado en el juego pero ya no existe en Catálogos. Puedes retirarlo, pero no volver a añadirlo."
+                  : term.active
+                    ? undefined
+                    : "Término inactivo conservado por compatibilidad"
               }
             >
               <span>{term.label}</span>
-              {!term.active && <small>Inactivo</small>}
+              {status && <small>{status}</small>}
               {active && <Check size={14} aria-hidden="true" />}
             </button>
           );
