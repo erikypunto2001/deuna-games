@@ -226,6 +226,7 @@ export default function UniversalGameCardBase({
   supplementalContent,
   primaryAction,
 }: UniversalGameCardProps) {
+  const staticDetail = revealMode === "static-detail";
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
   const anchorFrame = useRef<number | null>(null);
@@ -234,7 +235,7 @@ export default function UniversalGameCardBase({
   const pointerEffectsEnabled = useRef(false);
   const slotRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailVisible, setDetailVisible] = useState(staticDetail);
   const [directDetailVisible, setDirectDetailVisible] = useState(false);
   const [previewActive, setPreviewActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -242,7 +243,6 @@ export default function UniversalGameCardBase({
   const [expandedGeometry, setExpandedGeometry] =
     useState<ExpandedCardGeometry | null>(null);
   const cardExpanded = expandedGeometry !== null;
-  const staticDetail = revealMode === "static-detail";
 
   const presentation = resolveGameCardPresentation(game);
   const cardMode = presentation.card.mode;
@@ -532,7 +532,7 @@ export default function UniversalGameCardBase({
     if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
   }, []);
 
-  const detailPresented = staticDetail || detailVisible || directDetailVisible;
+  const detailPresented = detailVisible || directDetailVisible;
   const videoActive = Boolean(
     preview &&
     cardMode !== "image" &&
