@@ -14,6 +14,7 @@ const [
   policy,
   editorialVideo,
   videoEditor,
+  trimEditor,
   uploadRoute,
   importRoute,
   multimediaPage,
@@ -25,6 +26,7 @@ const [
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/editorial-video.ts"),
   source("src/components/admin/GameVideoLibraryEditor.tsx"),
+  source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
@@ -66,14 +68,40 @@ assert(
 assert(
   has(
     videoEditor,
-    "PREVIEW_FPS_OPTIONS",
     "DEFAULT_PREVIEW_FPS",
+    'const [fps, setFps] = useState<PreviewFps>(DEFAULT_PREVIEW_FPS)',
     '"X-Deuna-Preview-Fps": String(fps)',
     'fps: String(fps)',
-    "Default 50 FPS",
-    "máximo 60"
-  ),
-  "El editor debe exponer FPS reales y enviarlos tanto a upload local como a import remoto."
+    "fps={fps}",
+    "onFpsChange={setFps}",
+    "${fps} FPS solicitados",
+    "${fps} FPS`"
+  ) &&
+    !videoEditor.includes("Fotogramas por segundo · máximo 60") &&
+    !videoEditor.includes("setFps(Number(event.target.value) as PreviewFps)"),
+  "GameVideoLibraryEditor debe tener una sola fuente de verdad para FPS y usarla en trim, botón y ambos payloads."
+);
+
+const millisecondSteps = trimEditor.match(/step="0\.001"/g)?.length ?? 0;
+assert(
+  has(
+    trimEditor,
+    "PREVIEW_FPS_OPTIONS",
+    "DEFAULT_PREVIEW_FPS",
+    "fps: PreviewFps",
+    "onFpsChange: (fps: PreviewFps) => void",
+    'name="preview-fps"',
+    "checked={fps === option}",
+    "onChange={() => onFpsChange(option)}",
+    "Resolución del master y FPS son ajustes independientes.",
+    "Salida seleccionada:",
+    "{quality} · {fps} FPS"
+  ) &&
+    millisecondSteps === 2 &&
+    !trimEditor.includes("hasta {option.targetFps} FPS") &&
+    !trimEditor.includes('step="0.1"\n            value={startSeconds}') &&
+    !trimEditor.includes('step="0.1"\n            value={endSeconds}'),
+  "VideoTrimEditor debe controlar FPS junto a resolución, no insinuarlos desde la calidad, y aceptar la precisión temporal de 1 ms que genera el propio editor."
 );
 
 assert(
@@ -158,5 +186,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legacy eliminado)."
+  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legacy eliminado)."
 );
