@@ -16,6 +16,7 @@ const [
   contract,
   validation,
   contentEditor,
+  contentStyles,
   rowEditor,
   service,
   homePage,
@@ -32,6 +33,7 @@ const [
   source("src/lib/home/card-row-reveal.ts"),
   source("src/lib/admin/content-validation-core.ts"),
   source("src/components/admin/HomeContentEditor.tsx"),
+  source("src/components/admin/HomeContentEditor.module.css"),
   source("src/components/admin/HomeRowRevealEditor.tsx"),
   source("src/lib/admin/home-content-service.ts"),
   source("src/app/page.tsx"),
@@ -81,6 +83,39 @@ assert(
     "presentationConfig"
   ),
   "Resto de Inicio debe ensamblar el reveal dentro de presentationJson sin crear un segundo guardado editorial."
+);
+
+assert(
+  has(
+    contentEditor,
+    "const body = new URLSearchParams()",
+    '"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"',
+    'credentials: "same-origin"'
+  ) && !contentEditor.includes("const body = new FormData()"),
+  "El coordinador debe usar el transporte urlencoded aceptado por readTrustedAdminForm; multipart volvería a provocar un 403 sin reforzar seguridad."
+);
+
+const structureIndex = contentEditor.indexOf("<HomePresentationEditor");
+const curationIndex = contentEditor.indexOf("<HomeCurationEditor");
+const cardsIndex = contentEditor.indexOf("<HomeRowRevealEditor");
+assert(
+  structureIndex >= 0 &&
+    curationIndex > structureIndex &&
+    cardsIndex > curationIndex &&
+    has(
+      contentEditor,
+      'id="home-content-structure"',
+      'id="home-content-curation"',
+      'id="home-content-cards"',
+      "Estructura y textos",
+      "Curaduría de juegos",
+      "Visualización de Cards",
+      "MutationObserver",
+      "Guardar cambios"
+    ) &&
+    contentStyles.includes("position: sticky") &&
+    contentStyles.includes('.root form button[type="submit"]'),
+  "Resto de Inicio debe presentarse como un flujo único: estructura/textos → curaduría → Cards, con estado dirty coordinado y una sola acción visible de guardado."
 );
 
 assert(
@@ -181,6 +216,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, atomic save, public renderer, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, coherent Admin flow, public renderer, visible-only video and no hover geometry)."
   );
 }
