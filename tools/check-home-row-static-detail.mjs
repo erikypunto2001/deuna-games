@@ -30,6 +30,8 @@ const [
   hoverPreview,
   hoverPreviewCss,
   recoveryBrowserSmoke,
+  workflowLayoutSmoke,
+  visualRuntimeSmoke,
 ] = await Promise.all([
   source("src/lib/home/card-row-reveal.ts"),
   source("src/lib/admin/content-validation-core.ts"),
@@ -48,6 +50,8 @@ const [
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/HoverPreviewMedia.module.css"),
   source("tools/home-live-recovery-browser-smoke.mjs"),
+  source("tools/home-content-workflow-layout-browser-smoke.mjs"),
+  source("tools/card-video-visual-runtime-smoke.sh"),
 ]);
 
 assert(
@@ -133,6 +137,25 @@ assert(
     !contentStyles.includes("overflow-x: auto") &&
     !contentStyles.includes("min-width: max-content"),
   "La navegación del flujo debe mantener sus tres pasos dentro del ancho disponible en tablet/mobile, sin carrusel horizontal ni truncamiento por ellipsis."
+);
+
+assert(
+  has(
+    workflowLayoutSmoke,
+    'name: "tablet", width: 1024, height: 900',
+    'name: "mobile", width: 390, height: 844',
+    "linksInside",
+    "linksOverlap",
+    "labelsClipped",
+    "navOverflow",
+    "pageOverflow",
+    'display === "grid"',
+    "sin scroll horizontal ni truncamiento"
+  ) &&
+    visualRuntimeSmoke.includes(
+      "node ./tools/home-content-workflow-layout-browser-smoke.mjs"
+    ),
+  "El visual smoke debe medir el workflow real en tablet/mobile y fallar ante recorte, solapamiento u overflow horizontal."
 );
 
 assert(
@@ -250,6 +273,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save regression, public renderer, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save/layout regressions, public renderer, visible-only video and no hover geometry)."
   );
 }
