@@ -3,6 +3,7 @@
 import {
   Check,
   Search,
+  X,
 } from "lucide-react";
 import {
   useMemo,
@@ -42,6 +43,12 @@ export default function GameTaxonomyMultiSelect({
     () => new Set(selected.map(normalized)),
     [selected]
   );
+  const termByKey = useMemo(
+    () => new Map(
+      terms.map((term) => [normalized(term.label), term] as const)
+    ),
+    [terms]
+  );
   const visibleTerms = useMemo(() => {
     const needle = normalized(query);
 
@@ -57,14 +64,19 @@ export default function GameTaxonomyMultiSelect({
     });
   }, [query, selectedKeys, terms]);
 
+  function remove(value: string) {
+    const key = normalized(value);
+    setSelected((current) =>
+      current.filter((candidate) => normalized(candidate) !== key)
+    );
+  }
+
   function toggle(term: GameTaxonomyTerm) {
     const key = normalized(term.label);
     const exists = selectedKeys.has(key);
 
     if (exists) {
-      setSelected((current) =>
-        current.filter((value) => normalized(value) !== key)
-      );
+      remove(term.label);
       return;
     }
 
@@ -88,9 +100,66 @@ export default function GameTaxonomyMultiSelect({
             Selecciona valores administrados en Catálogos. Los términos inactivos ya utilizados pueden conservarse o retirarse, pero no volver a añadirse.
           </p>
         </div>
-        <span>
+        <span aria-live="polite">
           {selected.length}/{maximum}
         </span>
+      </div>
+
+      <div className={styles.selectedPanel}>
+        <div className={styles.selectedPanelHeading}>
+          <strong>Seleccionadas</strong>
+          <span>
+            {selected.length === 0
+              ? "Ninguna"
+              : `${selected.length} de ${maximum}`}
+          </span>
+        </div>
+
+        {selected.length > 0 ? (
+          <div
+            className={styles.selectedList}
+            aria-label={`${label} seleccionadas`}
+          >
+            {selected.map((value) => {
+              const term = termByKey.get(normalized(value));
+              const missing = !term;
+              const inactive = term?.active === false;
+
+              return (
+                <button
+                  key={normalized(value)}
+                  type="button"
+                  className={`${styles.selectedChip} ${
+                    missing
+                      ? styles.selectedChipMissing
+                      : inactive
+                        ? styles.selectedChipInactive
+                        : ""
+                  }`}
+                  onClick={() => remove(value)}
+                  aria-label={`Quitar ${value} de ${label}`}
+                  title={
+                    missing
+                      ? "Este valor sigue en el borrador, pero ya no existe en Catálogos. Pulsa para retirarlo."
+                      : inactive
+                        ? "Término inactivo conservado por compatibilidad. Pulsa para retirarlo."
+                        : `Quitar ${value}`
+                  }
+                >
+                  <Check size={14} aria-hidden="true" />
+                  <span>{value}</span>
+                  {missing && <small>No está en Catálogos</small>}
+                  {!missing && inactive && <small>Inactiva</small>}
+                  <X size={14} aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className={styles.selectedEmpty}>
+            Todavía no hay valores seleccionados.
+          </p>
+        )}
       </div>
 
       <label className={styles.search}>
