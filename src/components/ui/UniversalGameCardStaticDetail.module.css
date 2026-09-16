@@ -1,0 +1,45 @@
+.staticDetailCard.staticDetailCard {
+  transform: none !important;
+}
+
+.staticDetailCard.staticDetailCard::before {
+  display: none;
+}
+
+.staticDetailCard [data-card-detail-media="true"] {
+  transform: none !important;
+}
+
+.staticDetailCard [data-card-detail-media="true"] img {
+  transform: none !important;
+  filter: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .staticDetailCard.staticDetailCard:hover {
+    border-color: var(--card-border);
+    box-shadow: none;
+  }
+
+  .staticDetailCard.staticDetailCard:hover::after {
+    left: -58%;
+    opacity: 0;
+  }
+
+  .staticDetailCard.staticDetailCard:hover [data-card-detail-media="true"] img {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .staticDetailCard.staticDetailCard:hover [data-card-title-row="true"] > svg {
+    color: #717d8b;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staticDetailCard.staticDetailCard,
+  .staticDetailCard [data-card-detail-media="true"] img {
+    transition: none;
+  }
+}

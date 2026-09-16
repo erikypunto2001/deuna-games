@@ -13,6 +13,9 @@ import CardCarousel from "@/components/ui/CardCarousel";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
+import type {
+  HomeCardRevealMode,
+} from "@/lib/home/card-row-reveal";
 import type { Game } from "@/types/game";
 
 import styles from "./GamesForYourPC.module.css";
@@ -46,12 +49,14 @@ export default function GamesForYourPC({
   ratingsAvailable,
   personalized = false,
   reasons = {},
+  revealMode = "interaction",
 }: {
   games: Game[];
   copy: HomeCopy["lowSpec"];
   ratingsAvailable: boolean;
   personalized?: boolean;
   reasons?: Record<string, string[]>;
+  revealMode?: HomeCardRevealMode;
 }) {
   const explanation = games
     .flatMap((game) => reasons[game.slug] ?? [])
@@ -167,6 +172,7 @@ export default function GamesForYourPC({
             key={game.slug}
             game={game}
             variant="lowSpec"
+            revealMode={revealMode}
           />
         ))}
       </CardCarousel>

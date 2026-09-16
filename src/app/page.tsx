@@ -28,6 +28,9 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  resolveHomeCardRevealMode,
+} from "@/lib/home/card-row-reveal";
+import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
 import {
@@ -128,6 +131,7 @@ export default async function Home() {
             key={section.id}
             games={collections.popularGames}
             copy={copy.popular}
+            revealMode={resolveHomeCardRevealMode(section)}
           />
         ) : null;
 
@@ -154,6 +158,7 @@ export default async function Home() {
             key={section.id}
             games={collections.recentGames}
             copy={copy.recent}
+            revealMode={resolveHomeCardRevealMode(section)}
           />
         ) : null;
 
@@ -175,6 +180,7 @@ export default async function Home() {
             ratingsAvailable={ratingsAvailable}
             personalized={collections.pcPersonalized}
             reasons={collections.pcReasons}
+            revealMode={resolveHomeCardRevealMode(section)}
           />
         ) : null;
 
@@ -186,6 +192,7 @@ export default async function Home() {
             copy={copy.recommended}
             personalized={collections.recommendedPersonalized}
             reasons={collections.recommendationReasons}
+            revealMode={resolveHomeCardRevealMode(section)}
           />
         ) : null;
 

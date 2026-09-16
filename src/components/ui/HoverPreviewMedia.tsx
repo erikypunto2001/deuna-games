@@ -26,16 +26,19 @@ type HoverPreviewMediaProps = {
   previewClip?: string;
   previewViewport?: GameVideoViewport;
   active: boolean;
+  unscaledVideo?: boolean;
 };
 
 type PreviewVideoProps = {
   src: string;
   viewport: GameVideoViewport;
+  unscaled: boolean;
 };
 
 function PreviewVideo({
   src,
   viewport,
+  unscaled,
 }: PreviewVideoProps) {
   const [playbackAllowed, setPlaybackAllowed] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -74,7 +77,7 @@ function PreviewVideo({
 
   return (
     <FramedVideo
-      className={`${styles.video} ${playing ? styles.videoReady : ""}`}
+      className={`${styles.video} ${unscaled ? styles.videoUnscaled : ""} ${playing ? styles.videoReady : ""}`}
       src={src}
       viewport={viewport}
       muted
@@ -100,6 +103,7 @@ export default function HoverPreviewMedia({
   previewClip,
   previewViewport = DEFAULT_PREVIEW_VIEWPORT,
   active,
+  unscaledVideo = false,
 }: HoverPreviewMediaProps) {
   return (
     <>
@@ -116,6 +120,7 @@ export default function HoverPreviewMedia({
           key={`${previewClip}:${previewViewport.x}:${previewViewport.y}:${previewViewport.zoom}:${previewViewport.aspect}`}
           src={previewClip}
           viewport={previewViewport}
+          unscaled={unscaledVideo}
         />
       )}
     </>

@@ -6,6 +6,9 @@ import CardCarousel from "@/components/ui/CardCarousel";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
+import type {
+  HomeCardRevealMode,
+} from "@/lib/home/card-row-reveal";
 import type { Game } from "@/types/game";
 
 import styles from "./PopularGames.module.css";
@@ -13,9 +16,11 @@ import styles from "./PopularGames.module.css";
 export default function PopularGames({
   games,
   copy,
+  revealMode = "interaction",
 }: {
   games: Game[];
   copy: HomeCopy["popular"];
+  revealMode?: HomeCardRevealMode;
 }) {
   return (
     <section className={styles.section}>
@@ -39,6 +44,7 @@ export default function PopularGames({
             key={game.slug}
             game={game}
             variant="standard"
+            revealMode={revealMode}
           />
         ))}
       </CardCarousel>

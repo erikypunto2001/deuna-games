@@ -24,11 +24,15 @@ import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
 import {
   formatGameReleaseDate,
 } from "@/lib/games/game-date";
+import type {
+  HomeCardRevealMode,
+} from "@/lib/home/card-row-reveal";
 import { resolveGameCardPresentation } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
 import presentationStyles from "./UniversalGameCardPresentation.module.css";
+import staticDetailStyles from "./UniversalGameCardStaticDetail.module.css";
 import tiltStyles from "./UniversalGameCardTilt.module.css";
 
 export type UniversalGameCardVariant =
@@ -54,6 +58,7 @@ export type UniversalGameCardPrimaryAction =
 export type UniversalGameCardProps = {
   game: Game;
   variant?: UniversalGameCardVariant;
+  revealMode?: HomeCardRevealMode;
   overlayAction?: ReactNode;
   supplementalContent?: ReactNode;
   primaryAction?: UniversalGameCardPrimaryAction;
@@ -95,6 +100,7 @@ type UniversalCardStyle = CSSProperties & {
 const PREVIEW_DELAY_MS = 1000;
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 const DIRECT_DETAIL_MEDIA = "(hover: none), (pointer: coarse)";
+const STATIC_DETAIL_VIDEO_THRESHOLD = 0.55;
 const CARD_EXPANSION_SCALE = 1.18;
 const CARD_EXPANSION_MAX_WIDTH = 360;
 const CARD_VIEWPORT_MARGIN = 24;
@@ -215,10 +221,12 @@ function LowSpecDetails({ game }: { game: Game }) {
 export default function UniversalGameCardBase({
   game,
   variant = "standard",
+  revealMode = "interaction",
   overlayAction,
   supplementalContent,
   primaryAction,
 }: UniversalGameCardProps) {
+  const staticDetail = revealMode === "static-detail";
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
   const anchorFrame = useRef<number | null>(null);
@@ -227,10 +235,11 @@ export default function UniversalGameCardBase({
   const pointerEffectsEnabled = useRef(false);
   const slotRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailVisible, setDetailVisible] = useState(staticDetail);
   const [directDetailVisible, setDirectDetailVisible] = useState(false);
   const [previewActive, setPreviewActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [staticDetailInViewport, setStaticDetailInViewport] = useState(false);
   const [expandedGeometry, setExpandedGeometry] =
     useState<ExpandedCardGeometry | null>(null);
   const cardExpanded = expandedGeometry !== null;
@@ -261,6 +270,28 @@ export default function UniversalGameCardBase({
       directDetailMedia.removeEventListener("change", sync);
     };
   }, []);
+
+  useEffect(() => {
+    if (!staticDetail || typeof IntersectionObserver === "undefined") return;
+
+    const slot = slotRef.current;
+    if (!slot) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setStaticDetailInViewport(Boolean(
+          entry?.isIntersecting &&
+          entry.intersectionRatio >= STATIC_DETAIL_VIDEO_THRESHOLD
+        ));
+      },
+      {
+        threshold: [0, STATIC_DETAIL_VIDEO_THRESHOLD, 1],
+      }
+    );
+
+    observer.observe(slot);
+    return () => observer.disconnect();
+  }, [staticDetail]);
 
   useEffect(() => {
     if (!expandedGeometry) return;
@@ -424,6 +455,8 @@ export default function UniversalGameCardBase({
   }
 
   function startCard(event: ReactPointerEvent<HTMLElement>) {
+    if (staticDetail) return;
+
     const pointerSupportsReveal =
       event.pointerType === "mouse" || event.pointerType === "pen";
     if (pointerSupportsReveal) {
@@ -436,6 +469,8 @@ export default function UniversalGameCardBase({
   }
 
   function scheduleTilt(event: ReactPointerEvent<HTMLElement>) {
+    if (staticDetail) return;
+
     const pointerSupportsReveal =
       event.pointerType === "mouse" || event.pointerType === "pen";
     if (pointerSupportsReveal && !detailVisible) {
@@ -461,6 +496,8 @@ export default function UniversalGameCardBase({
   }
 
   function stopCard(event: ReactPointerEvent<HTMLElement>) {
+    if (staticDetail) return;
+
     cancelTiltFrame();
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
@@ -472,6 +509,8 @@ export default function UniversalGameCardBase({
   }
 
   function focusCard() {
+    if (staticDetail) return;
+
     setDetailVisible(true);
     if (!window.matchMedia(DIRECT_DETAIL_MEDIA).matches) {
       expandCard();
@@ -481,6 +520,7 @@ export default function UniversalGameCardBase({
   }
 
   function blurCard(event: ReactFocusEvent<HTMLElement>) {
+    if (staticDetail) return;
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
     setDetailVisible(false);
     collapseCard();
@@ -494,7 +534,12 @@ export default function UniversalGameCardBase({
 
   const detailPresented = detailVisible || directDetailVisible;
   const videoActive = Boolean(
-    detailVisible && previewActive && !reducedMotion && preview && cardMode !== "image"
+    preview &&
+    cardMode !== "image" &&
+    !reducedMotion &&
+    (staticDetail
+      ? staticDetailInViewport
+      : detailVisible && previewActive)
   );
   const primaryClassName = `${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`;
   const cardContent = (
@@ -526,6 +571,7 @@ export default function UniversalGameCardBase({
             previewClip={preview?.src}
             previewViewport={preview?.viewport}
             active={videoActive}
+            unscaledVideo={staticDetail}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
           />
@@ -625,8 +671,9 @@ export default function UniversalGameCardBase({
     >
       <article
         ref={articleRef}
-        className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass}`}
+        className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass} ${staticDetail ? staticDetailStyles.staticDetailCard : ""}`}
         data-card-variant={variant}
+        data-card-reveal-mode={revealMode}
         data-detail-visible={detailPresented ? "true" : "false"}
         data-card-expanded={expandedGeometry ? "true" : "false"}
         data-card-expansion-scale={expandedGeometry?.scale.toFixed(3) ?? "1.000"}

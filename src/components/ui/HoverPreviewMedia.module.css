@@ -12,6 +12,10 @@
     scale(1.075);
 }
 
+.videoUnscaled {
+  transform: none;
+}
+
 .videoReady {
   opacity: 1;
 }

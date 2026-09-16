@@ -10,14 +10,63 @@ import {
 import { useRouter } from "next/navigation";
 
 import type { ResolvedHomeConfig } from "@/data/home-config";
+import {
+  homeGameRowSectionIds,
+  isHomeCardRevealMode,
+} from "@/lib/home/card-row-reveal";
 import type { Game } from "@/types/game";
 
 import HomeCurationEditor from "./HomeCurationEditor";
 import HomePresentationEditor from "./HomePresentationEditor";
+import HomeRowRevealEditor from "./HomeRowRevealEditor";
 import styles from "./HomeContentEditor.module.css";
 
 const combinedAction = "/api/admin/content/home/content";
 const dirtySelector = 'form[data-home-editor-dirty="true"]';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeRowRevealIntoPresentation(
+  presentationJson: string,
+  rowRevealJson: string
+) {
+  const presentation: unknown = JSON.parse(presentationJson);
+  const rowReveal: unknown = JSON.parse(rowRevealJson);
+
+  if (
+    !isRecord(presentation) ||
+    !Array.isArray(presentation.sections) ||
+    !isRecord(rowReveal)
+  ) {
+    throw new Error("La presentación coordinada no tiene la forma esperada.");
+  }
+
+  for (const id of homeGameRowSectionIds) {
+    if (!isHomeCardRevealMode(rowReveal[id])) {
+      throw new Error(`Modo de visualización inválido para ${id}.`);
+    }
+  }
+
+  return JSON.stringify({
+    ...presentation,
+    sections: presentation.sections.map((section) => {
+      if (
+        !isRecord(section) ||
+        typeof section.id !== "string" ||
+        !homeGameRowSectionIds.some((id) => id === section.id)
+      ) {
+        return section;
+      }
+
+      return {
+        ...section,
+        cardRevealMode: rowReveal[section.id],
+      };
+    }),
+  });
+}
 
 export default function HomeContentEditor({
   config,
@@ -37,6 +86,13 @@ export default function HomeContentEditor({
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const presentationConfig: ResolvedHomeConfig = {
+    ...config,
+    sections: config.sections.map((section) => ({
+      id: section.id,
+      visible: section.visible,
+    })),
+  };
 
   const saveAll = useCallback(async (root: HTMLElement) => {
     if (savingRef.current) return;
@@ -47,8 +103,26 @@ export default function HomeContentEditor({
     const presentation = root.querySelector<HTMLInputElement>(
       'input[name="presentationJson"]'
     );
+    const rowReveal = root.querySelector<HTMLInputElement>(
+      'input[name="rowRevealJson"]'
+    );
 
-    if (!curation || !presentation) {
+    if (!curation || !presentation || !rowReveal) {
+      setError(true);
+      return;
+    }
+
+    let mergedPresentation: string;
+    try {
+      mergedPresentation = mergeRowRevealIntoPresentation(
+        presentation.value,
+        rowReveal.value
+      );
+    } catch (mergeError) {
+      console.error(
+        "No se pudo ensamblar la visualización de filas con Presentación.",
+        mergeError
+      );
       setError(true);
       return;
     }
@@ -60,7 +134,7 @@ export default function HomeContentEditor({
     const body = new FormData();
     body.set("expectedRevision", String(revision));
     body.set("curationJson", curation.value);
-    body.set("presentationJson", presentation.value);
+    body.set("presentationJson", mergedPresentation);
 
     try {
       const response = await fetch(combinedAction, {
@@ -112,7 +186,8 @@ export default function HomeContentEditor({
       if (!(form instanceof HTMLFormElement)) return;
       if (
         !form.querySelector('input[name="curationJson"]') &&
-        !form.querySelector('input[name="presentationJson"]')
+        !form.querySelector('input[name="presentationJson"]') &&
+        !form.querySelector('input[name="rowRevealJson"]')
       ) {
         return;
       }
@@ -203,7 +278,7 @@ export default function HomeContentEditor({
           <span>
             {error
               ? "Tus cambios siguen conservados en esta pestaña. Revisa el aviso del editor y vuelve a guardar cuando corresponda."
-              : "Curaduría, orden, visibilidad y textos se guardan juntos. Pulsa Guardar en el bloque que tenga cambios para conservar todo lo pendiente antes de crear la nueva revisión."}
+              : "Curaduría, visualización de filas, orden, visibilidad y textos se guardan juntos. Pulsa Guardar en el bloque que tenga cambios para conservar todo lo pendiente antes de crear la nueva revisión."}
           </span>
         </div>
         <b>{saving ? "GUARDANDO…" : `REVISIÓN ${revision}`}</b>
@@ -217,8 +292,12 @@ export default function HomeContentEditor({
         rankingReferenceTime={rankingReferenceTime}
         excludeHero
       />
-      <HomePresentationEditor
+      <HomeRowRevealEditor
         config={config}
+        revision={revision}
+      />
+      <HomePresentationEditor
+        config={presentationConfig}
         revision={revision}
       />
     </div>
