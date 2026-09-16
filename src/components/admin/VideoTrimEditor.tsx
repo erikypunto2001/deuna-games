@@ -48,6 +48,7 @@ type VideoTrimEditorProps = {
   fps: PreviewFps;
   qualityDisabled?: boolean;
   qualityOptions?: readonly PreviewQualityOption[];
+  fpsOptions?: readonly PreviewFps[];
   onQualityChange: (quality: PreviewQualityId) => void;
   onFpsChange: (fps: PreviewFps) => void;
   onTrimChange: (trim: PreviewTrimWindow | null) => void;
@@ -85,6 +86,7 @@ export default function VideoTrimEditor({
   fps,
   qualityDisabled = false,
   qualityOptions = PREVIEW_QUALITY_OPTIONS,
+  fpsOptions = PREVIEW_FPS_OPTIONS,
   onQualityChange,
   onFpsChange,
   onTrimChange,
@@ -519,7 +521,7 @@ export default function VideoTrimEditor({
       <fieldset className={styles.qualityPanel} disabled={qualityDisabled}>
         <legend>Salida del master</legend>
         <p>
-          Resolución y FPS son ajustes independientes. El botón de guardado usa exactamente la combinación seleccionada aquí; el servidor sólo reduce FPS si la fuente original realmente tiene menos cuadros por segundo.
+          Resolución del master y FPS son ajustes independientes. El master conserva el fotograma completo; el botón de guardado usa exactamente la combinación seleccionada aquí y el servidor sólo reduce FPS si la fuente original realmente tiene menos cuadros por segundo.
         </p>
         <div className={styles.qualityGrid}>
           {qualityOptions.map((option) => (
@@ -548,7 +550,7 @@ export default function VideoTrimEditor({
           <strong>FPS del master · máximo 60</strong>. 50 FPS sigue siendo el valor recomendado por equilibrio de peso; si elegís 60, esa selección se conserva hasta el envío.
         </p>
         <div className={styles.qualityGrid} role="radiogroup" aria-label="FPS del master">
-          {PREVIEW_FPS_OPTIONS.map((option) => (
+          {fpsOptions.map((option) => (
             <label
               key={option}
               className={`${styles.qualityOption} ${
