@@ -46,7 +46,7 @@
 
 .notice[data-kind="error"] {
   border-color: rgba(239, 107, 125, 0.42);
-  background: rgba(98, 24, 37, 0.15);
+  background: rgba(98, 24, 37,.15);
 }
 
 .notice[data-kind="error"] span {
@@ -147,7 +147,7 @@
   border: 1px solid color-mix(in srgb, var(--brand) 58%, #5d6f84);
   border-radius: 10px;
   background: var(--brand);
-  color: #fff;
+  color: var(--text-on-brand);
   font: inherit;
   font-size: 12px;
   font-weight: 800;
