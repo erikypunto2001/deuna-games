@@ -2,8 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import GamePublicationWorkspace from "@/components/admin/GamePublicationWorkspace";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import GamePublicationWorkspace from "@/components/admin/GamePublicationWorkspace";
+import GameTaxonomyPublicationNotice from "@/components/admin/GameTaxonomyPublicationNotice";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -65,6 +66,10 @@ export default async function AdminGamePublicationPage({
   const requestState = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+  const workspaceRequestState =
+    requestState === "catalogos-sin-publicar"
+      ? undefined
+      : requestState;
   const panelCreated =
     publicationIdentity?.panelCreated ?? false;
   const neverPublished = Boolean(
@@ -99,16 +104,17 @@ export default async function AdminGamePublicationPage({
         </Link>}
       />
 
+      <GameTaxonomyPublicationNotice integrity={taxonomyIntegrity} />
+
       <GamePublicationWorkspace
         game={item.payload}
         publishedGame={publishedGame}
         slug={slug}
         state={publicationState}
-        requestState={requestState}
+        requestState={workspaceRequestState}
         neverPublished={neverPublished}
         panelCreated={panelCreated}
         mediaHygiene={mediaWorkspace.hygiene}
-        taxonomyIntegrity={taxonomyIntegrity}
       />
     </>
   );
