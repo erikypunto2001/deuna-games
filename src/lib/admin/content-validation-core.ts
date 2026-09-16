@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { homeHeroPresentationInputSchema } from "../home/hero-schema.ts";
 import {
+  homeCardRevealModes,
+  isHomeGameRowSectionId,
+} from "../home/card-row-reveal.ts";
+import {
   siteBrandLogoAssetPattern,
   siteLogoColorModes,
 } from "../site/logo.ts";
@@ -457,8 +461,22 @@ const homeSectionSchema = z
   .object({
     id: z.enum(homeSectionIds),
     visible: z.boolean(),
+    cardRevealMode: z.enum(homeCardRevealModes).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((section, context) => {
+    if (
+      section.cardRevealMode !== undefined &&
+      !isHomeGameRowSectionId(section.id)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["cardRevealMode"],
+        message:
+          "La visualización de Card sólo puede configurarse en filas de juegos.",
+      });
+    }
+  });
 
 const homeSectionsSchema = z
   .array(homeSectionSchema)
