@@ -140,16 +140,17 @@ assert(
   has(
     cardBase,
     'const staticDetail = revealMode === "static-detail"',
+    "const [detailVisible, setDetailVisible] = useState(staticDetail)",
+    "const detailPresented = detailVisible || directDetailVisible",
     "STATIC_DETAIL_VIDEO_THRESHOLD = 0.55",
     "new IntersectionObserver",
     "entry.intersectionRatio >= STATIC_DETAIL_VIDEO_THRESHOLD",
     "if (staticDetail) return;",
-    "const detailPresented = staticDetail || detailVisible || directDetailVisible",
     "staticDetailInViewport",
     "unscaledVideo={staticDetail}",
     'data-card-reveal-mode={revealMode}'
   ),
-  "El renderer debe revelar detalle semánticamente, bloquear interacción expansiva y limitar video a Cards visibles."
+  "El renderer debe revelar detalle desde el estado inicial, conservar el contrato touch, bloquear interacción expansiva y limitar video a Cards visibles."
 );
 
 assert(
