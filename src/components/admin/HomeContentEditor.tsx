@@ -68,6 +68,18 @@ function mergeRowRevealIntoPresentation(
   });
 }
 
+function saveFailureMessage(status: number) {
+  if (status === 403) {
+    return "El servidor rechazó la solicitud segura de guardado. Recarga la página para renovar el contexto del Admin y vuelve a intentarlo; los cambios locales siguen conservados.";
+  }
+
+  if (status === 413) {
+    return "La revisión supera el tamaño permitido para un guardado de Inicio. Los cambios locales siguen conservados.";
+  }
+
+  return `No se pudo guardar Resto de Inicio (respuesta ${status}). Los cambios locales siguen conservados.`;
+}
+
 export default function HomeContentEditor({
   config,
   games,
@@ -85,7 +97,8 @@ export default function HomeContentEditor({
   const rootRef = useRef<HTMLDivElement>(null);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [hasDirtyChanges, setHasDirtyChanges] = useState(false);
   const presentationConfig: ResolvedHomeConfig = {
     ...config,
     sections: config.sections.map((section) => ({
@@ -108,7 +121,9 @@ export default function HomeContentEditor({
     );
 
     if (!curation || !presentation || !rowReveal) {
-      setError(true);
+      setSaveError(
+        "Falta una parte del editor coordinado. Recarga Resto de Inicio antes de volver a guardar."
+      );
       return;
     }
 
@@ -118,20 +133,21 @@ export default function HomeContentEditor({
         presentation.value,
         rowReveal.value
       );
-    } catch (mergeError) {
-      console.error(
-        "No se pudo ensamblar la visualización de filas con Presentación.",
-        mergeError
+    } catch {
+      setSaveError(
+        "No se pudo ensamblar la visualización de las filas con la presentación. Los cambios siguen conservados en esta pestaña."
       );
-      setError(true);
       return;
     }
 
     savingRef.current = true;
     setSaving(true);
-    setError(false);
+    setSaveError(null);
 
-    const body = new FormData();
+    // readTrustedAdminForm acepta deliberadamente sólo urlencoded. Mantener
+    // este transporte alineado con los formularios nativos preserva el
+    // contrato CSRF/origin del Admin y evita abrir multipart innecesariamente.
+    const body = new URLSearchParams();
     body.set("expectedRevision", String(revision));
     body.set("curationJson", curation.value);
     body.set("presentationJson", mergedPresentation);
@@ -141,12 +157,16 @@ export default function HomeContentEditor({
         method: "POST",
         body,
         credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
       });
 
       if (!response.ok) {
-        throw new Error(
-          `El guardado conjunto respondió ${response.status}.`
-        );
+        savingRef.current = false;
+        setSaving(false);
+        setSaveError(saveFailureMessage(response.status));
+        return;
       }
 
       if (response.redirected) {
@@ -157,7 +177,11 @@ export default function HomeContentEditor({
         if (!saved) {
           savingRef.current = false;
           setSaving(false);
-          setError(true);
+          setSaveError(
+            outcome === "conflicto"
+              ? "La revisión cambió mientras editabas. Tus cambios locales siguen conservados; revisa el aviso y resuelve el conflicto antes de volver a guardar."
+              : "El servidor no confirmó el guardado de la revisión. Tus cambios locales siguen conservados."
+          );
         }
 
         router.replace(`${target.pathname}${target.search}`);
@@ -169,16 +193,20 @@ export default function HomeContentEditor({
       }
 
       router.refresh();
-    } catch (saveError) {
-      console.error(
-        "No se pudo guardar Resto de Inicio de forma coordinada.",
-        saveError
-      );
+    } catch {
       savingRef.current = false;
       setSaving(false);
-      setError(true);
+      setSaveError(
+        "No se pudo conectar con el guardado de Resto de Inicio. Tus cambios siguen conservados en esta pestaña."
+      );
     }
   }, [revision, router]);
+
+  const requestSave = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    void saveAll(root);
+  }, [saveAll]);
 
   const interceptChildSubmit = useCallback(
     (event: FormEvent<HTMLDivElement>) => {
@@ -198,6 +226,25 @@ export default function HomeContentEditor({
     },
     [saveAll]
   );
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const syncDirtyState = () => {
+      setHasDirtyChanges(Boolean(root.querySelector(dirtySelector)));
+    };
+
+    syncDirtyState();
+    const observer = new MutationObserver(syncDirtyState);
+    observer.observe(root, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-home-editor-dirty"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const hasUnsavedChanges = () =>
@@ -266,40 +313,123 @@ export default function HomeContentEditor({
     >
       <div
         className={styles.notice}
-        data-kind={error ? "error" : "info"}
-        role={error ? "alert" : "status"}
+        data-kind={saveError ? "error" : "info"}
+        role={saveError ? "alert" : "status"}
       >
         <div>
           <strong>
-            {error
+            {saveError
               ? "El guardado conjunto no pudo completarse"
-              : "Resto de Inicio funciona como una sola revisión"}
+              : "Resto de Inicio es una sola revisión"}
           </strong>
           <span>
-            {error
-              ? "Tus cambios siguen conservados en esta pestaña. Revisa el aviso del editor y vuelve a guardar cuando corresponda."
-              : "Curaduría, visualización de filas, orden, visibilidad y textos se guardan juntos. Pulsa Guardar en el bloque que tenga cambios para conservar todo lo pendiente antes de crear la nueva revisión."}
+            {saveError
+              ? saveError
+              : "Estructura, textos, curaduría y visualización de Cards se guardan juntos. Guardar nunca publica: la web pública cambia únicamente desde Publicación."}
           </span>
         </div>
         <b>{saving ? "GUARDANDO…" : `REVISIÓN ${revision}`}</b>
       </div>
 
-      <HomeCurationEditor
-        config={config}
-        games={games}
-        publishedSlugs={publishedSlugs}
-        revision={revision}
-        rankingReferenceTime={rankingReferenceTime}
-        excludeHero
-      />
-      <HomeRowRevealEditor
-        config={config}
-        revision={revision}
-      />
-      <HomePresentationEditor
-        config={presentationConfig}
-        revision={revision}
-      />
+      <div className={styles.saveBar}>
+        <nav
+          className={styles.workflow}
+          aria-label="Flujo de edición de Resto de Inicio"
+        >
+          <a href="#home-content-structure">
+            <span>1</span>
+            <strong>Estructura y textos</strong>
+          </a>
+          <a href="#home-content-curation">
+            <span>2</span>
+            <strong>Curaduría</strong>
+          </a>
+          <a href="#home-content-cards">
+            <span>3</span>
+            <strong>Cards</strong>
+          </a>
+        </nav>
+        <div className={styles.saveAction} aria-live="polite">
+          <span>
+            {saving
+              ? "Guardando la revisión completa…"
+              : hasDirtyChanges
+                ? "Hay cambios pendientes en Resto de Inicio"
+                : "Todo coincide con la revisión guardada"}
+          </span>
+          <button
+            type="button"
+            onClick={requestSave}
+            disabled={saving || !hasDirtyChanges}
+          >
+            {saving ? "Guardando…" : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+
+      <section
+        id="home-content-structure"
+        className={styles.step}
+        aria-labelledby="home-content-structure-title"
+      >
+        <header className={styles.stepHeader}>
+          <span>1</span>
+          <div>
+            <h2 id="home-content-structure-title">Estructura y textos</h2>
+            <p>
+              Primero define el orden y la visibilidad de Inicio, después ajusta los textos de cada bloque.
+            </p>
+          </div>
+        </header>
+        <HomePresentationEditor
+          config={presentationConfig}
+          revision={revision}
+        />
+      </section>
+
+      <section
+        id="home-content-curation"
+        className={styles.step}
+        aria-labelledby="home-content-curation-title"
+      >
+        <header className={styles.stepHeader}>
+          <span>2</span>
+          <div>
+            <h2 id="home-content-curation-title">Curaduría de juegos</h2>
+            <p>
+              Decide qué juegos alimentan Populares, Según tu equipo y Recomendados, y cómo interviene el ranking automático.
+            </p>
+          </div>
+        </header>
+        <HomeCurationEditor
+          config={config}
+          games={games}
+          publishedSlugs={publishedSlugs}
+          revision={revision}
+          rankingReferenceTime={rankingReferenceTime}
+          excludeHero
+        />
+      </section>
+
+      <section
+        id="home-content-cards"
+        className={styles.step}
+        aria-labelledby="home-content-cards-title"
+      >
+        <header className={styles.stepHeader}>
+          <span>3</span>
+          <div>
+            <h2 id="home-content-cards-title">Visualización de Cards</h2>
+            <p>
+              Por último define si cada fila muestra la Portada en reposo o el detalle completo de sus Cards.
+            </p>
+          </div>
+        </header>
+        <HomeRowRevealEditor
+          config={config}
+          revision={revision}
+        />
+      </section>
     </div>
   );
 }
