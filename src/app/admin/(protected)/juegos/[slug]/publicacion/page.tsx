@@ -12,6 +12,7 @@ import {
 } from "@/lib/admin/game-media-workspace";
 import {
   getPublishedGameSnapshot,
+  inspectPublishedGameTaxonomyIntegrity,
 } from "@/lib/admin/game-publication-review";
 import {
   getGamePublicationIdentity,
@@ -51,10 +52,12 @@ export default async function AdminGamePublicationPage({
     publicationState,
     publicationIdentity,
     mediaWorkspace,
+    taxonomyIntegrity,
   ] = await Promise.all([
     getGamePublicationState(slug),
     getGamePublicationIdentity(slug),
     getGameMediaWorkspaceSnapshot(slug),
+    inspectPublishedGameTaxonomyIntegrity(item.payload),
   ]);
 
   if (!publicationState || !mediaWorkspace) notFound();
@@ -105,6 +108,7 @@ export default async function AdminGamePublicationPage({
         neverPublished={neverPublished}
         panelCreated={panelCreated}
         mediaHygiene={mediaWorkspace.hygiene}
+        taxonomyIntegrity={taxonomyIntegrity}
       />
     </>
   );
