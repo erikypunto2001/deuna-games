@@ -7,6 +7,9 @@ import {
   type HomeHeroPresentation,
   type HomeSectionConfig,
 } from "@/data/home-config";
+import {
+  mergeHomeCardRevealModes,
+} from "@/lib/home/card-row-reveal";
 
 import {
   getEditorialItem,
@@ -121,7 +124,10 @@ export async function saveHomePresentationDraft(
       recommendedSlugs: current.recommendedSlugs,
       curation: current.curation,
       heroPresentation: current.heroPresentation,
-      sections: input.sections,
+      sections: mergeHomeCardRevealModes(
+        current.sections,
+        input.sections
+      ),
       copy: mergeHomePresentationCopy(
         current.copy,
         input.copy
@@ -132,8 +138,9 @@ export async function saveHomePresentationDraft(
 
 /**
  * Atomic save for everything owned by "Resto de Inicio". Curated collections,
- * section order/visibility and copy become one editorial revision, so one local
- * editor cannot invalidate or silently discard another editor's pending state.
+ * section order/visibility, Card row reveal and copy become one editorial
+ * revision, so one local editor cannot invalidate or silently discard another
+ * editor's pending state.
  */
 export async function saveHomeContentDraft(
   expectedRevision: number,
@@ -161,7 +168,10 @@ export async function saveHomeContentDraft(
         recommended: { mode: curation.recommended.mode },
       },
       heroPresentation: current.heroPresentation,
-      sections: presentation.sections,
+      sections: mergeHomeCardRevealModes(
+        current.sections,
+        presentation.sections
+      ),
       copy: mergeHomePresentationCopy(
         current.copy,
         presentation.copy
