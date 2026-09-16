@@ -150,7 +150,12 @@ async function clearRecoveryStorage(cdp) {
     const keys = [];
     for (let i = 0; i < sessionStorage.length; i += 1) {
       const key = sessionStorage.key(i);
-      if (key && (key.startsWith('deuna:hero-draft:') || key === 'deuna:home-curation-draft:latest' || key === 'deuna:home-presentation-draft:latest')) keys.push(key);
+      if (key && (
+        key.startsWith('deuna:hero-draft:') ||
+        key === 'deuna:home-curation-draft:latest' ||
+        key === 'deuna:home-presentation-draft:latest' ||
+        key === 'deuna:home-row-reveal-draft:latest'
+      )) keys.push(key);
     }
     keys.forEach((key) => sessionStorage.removeItem(key));
   })()`);
@@ -282,6 +287,81 @@ async function testCuration(cdp) {
   })`);
 }
 
+async function currentHomeRevision(cdp) {
+  const revision = await cdp.evaluate(`(() => {
+    const input = document.querySelector('input[name="expectedRevision"]');
+    return input instanceof HTMLInputElement ? Number(input.value) : NaN;
+  })()`);
+  requireCheck(Number.isInteger(revision) && revision >= 0, "No se pudo leer la revisión actual de Inicio.");
+  return revision;
+}
+
+async function clickCoordinatedSave(cdp, nextRevision, label) {
+  requireCheck(await cdp.evaluate(`(() => {
+    const button = Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.trim() === 'Guardar cambios');
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+    button.click();
+    return true;
+  })()`), `No se pudo activar Guardar cambios (${label}).`);
+
+  await waitUntil(
+    cdp,
+    `(() => {
+      const revision = document.querySelector('input[name="expectedRevision"]');
+      const dirty = document.querySelector('form[data-home-editor-dirty="true"]');
+      return revision instanceof HTMLInputElement &&
+        Number(revision.value) === ${nextRevision} &&
+        !dirty &&
+        new URLSearchParams(location.search).get('estado') === 'guardado';
+    })()`,
+    `guardado coordinado ${label}`,
+    20_000
+  );
+}
+
+async function testCoordinatedSave(cdp) {
+  await openClean(
+    cdp,
+    `${baseUrl}/admin/portada?seccion=contenido`,
+    `document.querySelector('input[name="presentationJson"]') && Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.trim() === 'Guardar cambios')`,
+    "guardado coordinado"
+  );
+
+  const originalTitle = await cdp.evaluate(`(() => {
+    const label = Array.from(document.querySelectorAll('label')).find((node) => node.textContent?.includes('Título SEO/accesible'));
+    const input = label?.querySelector('input');
+    return input instanceof HTMLInputElement ? input.value : null;
+  })()`);
+  requireCheck(typeof originalTitle === "string", "No se pudo leer el título original antes del guardado coordinado.");
+
+  const initialRevision = await currentHomeRevision(cdp);
+  const probeTitle = `${originalTitle} · smoke guardado coordinado`;
+  await applyPresentationTitle(cdp, probeTitle, "guardado coordinado");
+  await waitUntil(
+    cdp,
+    `Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.trim() === 'Guardar cambios' && !node.disabled)`,
+    "acción coordinada habilitada"
+  );
+  await clickCoordinatedSave(cdp, initialRevision + 1, "de prueba");
+
+  await applyPresentationTitle(cdp, originalTitle, "restauración coordinada");
+  await clickCoordinatedSave(cdp, initialRevision + 2, "de restauración");
+
+  const finalTitle = await cdp.evaluate(`(() => {
+    const label = Array.from(document.querySelectorAll('label')).find((node) => node.textContent?.includes('Título SEO/accesible'));
+    const input = label?.querySelector('input');
+    return input instanceof HTMLInputElement ? input.value : null;
+  })()`);
+
+  return {
+    recoveryVisible: Boolean(await cdp.evaluate(`document.body.innerText.includes('Cambios locales recuperables')`)),
+    inert: Boolean(await cdp.evaluate(`document.querySelector('form[data-home-editor-dirty="true"]')`)),
+    initialRevision,
+    finalRevision: await currentHomeRevision(cdp),
+    restored: finalTitle === originalTitle,
+  };
+}
+
 async function main() {
   await mkdir(outputDir, { recursive: true });
   const profileDir = await mkdtemp(path.join(os.tmpdir(), "deuna-home-live-recovery-"));
@@ -301,11 +381,13 @@ async function main() {
     report.checks.hero = await testHero(cdp);
     report.checks.presentation = await testPresentation(cdp);
     report.checks.curation = await testCuration(cdp);
-    const failures = Object.entries(report.checks).filter(([, value]) => value.recoveryVisible || value.inert).map(([name]) => `${name} se autoactivó como recovery durante la misma sesión.`);
+    report.checks.coordinatedSave = await testCoordinatedSave(cdp);
+    const failures = Object.entries(report.checks).filter(([, value]) => value.recoveryVisible || value.inert).map(([name]) => `${name} se autoactivó como recovery o quedó sucio durante la misma sesión.`);
+    if (report.checks.coordinatedSave && !report.checks.coordinatedSave.restored) failures.push("El smoke de guardado coordinado no restauró el título editorial original.");
     if (report.runtimeIssues.length) failures.push(`Errores runtime: ${report.runtimeIssues.join(" | ")}`);
     await writeFile(path.join(outputDir, "home-live-recovery-runtime.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
     requireCheck(failures.length === 0, failures.join(" "));
-    console.log("[home-live-recovery] OK: Hero, Presentación y Curaduría no confunden edición activa con recuperación.");
+    console.log(`[home-live-recovery] OK: recovery estable y guardado coordinado real ${report.checks.coordinatedSave.initialRevision} -> ${report.checks.coordinatedSave.finalRevision} sin 403, con restauración editorial.`);
   } catch (error) {
     report.error = error instanceof Error ? error.stack ?? error.message : String(error);
     await writeFile(path.join(outputDir, "home-live-recovery-runtime.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8").catch(() => {});

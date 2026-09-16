@@ -16,6 +16,7 @@ const [
   contract,
   validation,
   contentEditor,
+  contentStyles,
   rowEditor,
   service,
   homePage,
@@ -28,10 +29,14 @@ const [
   staticCss,
   hoverPreview,
   hoverPreviewCss,
+  recoveryBrowserSmoke,
+  workflowLayoutSmoke,
+  packageJson,
 ] = await Promise.all([
   source("src/lib/home/card-row-reveal.ts"),
   source("src/lib/admin/content-validation-core.ts"),
   source("src/components/admin/HomeContentEditor.tsx"),
+  source("src/components/admin/HomeContentEditor.module.css"),
   source("src/components/admin/HomeRowRevealEditor.tsx"),
   source("src/lib/admin/home-content-service.ts"),
   source("src/app/page.tsx"),
@@ -44,6 +49,9 @@ const [
   source("src/components/ui/UniversalGameCardStaticDetail.module.css"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/HoverPreviewMedia.module.css"),
+  source("tools/home-live-recovery-browser-smoke.mjs"),
+  source("tools/home-content-workflow-layout-browser-smoke.mjs"),
+  source("package.json"),
 ]);
 
 assert(
@@ -81,6 +89,92 @@ assert(
     "presentationConfig"
   ),
   "Resto de Inicio debe ensamblar el reveal dentro de presentationJson sin crear un segundo guardado editorial."
+);
+
+assert(
+  has(
+    contentEditor,
+    "const body = new URLSearchParams()",
+    '"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"',
+    'credentials: "same-origin"'
+  ) && !contentEditor.includes("const body = new FormData()"),
+  "El coordinador debe usar el transporte urlencoded aceptado por readTrustedAdminForm; multipart volvería a provocar un 403 sin reforzar seguridad."
+);
+
+const structureIndex = contentEditor.indexOf("<HomePresentationEditor");
+const curationIndex = contentEditor.indexOf("<HomeCurationEditor");
+const cardsIndex = contentEditor.indexOf("<HomeRowRevealEditor");
+assert(
+  structureIndex >= 0 &&
+    curationIndex > structureIndex &&
+    cardsIndex > curationIndex &&
+    has(
+      contentEditor,
+      'id="home-content-structure"',
+      'id="home-content-curation"',
+      'id="home-content-cards"',
+      "Estructura y textos",
+      "Curaduría de juegos",
+      "Visualización de Cards",
+      "MutationObserver",
+      "Guardar cambios"
+    ) &&
+    contentStyles.includes("position: sticky") &&
+    contentStyles.includes('.root form button[type="submit"]'),
+  "Resto de Inicio debe presentarse como un flujo único: estructura/textos → curaduría → Cards, con estado dirty coordinado y una sola acción visible de guardado."
+);
+
+assert(
+  has(
+    contentStyles,
+    "grid-template-columns: repeat(3, minmax(0, 1fr))",
+    "@media (max-width: 1120px)",
+    "@media (max-width: 780px)",
+    "white-space: normal",
+    "text-overflow: clip",
+    "overflow-wrap: anywhere"
+  ) &&
+    !contentStyles.includes("overflow-x: auto") &&
+    !contentStyles.includes("min-width: max-content"),
+  "La navegación del flujo debe mantener sus tres pasos dentro del ancho disponible en tablet/mobile, sin carrusel horizontal ni truncamiento por ellipsis."
+);
+
+assert(
+  has(
+    workflowLayoutSmoke,
+    'name: "tablet", width: 1024, height: 900',
+    'name: "mobile", width: 390, height: 844',
+    "linksInside",
+    "linksOverlap",
+    "labelsClipped",
+    "navOverflow",
+    "pageOverflow",
+    'display === "grid"',
+    "sin scroll horizontal ni truncamiento"
+  ) &&
+    has(
+      packageJson,
+      '"visual:home-content-workflow-layout": "node ./tools/home-content-workflow-layout-browser-smoke.mjs"',
+      "npm run visual:home-content-workflow-layout"
+    ),
+  "El visual smoke debe medir el workflow real en tablet/mobile y fallar ante recorte, solapamiento u overflow horizontal."
+);
+
+assert(
+  has(
+    recoveryBrowserSmoke,
+    "deuna:home-row-reveal-draft:latest",
+    "testCoordinatedSave",
+    "clickCoordinatedSave",
+    "Guardar cambios",
+    "estado",
+    "guardado",
+    "initialRevision + 1",
+    "initialRevision + 2",
+    "smoke guardado coordinado",
+    "sin 403"
+  ),
+  "El smoke real de Admin debe limpiar todos los recoveries y ejercer guardar/restaurar la revisión coordinada desde el navegador autenticado."
 );
 
 assert(
@@ -181,6 +275,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, atomic save, public renderer, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save/layout regressions, public renderer, visible-only video and no hover geometry)."
   );
 }

@@ -1,1 +1,312 @@
-.root{display:grid;gap:20px}.notice{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:15px 17px;border:1px solid color-mix(in srgb,var(--brand) 34%,#405064);border-radius:12px;background:linear-gradient(145deg,color-mix(in srgb,var(--brand) 7%,#0d151f),#09111a);color:#dce7f2}.notice div{display:grid;gap:4px}.notice strong{font-size:14px}.notice span{color:#9fb0c1;font-size:12px;line-height:1.55}.notice b{flex:0 0 auto;padding:6px 10px;border:1px solid #425469;border-radius:999px;color:#bdcad8;font-size:11px;letter-spacing:.04em}.notice[data-kind="error"]{border-color:rgba(239,107,125,.42);background:rgba(98,24,37,.15)}.notice[data-kind="error"] span{color:#e8aeb8}.root[data-saving="true"]{cursor:progress}.root[data-saving="true"] form button[type="submit"]{pointer-events:none;opacity:.55}.root[data-saving="true"] .notice b{color:#fff;border-color:color-mix(in srgb,var(--brand) 55%,#fff)}@media(max-width:780px){.notice{flex-direction:column}.notice b{align-self:flex-start}}
+.root {
+  display: grid;
+  gap: 20px;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, #405064);
+  border-radius: 12px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--brand) 7%, #0d151f),
+    #09111a
+  );
+  color: #dce7f2;
+}
+
+.notice div {
+  display: grid;
+  gap: 4px;
+}
+
+.notice strong {
+  font-size: 14px;
+}
+
+.notice span {
+  color: #9fb0c1;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.notice b {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #425469;
+  border-radius: 999px;
+  color: #bdcad8;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.notice[data-kind="error"] {
+  border-color: rgba(239, 107, 125, 0.42);
+  background: rgba(98, 24, 37,.15);
+}
+
+.notice[data-kind="error"] span {
+  color: #e8aeb8;
+}
+
+.saveBar {
+  position: sticky;
+  top: 12px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #304053;
+  border-radius: 14px;
+  background: color-mix(in srgb, #08111a 94%, transparent);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.workflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow a {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid #28394b;
+  border-radius: 10px;
+  background: #0b1621;
+  color: #cad6e2;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.workflow a:hover {
+  border-color: color-mix(in srgb, var(--brand) 54%, #405064);
+  background: color-mix(in srgb, var(--brand) 8%, #0b1621);
+  color: #fff;
+}
+
+.workflow a:focus-visible,
+.saveAction button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 70%, #fff);
+  outline-offset: 2px;
+}
+
+.workflow a > span {
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 18%, #142131);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.workflow strong {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.saveAction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.saveAction > span {
+  max-width: 220px;
+  color: #9fb0c1;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.saveAction button {
+  min-height: 44px;
+  min-width: 148px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 58%, #5d6f84);
+  border-radius: 10px;
+  background: var(--brand);
+  color: var(--text-on-brand);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    filter 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.saveAction button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.saveAction button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.saveAction button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.step {
+  display: grid;
+  gap: 12px;
+  scroll-margin-top: 96px;
+}
+
+.stepHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.stepHeader > span {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, #405064);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--brand) 9%, #0d1722);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.stepHeader div {
+  display: grid;
+  gap: 3px;
+}
+
+.stepHeader h2 {
+  margin: 0;
+  color: #edf4fb;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.stepHeader p {
+  margin: 0;
+  color: #8fa1b4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Los editores internos conservan su <form> como fallback y para recovery,
+ * pero dentro del coordinador existe una sola acción visible de guardado. */
+.root form button[type="submit"] {
+  display: none;
+}
+
+.root[data-saving="true"] {
+  cursor: progress;
+}
+
+.root[data-saving="true"] .notice b {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 55%, #fff);
+}
+
+@media (max-width: 1120px) {
+  .saveBar {
+    grid-template-columns: 1fr;
+  }
+
+  .saveAction {
+    justify-content: space-between;
+  }
+
+  .saveAction > span {
+    max-width: none;
+    text-align: left;
+  }
+
+  .step {
+    scroll-margin-top: 126px;
+  }
+}
+
+@media (max-width: 780px) {
+  .notice {
+    flex-direction: column;
+  }
+
+  .notice b {
+    align-self: flex-start;
+  }
+
+  .saveBar {
+    top: 8px;
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .workflow {
+    gap: 6px;
+  }
+
+  .workflow a {
+    min-width: 0;
+    gap: 6px;
+    padding: 7px 6px;
+  }
+
+  .workflow a > span {
+    width: 24px;
+    height: 24px;
+  }
+
+  .workflow strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .saveAction {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .saveAction button {
+    width: 100%;
+  }
+
+  .step {
+    scroll-margin-top: 170px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow a,
+  .saveAction button {
+    transition: none;
+  }
+}
