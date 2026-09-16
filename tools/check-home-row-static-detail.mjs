@@ -31,7 +31,7 @@ const [
   hoverPreviewCss,
   recoveryBrowserSmoke,
   workflowLayoutSmoke,
-  visualRuntimeSmoke,
+  packageJson,
 ] = await Promise.all([
   source("src/lib/home/card-row-reveal.ts"),
   source("src/lib/admin/content-validation-core.ts"),
@@ -51,7 +51,7 @@ const [
   source("src/components/ui/HoverPreviewMedia.module.css"),
   source("tools/home-live-recovery-browser-smoke.mjs"),
   source("tools/home-content-workflow-layout-browser-smoke.mjs"),
-  source("tools/card-video-visual-runtime-smoke.sh"),
+  source("package.json"),
 ]);
 
 assert(
@@ -152,8 +152,10 @@ assert(
     'display === "grid"',
     "sin scroll horizontal ni truncamiento"
   ) &&
-    visualRuntimeSmoke.includes(
-      "node ./tools/home-content-workflow-layout-browser-smoke.mjs"
+    has(
+      packageJson,
+      '"visual:home-content-workflow-layout": "node ./tools/home-content-workflow-layout-browser-smoke.mjs"',
+      "npm run visual:home-content-workflow-layout"
     ),
   "El visual smoke debe medir el workflow real en tablet/mobile y fallar ante recorte, solapamiento u overflow horizontal."
 );
