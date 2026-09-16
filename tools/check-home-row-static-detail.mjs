@@ -122,6 +122,21 @@ assert(
 
 assert(
   has(
+    contentStyles,
+    "grid-template-columns: repeat(3, minmax(0, 1fr))",
+    "@media (max-width: 1120px)",
+    "@media (max-width: 780px)",
+    "white-space: normal",
+    "text-overflow: clip",
+    "overflow-wrap: anywhere"
+  ) &&
+    !contentStyles.includes("overflow-x: auto") &&
+    !contentStyles.includes("min-width: max-content"),
+  "La navegación del flujo debe mantener sus tres pasos dentro del ancho disponible en tablet/mobile, sin carrusel horizontal ni truncamiento por ellipsis."
+);
+
+assert(
+  has(
     recoveryBrowserSmoke,
     "deuna:home-row-reveal-draft:latest",
     "testCoordinatedSave",
@@ -235,6 +250,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, secure atomic save, coherent Admin flow, browser save regression, public renderer, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save regression, public renderer, visible-only video and no hover geometry)."
   );
 }
