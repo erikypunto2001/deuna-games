@@ -6,6 +6,10 @@ import GameTaxonomyMultiSelect from "./GameTaxonomyMultiSelect";
 
 import adminStyles from "../../app/admin/admin.module.css";
 
+type GameTaxonomyEditorTerm = GameTaxonomyTerm & {
+  missingFromCatalog?: boolean;
+};
+
 const ageRatingSystems = [
   ["ESRB", "ESRB"],
   ["PEGI", "PEGI"],
@@ -28,8 +32,8 @@ export default function GameClassificationEditor({
   game: Game;
   revision: number;
   action: string;
-  classificationTerms: GameTaxonomyTerm[];
-  tagTerms: GameTaxonomyTerm[];
+  classificationTerms: GameTaxonomyEditorTerm[];
+  tagTerms: GameTaxonomyEditorTerm[];
 }) {
   return (
     <section className={adminStyles.editorPanel}>
@@ -51,7 +55,12 @@ export default function GameClassificationEditor({
           <select name="category" defaultValue={game.category} required>
             {classificationTerms.map((term) => (
               <option key={term.key} value={term.label}>
-                {term.label}{term.active ? "" : " · Inactiva"}
+                {term.label}
+                {term.missingFromCatalog
+                  ? " · Fuera de Catálogos"
+                  : term.active
+                    ? ""
+                    : " · Inactiva"}
               </option>
             ))}
           </select>
@@ -127,7 +136,7 @@ export default function GameClassificationEditor({
         </label>
 
         <GameEditorFormActions
-          note="Los términos inactivos ya utilizados se conservan por compatibilidad. La clasificación etaria forma parte del mismo snapshot y sólo cambia la web al publicar."
+          note="Los términos inactivos o fuera de Catálogos ya utilizados se conservan por compatibilidad hasta que decidas retirarlos. La clasificación etaria forma parte del mismo snapshot y sólo cambia la web al publicar."
           action={action}
           continueTo="requisitos"
           saveLabel="Guardar clasificación"
