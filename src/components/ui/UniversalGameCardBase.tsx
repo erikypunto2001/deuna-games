@@ -272,15 +272,10 @@ export default function UniversalGameCardBase({
   }, []);
 
   useEffect(() => {
-    if (!staticDetail) return;
+    if (!staticDetail || typeof IntersectionObserver === "undefined") return;
 
     const slot = slotRef.current;
     if (!slot) return;
-
-    if (typeof IntersectionObserver === "undefined") {
-      setStaticDetailInViewport(true);
-      return;
-    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
