@@ -31,6 +31,8 @@ const [
   hoverPreviewCss,
   recoveryBrowserSmoke,
   workflowLayoutSmoke,
+  staticDetailBrowserSmoke,
+  staticDetailFixture,
   packageJson,
 ] = await Promise.all([
   source("src/lib/home/card-row-reveal.ts"),
@@ -51,6 +53,8 @@ const [
   source("src/components/ui/HoverPreviewMedia.module.css"),
   source("tools/home-live-recovery-browser-smoke.mjs"),
   source("tools/home-content-workflow-layout-browser-smoke.mjs"),
+  source("tools/home-row-static-detail-browser-smoke.mjs"),
+  source("tools/home-row-static-detail-visual-fixture.ts"),
   source("package.json"),
 ]);
 
@@ -256,12 +260,30 @@ assert(
     "setPreviewActive(true)",
     "!staticDetail && detailVisible && previewActive",
     'cardMode === "video"',
-    'cardMode === "hover-video" && previewActive',
     'data-card-preview-delay-ms={PREVIEW_DELAY_MS}'
   ) &&
     !cardBase.includes("setTimeout(") &&
     !cardBase.includes("previewTimer"),
-  "Los modos de Card deben conservar una sola fuente de verdad: Video automático en detalle estático, Imagen + hover sólo al hover/foco y sin demora artificial."
+  "Card debe conservar Video sin demora artificial al revelar su detalle y Video automático sólo en detalle estático visible."
+);
+
+assert(
+  has(
+    staticDetailBrowserSmoke,
+    "fixture.imageSlug",
+    'imageState.mediaMode !== "image"',
+    "Card Imagen montó video sin tener modo Video activo.",
+    "Imagen + hover debe permanecer exclusivo del Hero.",
+    "Imagen=sin video incluso con hover"
+  ) &&
+    !staticDetailBrowserSmoke.includes("hoverSlug") &&
+    has(
+      staticDetailFixture,
+      "cardFixture.imageSlug",
+      "Card Video e Imagen"
+    ) &&
+    !staticDetailFixture.includes("hoverSlug"),
+  "El smoke de detalle estático debe cubrir explícitamente Card Video y Card Imagen, y fallar si el hover vuelve a activar multimedia fuera del Hero."
 );
 
 assert(
@@ -292,6 +314,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save/layout regressions, per-game media modes, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, responsive Admin, Card Imagen/Video, visible-only video and no hover multimedia fuera del Hero)."
   );
 }
