@@ -27,6 +27,7 @@ export DEUNA_CARD_VIDEO_VISUAL_FIXTURE=1
 
 npm run visual:card-video-fixture
 npm run visual:home-row-static-detail-fixture
+npm run visual:card-video-legacy-history-fixture
 
 kill "$DEUNA_VISUAL_APP_PID" 2>/dev/null || true
 for _ in $(seq 1 50); do
