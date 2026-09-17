@@ -27,7 +27,9 @@ export function isGameMediaModeAllowed(
   target: GameMediaModeTarget,
   mode: GameDestinationMediaMode
 ) {
-  return GAME_MEDIA_MODES_BY_TARGET[target].includes(mode as never);
+  const allowed: readonly GameDestinationMediaMode[] =
+    GAME_MEDIA_MODES_BY_TARGET[target];
+  return allowed.includes(mode);
 }
 
 /**
