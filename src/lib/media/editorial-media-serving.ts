@@ -50,6 +50,8 @@ type MediaOwner = {
 type MediaOwnerRow = {
   id: string;
   publication_number: number;
+  published_payload: unknown;
+  public_visible: boolean;
 };
 
 type MediaPublicationRow = {
@@ -191,7 +193,9 @@ async function loadEverPublishedReferences(
   const itemResult = await adminQuery<MediaOwnerRow>(
     `SELECT
        id::text,
-       publication_number
+       publication_number,
+       published_payload,
+       public_visible
      FROM deuna_admin.editorial_items
      WHERE item_type = $1
        AND item_key = $2
@@ -232,6 +236,23 @@ async function loadEverPublishedReferences(
   const references = new Set<string>(
     reusable?.references ?? []
   );
+
+  /*
+   * published_payload es la fuente de verdad de la web pública. El historial
+   * conserva rollback y recursos que alguna vez fueron públicos, pero una fila
+   * histórica legacy faltante o no interpretable no puede negar los recursos
+   * del snapshot público actual. Los items todavía privados no obtienen esta
+   * vía: para ellos seguimos dependiendo exclusivamente de publicaciones que
+   * hayan sido expuestas realmente.
+   */
+  if (item.public_visible) {
+    for (const reference of safePublicationReferences(
+      owner,
+      item.published_payload
+    )) {
+      references.add(reference);
+    }
+  }
 
   for (const publication of publicationResult.rows) {
     for (const reference of safePublicationReferences(
@@ -301,7 +322,7 @@ export async function resolveEditorialMediaServingAccess(
       return "public";
     }
   } catch {
-    // Fallamos cerrado: un problema leyendo la historia editorial completa
+    // Fallamos cerrado: un problema leyendo snapshot/historial editorial
     // nunca convierte un recurso de borrador en público.
   }
 
