@@ -153,6 +153,11 @@ assert(
     "frameAspect={4 / 5}",
     "frameAspect={3 / 2}",
     "frameAspect={3}",
+    "Video principal + imagen de respaldo obligatoria.",
+    "Imagen de respaldo obligatoria",
+    'data-card-media-role={cardMode === "video" ? "fallback" : "primary"}',
+    'cardMode === "video" && cardVideoResource',
+    "Imagen es el estado inicial. El video entra al hover o foco",
     "HERO LISTO · 3:1",
     "HERO INCOMPLETO · 3:1",
     "GameDetailMediaEditor",
@@ -162,7 +167,7 @@ assert(
     !assignmentsWorkspace.includes("Recorte 16:9 del Hero") &&
     !assignmentsWorkspace.includes('target="cover-video"') &&
     !assignmentsWorkspace.includes('target="cover-mode"'),
-  "Asignaciones debe usar el contrato real Card/Portada, exigir la imagen 3:2 en todos los modos y mantener Hero 3:1 sin video de Portada."
+  "Asignaciones debe usar el contrato real Card/Portada, distinguir Video principal de su imagen de respaldo obligatoria, exigir la imagen 3:2 en todos los modos y mantener Hero 3:1 sin video de Portada."
 );
 
 assert(
