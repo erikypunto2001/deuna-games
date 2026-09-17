@@ -8,7 +8,10 @@ import {
   evaluateGameMediaRequirements,
   REQUIRED_DESTINATION_ASPECTS,
 } from "@/lib/media/game-media-requirements";
-import type { Game } from "@/types/game";
+import type {
+  Game,
+  GameDestinationMediaMode,
+} from "@/types/game";
 
 export type GameReadinessSection =
   | "ficha"
@@ -75,6 +78,18 @@ function hasVisibleDownload(game: Game) {
         hasText(source.href)
     )
   );
+}
+
+function cardMediaReadinessDetail(mode: GameDestinationMediaMode) {
+  if (mode === "video") {
+    return "Video principal 3:2 y su imagen de respaldo 3:2 deben tener recurso y recorte confirmados.";
+  }
+
+  if (mode === "hover-video") {
+    return "La imagen inicial 3:2 y el video que entra al hover o foco deben tener recurso y recorte confirmados.";
+  }
+
+  return "La imagen principal 3:2 debe tener recurso y recorte confirmados; este modo no utiliza video.";
 }
 
 export function evaluateGamePublicationReadiness(
@@ -220,7 +235,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "card-crop",
       label: `Card · recorte ${REQUIRED_DESTINATION_ASPECTS.card}`,
-      detail: "La Card debe completar los recursos y recortes exigidos por su modo activo.",
+      detail: cardMediaReadinessDetail(media.card.mode),
       section: "multimedia",
       complete: media.card.cropReady,
       priority: "essential",
