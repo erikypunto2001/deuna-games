@@ -3,6 +3,9 @@ import {
   parsePreviewViewport,
   type PreviewViewport,
 } from "./preview-video-policy";
+import {
+  normalizeGameMediaMode,
+} from "./game-media-mode-policy";
 
 import type {
   Game,
@@ -26,7 +29,7 @@ export type ResolvedGameVideo = {
 
 export const DEFAULT_GAME_MEDIA_MODES = {
   hero: "hover-video",
-  card: "hover-video",
+  card: "image",
   detail: "image",
 } as const satisfies Record<GameVideoTarget, GameDestinationMediaMode>;
 
@@ -85,7 +88,7 @@ export function resolveGameDestinationMediaMode(
   if (target === "cover") return "image";
 
   const explicit = game.mediaModes?.[target];
-  if (explicit) return explicit;
+  if (explicit) return normalizeGameMediaMode(target, explicit);
 
   const video = target === "hero"
     ? game.videoMedia?.hero
@@ -93,7 +96,10 @@ export function resolveGameDestinationMediaMode(
       ? game.videoMedia?.card
       : game.videoMedia?.detail;
   if (video) {
-    return video.playback === "hover" ? "hover-video" : "video";
+    return normalizeGameMediaMode(
+      target,
+      video.playback === "hover" ? "hover-video" : "video"
+    );
   }
 
   if (resolveGameDestinationImage(game, target)) return "image";
