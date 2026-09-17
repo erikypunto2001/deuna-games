@@ -236,15 +236,32 @@ assert(
     'const staticDetail = revealMode === "static-detail"',
     "const [detailVisible, setDetailVisible] = useState(staticDetail)",
     "const detailPresented = detailVisible || directDetailVisible",
-    "STATIC_DETAIL_VIDEO_THRESHOLD = 0.55",
+    "STATIC_DETAIL_VIDEO_THRESHOLD = 0.01",
     "new IntersectionObserver",
     "entry.intersectionRatio >= STATIC_DETAIL_VIDEO_THRESHOLD",
     "if (staticDetail) return;",
     "staticDetailInViewport",
     "unscaledVideo={staticDetail}",
-    'data-card-reveal-mode={revealMode}'
+    'data-card-reveal-mode={revealMode}',
+    'data-card-media-mode={cardMode}'
   ),
-  "El renderer debe revelar detalle desde el estado inicial, conservar el contrato touch, bloquear interacción expansiva y limitar video a Cards visibles."
+  "El renderer debe revelar detalle desde el estado inicial, conservar el contrato touch, bloquear interacción expansiva y limitar video a Cards realmente visibles, incluso en los bordes del carrusel."
+);
+
+assert(
+  has(
+    cardBase,
+    "const PREVIEW_DELAY_MS = 0",
+    "function schedulePreview()",
+    "setPreviewActive(true)",
+    "!staticDetail && detailVisible && previewActive",
+    'cardMode === "video"',
+    'cardMode === "hover-video" && previewActive',
+    'data-card-preview-delay-ms={PREVIEW_DELAY_MS}'
+  ) &&
+    !cardBase.includes("setTimeout(") &&
+    !cardBase.includes("previewTimer"),
+  "Los modos de Card deben conservar una sola fuente de verdad: Video automático en detalle estático, Imagen + hover sólo al hover/foco y sin demora artificial."
 );
 
 assert(
@@ -275,6 +292,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save/layout regressions, public renderer, visible-only video and no hover geometry)."
+    "Home row static detail: OK (editorial scope, secure atomic save, coherent responsive Admin flow, browser save/layout regressions, per-game media modes, visible-only video and no hover geometry)."
   );
 }

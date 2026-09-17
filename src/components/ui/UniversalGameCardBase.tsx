@@ -97,10 +97,11 @@ type UniversalCardStyle = CSSProperties & {
   "--card-transform-origin-y"?: string;
 };
 
-const PREVIEW_DELAY_MS = 1000;
+// Contrato explícito: Imagen + hover no agrega espera artificial.
+const PREVIEW_DELAY_MS = 0;
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 const DIRECT_DETAIL_MEDIA = "(hover: none), (pointer: coarse)";
-const STATIC_DETAIL_VIDEO_THRESHOLD = 0.55;
+const STATIC_DETAIL_VIDEO_THRESHOLD = 0.01;
 const CARD_EXPANSION_SCALE = 1.18;
 const CARD_EXPANSION_MAX_WIDTH = 360;
 const CARD_VIEWPORT_MARGIN = 24;
@@ -227,7 +228,6 @@ export default function UniversalGameCardBase({
   primaryAction,
 }: UniversalGameCardProps) {
   const staticDetail = revealMode === "static-detail";
-  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
   const anchorFrame = useRef<number | null>(null);
   const pendingTilt = useRef<PendingTilt | null>(null);
@@ -354,25 +354,14 @@ export default function UniversalGameCardBase({
   }
 
   function cancelPreview() {
-    if (previewTimer.current) {
-      clearTimeout(previewTimer.current);
-      previewTimer.current = null;
-    }
     setPreviewActive(false);
   }
 
   function schedulePreview() {
-    if (!preview || reducedMotion || cardMode === "image" || previewTimer.current || previewActive) {
+    if (!preview || reducedMotion || cardMode === "image" || previewActive) {
       return;
     }
-    if (cardMode === "video") {
-      setPreviewActive(true);
-      return;
-    }
-    previewTimer.current = setTimeout(() => {
-      previewTimer.current = null;
-      setPreviewActive(true);
-    }, PREVIEW_DELAY_MS);
+    setPreviewActive(true);
   }
 
   function expandCard() {
@@ -455,10 +444,14 @@ export default function UniversalGameCardBase({
   }
 
   function startCard(event: ReactPointerEvent<HTMLElement>) {
-    if (staticDetail) return;
-
     const pointerSupportsReveal =
       event.pointerType === "mouse" || event.pointerType === "pen";
+
+    if (staticDetail) {
+      if (pointerSupportsReveal) schedulePreview();
+      return;
+    }
+
     if (pointerSupportsReveal) {
       setDetailVisible(true);
       expandCard();
@@ -496,7 +489,10 @@ export default function UniversalGameCardBase({
   }
 
   function stopCard(event: ReactPointerEvent<HTMLElement>) {
-    if (staticDetail) return;
+    if (staticDetail) {
+      cancelPreview();
+      return;
+    }
 
     cancelTiltFrame();
     cardRect.current = null;
@@ -509,37 +505,50 @@ export default function UniversalGameCardBase({
   }
 
   function focusCard() {
-    if (staticDetail) return;
+    const directDetail = window.matchMedia(DIRECT_DETAIL_MEDIA).matches;
+
+    if (staticDetail) {
+      if (!directDetail) schedulePreview();
+      return;
+    }
 
     setDetailVisible(true);
-    if (!window.matchMedia(DIRECT_DETAIL_MEDIA).matches) {
+    if (!directDetail) {
       expandCard();
+      schedulePreview();
     }
-    if (preview && !reducedMotion && cardMode === "video") setPreviewActive(true);
-    else schedulePreview();
   }
 
   function blurCard(event: ReactFocusEvent<HTMLElement>) {
-    if (staticDetail) return;
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+
+    if (staticDetail) {
+      cancelPreview();
+      return;
+    }
+
     setDetailVisible(false);
     collapseCard();
     cancelPreview();
   }
 
   useEffect(() => () => {
-    if (previewTimer.current) clearTimeout(previewTimer.current);
     if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
   }, []);
 
   const detailPresented = detailVisible || directDetailVisible;
+  const interactionVideoActive =
+    !staticDetail && detailVisible && previewActive;
+  const staticVideoActive =
+    staticDetail &&
+    staticDetailInViewport &&
+    (cardMode === "video" ||
+      (cardMode === "hover-video" && previewActive));
   const videoActive = Boolean(
     preview &&
     cardMode !== "image" &&
     !reducedMotion &&
-    (staticDetail
-      ? staticDetailInViewport
-      : detailVisible && previewActive)
+    (interactionVideoActive || staticVideoActive)
   );
   const primaryClassName = `${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`;
   const cardContent = (
@@ -674,6 +683,8 @@ export default function UniversalGameCardBase({
         className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass} ${staticDetail ? staticDetailStyles.staticDetailCard : ""}`}
         data-card-variant={variant}
         data-card-reveal-mode={revealMode}
+        data-card-media-mode={cardMode}
+        data-card-preview-delay-ms={PREVIEW_DELAY_MS}
         data-detail-visible={detailPresented ? "true" : "false"}
         data-card-expanded={expandedGeometry ? "true" : "false"}
         data-card-expansion-scale={expandedGeometry?.scale.toFixed(3) ?? "1.000"}
