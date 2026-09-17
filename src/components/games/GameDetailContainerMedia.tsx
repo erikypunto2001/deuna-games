@@ -3,7 +3,6 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -19,9 +18,7 @@ import type {
 
 import styles from "./GameDetailContainerMedia.module.css";
 
-const FINE_POINTER_MEDIA = "(hover: hover) and (pointer: fine)";
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
-const INTERACTION_SCOPE = "[data-game-detail-media-scope]";
 
 type Props = {
   mode: GameDestinationMediaMode;
@@ -36,51 +33,23 @@ export default function GameDetailContainerMedia({
   imageViewport,
   video,
 }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [fineHover, setFineHover] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);
   const [documentVisible, setDocumentVisible] = useState(true);
-  const [hoverActive, setHoverActive] = useState(false);
   const [failedVideo, setFailedVideo] = useState<string | null>(null);
 
   useEffect(() => {
-    const pointer = window.matchMedia(FINE_POINTER_MEDIA);
     const reduced = window.matchMedia(REDUCED_MOTION_MEDIA);
-    const scope = rootRef.current?.closest<HTMLElement>(INTERACTION_SCOPE) ?? null;
-
-    const syncMedia = () => {
-      setFineHover(pointer.matches);
-      setReducedMotion(reduced.matches);
-      if (!pointer.matches || reduced.matches) setHoverActive(false);
-    };
+    const syncMedia = () => setReducedMotion(reduced.matches);
     const syncVisibility = () => setDocumentVisible(!document.hidden);
-    const startHover = () => {
-      if (pointer.matches && !reduced.matches) setHoverActive(true);
-    };
-    const stopHover = () => setHoverActive(false);
-    const onFocusOut = (event: FocusEvent) => {
-      const nextTarget = event.relatedTarget;
-      if (!nextTarget || !scope?.contains(nextTarget as Node)) stopHover();
-    };
 
     syncMedia();
     syncVisibility();
-    pointer.addEventListener("change", syncMedia);
     reduced.addEventListener("change", syncMedia);
     document.addEventListener("visibilitychange", syncVisibility);
-    scope?.addEventListener("pointerenter", startHover);
-    scope?.addEventListener("pointerleave", stopHover);
-    scope?.addEventListener("focusin", startHover);
-    scope?.addEventListener("focusout", onFocusOut);
 
     return () => {
-      pointer.removeEventListener("change", syncMedia);
       reduced.removeEventListener("change", syncMedia);
       document.removeEventListener("visibilitychange", syncVisibility);
-      scope?.removeEventListener("pointerenter", startHover);
-      scope?.removeEventListener("pointerleave", stopHover);
-      scope?.removeEventListener("focusin", startHover);
-      scope?.removeEventListener("focusout", onFocusOut);
     };
   }, []);
 
@@ -99,16 +68,15 @@ export default function GameDetailContainerMedia({
       video.viewport.aspect === "source"
   );
   const videoEnabled = Boolean(
-    mode !== "image" &&
+    mode === "video" &&
       videoConfirmed &&
       !reducedMotion &&
       documentVisible &&
-      failedVideo !== video?.clip &&
-      (mode === "video" || (fineHover && hoverActive))
+      failedVideo !== video?.clip
   );
 
   return (
-    <div ref={rootRef} className={styles.root} aria-hidden="true">
+    <div className={styles.root} aria-hidden="true">
       {imageSrc && (
         <div className={styles.imageLayer}>
           <GameMedia
