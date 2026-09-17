@@ -86,7 +86,7 @@ assert(
     "detail.cropReady",
     "background.cropReady",
     "galleryCropReady",
-    'normalizeGameMediaMode("background"'
+    "normalizeGameMediaMode("
   ),
   "El contrato central debe exigir Portada 4:5, Hero 3:1 y Card 3:2, ligar crops al recurso activo, normalizar Fondo legacy y detectar metadata obsoleta."
 );
@@ -162,8 +162,7 @@ assert(
       "card: STANDARD_GAME_MEDIA_MODES",
       "detail: STANDARD_GAME_MEDIA_MODES",
       "background: STANDARD_GAME_MEDIA_MODES",
-      'return isGameMediaModeAllowed(target, mode) ? mode : "image"',
-      "normalizeGameActiveMediaModes"
+      'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
     ),
   "La política compartida debe reservar Imagen + hover exclusivamente para Hero y degradar snapshots legacy de Card/Contenedor/Fondo a Imagen."
 );
@@ -362,7 +361,7 @@ assert(
     "STANDARD_GAME_MEDIA_MODES",
     "const mediaModeSchema = z.enum(STANDARD_GAME_MEDIA_MODES)",
     'playback: "always"',
-    'normalizeGameMediaMode("background"'
+    "normalizeGameMediaMode("
   ) &&
     !backgroundRoute.includes('z.enum(["image", "video", "hover-video"])'),
   "La API de Fondo debe aceptar sólo Imagen/Video y normalizar cualquier modo legacy antes de volver a guardarlo."
