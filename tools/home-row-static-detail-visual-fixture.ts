@@ -50,11 +50,19 @@ async function main() {
   ) as {
     slug?: string;
     clip?: string;
+    hoverSlug?: string;
+    hoverClip?: string;
   };
 
-  if (!cardFixture.slug || !cardFixture.clip) {
+  if (
+    !cardFixture.slug ||
+    !cardFixture.clip ||
+    !cardFixture.hoverSlug ||
+    !cardFixture.hoverClip ||
+    cardFixture.hoverSlug === cardFixture.slug
+  ) {
     throw new Error(
-      "El fixture Home requiere primero el descriptor válido de Card video."
+      "El fixture Home requiere descriptores válidos y distintos para Video e Imagen + hover."
     );
   }
 
@@ -111,10 +119,11 @@ async function main() {
       item.published_payload
     );
     const resolved = resolveHomeConfig(current);
+    const fixtureSlugs = [cardFixture.slug, cardFixture.hoverSlug];
     const popularSlugs = [
-      cardFixture.slug,
+      ...fixtureSlugs,
       ...resolved.popularSlugs.filter(
-        (slug) => slug !== cardFixture.slug
+        (slug) => !fixtureSlugs.includes(slug)
       ),
     ].slice(0, 24);
     const sections = resolved.sections.map((section) =>
@@ -238,6 +247,8 @@ async function main() {
         {
           slug: cardFixture.slug,
           clip: cardFixture.clip,
+          hoverSlug: cardFixture.hoverSlug,
+          hoverClip: cardFixture.hoverClip,
           revision: nextRevision,
           publicationNumber: nextPublication,
         },
@@ -248,7 +259,7 @@ async function main() {
     );
 
     console.log(
-      `Home row static detail fixture: OK (${cardFixture.slug}, revision=${nextRevision}, publication=${nextPublication}).`
+      `Home row static detail fixture: OK (video=${cardFixture.slug}, hover=${cardFixture.hoverSlug}, revision=${nextRevision}, publication=${nextPublication}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
