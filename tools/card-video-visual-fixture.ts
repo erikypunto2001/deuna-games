@@ -17,7 +17,7 @@ import { inspectSafeEditorialWebm } from "../src/lib/media/safe-webm.ts";
 
 const FIXTURE_FLAG = "DEUNA_CARD_VIDEO_VISUAL_FIXTURE";
 const FIXTURE_WEBM_BASE64 =
-  "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIwEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEjTbuMU6uEHFO7a1OsggIa7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDNXQYxMYXZmNjEuNy4xMDNEiYhAf0AAAAAAABZUrmvIrgEAAAAAAAA/14EBc8WI/QvhMWERGgmcgQAitZyDdW5kiIEAhoVWX1ZQOYOBASPjg4QdzWUA4JCwgUC6gSSagQJVsIRVuYEBElTDZ0B/c3OfY8CAZ8iZRaOHRU5DT0RFUkSHjExhdmY2MS43LjEwM3Nz2mPAi2PFiP0L4TFhERoJZ8ilRaOHRU5DT0RFUkSHmExhdmM2MS4xOS4xMDEgbGlidnB4LXZwOWfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDAuNTAwMDAwMDAwAB9DtnXt54EAo+iBAACAgkmDQgAD8AI2BjgkHBhCAAAgQABrQ///6UT+4KU3o8VSrdtJ/1U/RntlFLTcdJsyP6m92VMvCYN3//3Ceh0emoFV9EmWoW/eg7Wi7Hj2c8ZrczM2o/qbSj6QjAHsSPtzSmIhoBxTu2uRu4+zgQC3iveBAfGCAajwgQM=";
+  "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIwEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEjTbuMU6uEHFO7a1OsggIa7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDNXQYxMYXZmNjEuNy4xMDNEiYhAf0AAAAAAABZUrmvIrgEAAAAAAAA/14EBc8WI/QvhMWERGgmcgQAitZyDdW5kiIEAhoVWX1ZQOYOBASPjg4QdzWUA4JCwgUC6gSSagQJVsIRVuYEBElTDZ0B/c3OfY8CAZ8iZRaOHRU5DT0RFUkSHjExhdmY2MS43LjEwM3Nz2mPAi2PFiP0L4TFhERoJZ8ilRaOHRU5DT0RFUkSHmExhdmM2MS4xOS4xMDEgbGlidnB4LXZwOWfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDAuNTAwMDAwMDAwAB9DtnXt54EAo+iBAACAgkmDQgAD8AI2BjgkHBhCAAAgQABrQ///6UT+4KU3o8VSrdtJ/1U/RntlFLTcdJsyP6m92VMvCYN3//3Ceh0emoFV9EmWoW/eg7Wi7Hj2c8ZrczM2o/qbSj6QjAHsSPtzSmIhoBxTu2uRu4+zgQC3iveBAfGCAajwgQM=";
 
 function isStrictlyContainedBy(parent: string, candidate: string) {
   const relative = path.relative(parent, candidate);
@@ -89,6 +89,152 @@ async function writeFixtureWebm(slug: string) {
   };
 }
 
+type FixtureMode = "video" | "hover-video";
+
+type GameRow = {
+  id: string;
+  item_key: string;
+  source_checksum: string;
+  published_payload: unknown;
+  revision: number;
+  publication_number: number;
+};
+
+async function publishFixtureGame(
+  client: Client,
+  item: GameRow,
+  actorUserId: string,
+  mode: FixtureMode
+) {
+  const current = parseEditorialPayload("game", item.published_payload);
+  const fixtureMedia = await writeFixtureWebm(current.slug);
+  const next = parseEditorialPayload("game", {
+    ...current,
+    mediaModes: {
+      ...(current.mediaModes ?? {}),
+      card: mode,
+    },
+    videoMedia: {
+      ...(current.videoMedia ?? {}),
+      card: {
+        source: "independent",
+        clip: fixtureMedia.publicPath,
+        viewport: {
+          x: 0.5,
+          y: 0.5,
+          zoom: 1,
+          aspect: "3:2",
+          confirmed: true,
+        },
+        playback: mode === "hover-video" ? "hover" : "always",
+      },
+    },
+  });
+  const normalized = normalizeEditorialPayload(next);
+  const serialized = JSON.stringify(normalized);
+  const digest = hashEditorialPayload(normalized);
+  const draftStatus =
+    digest === item.source_checksum ? "synced" : "modified";
+  const nextRevision = item.revision + 1;
+  const nextPublication = item.publication_number + 1;
+
+  await client.query(
+    `UPDATE deuna_admin.editorial_items
+     SET draft_payload = $2::jsonb,
+         draft_status = $3,
+         revision = $4,
+         updated_at = now(),
+         updated_by = $5
+     WHERE id = $1`,
+    [item.id, serialized, draftStatus, nextRevision, actorUserId]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_revisions
+       (item_id, revision, payload, action, actor_user_id)
+     VALUES ($1, $2, $3::jsonb, 'draft_saved', $4)`,
+    [item.id, nextRevision, serialized, actorUserId]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.admin_audit_log
+       (user_id, action, entity_type, entity_id, details)
+     VALUES ($1, 'draft_saved', 'game', $2, $3::jsonb)`,
+    [
+      actorUserId,
+      item.item_key,
+      JSON.stringify({
+        revision: nextRevision,
+        fixture: `card-${mode}-browser-runtime`,
+      }),
+    ]
+  );
+
+  await client.query(
+    `UPDATE deuna_admin.editorial_items
+     SET published_payload = $2::jsonb,
+         published_checksum = $3,
+         published_from_revision = $4,
+         publication_number = $5,
+         published_at = now(),
+         published_by = $6,
+         public_visible = true
+     WHERE id = $1`,
+    [
+      item.id,
+      serialized,
+      digest,
+      nextRevision,
+      nextPublication,
+      actorUserId,
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_publications
+       (
+         item_id,
+         publication_number,
+         payload,
+         checksum,
+         source_revision,
+         action,
+         actor_user_id
+       )
+     VALUES ($1, $2, $3::jsonb, $4, $5, 'published', $6)`,
+    [
+      item.id,
+      nextPublication,
+      serialized,
+      digest,
+      nextRevision,
+      actorUserId,
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.admin_audit_log
+       (user_id, action, entity_type, entity_id, details)
+     VALUES ($1, 'content_published', 'game', $2, $3::jsonb)`,
+    [
+      actorUserId,
+      item.item_key,
+      JSON.stringify({
+        publicationNumber: nextPublication,
+        revision: nextRevision,
+        firstVisibility: false,
+        fixture: `card-${mode}-browser-runtime`,
+      }),
+    ]
+  );
+
+  return {
+    itemKey: item.item_key,
+    slug: normalized.slug,
+    clip: fixtureMedia.publicPath,
+    mediaDigest: fixtureMedia.digest,
+    mediaBytes: fixtureMedia.bytes,
+    revision: nextRevision,
+    publicationNumber: nextPublication,
+  };
+}
+
 async function main() {
   assertVisualCiOnly();
 
@@ -111,14 +257,7 @@ async function main() {
       throw new Error("No se encontró el owner visual aislado de CI.");
     }
 
-    const itemResult = await client.query<{
-      id: string;
-      item_key: string;
-      source_checksum: string;
-      published_payload: unknown;
-      revision: number;
-      publication_number: number;
-    }>(
+    const itemResult = await client.query<GameRow>(
       `SELECT
          id::text,
          item_key,
@@ -131,132 +270,27 @@ async function main() {
          AND public_visible = true
          AND COALESCE(published_payload ->> 'coverImage', '') <> ''
        ORDER BY item_key ASC
-       LIMIT 1
+       LIMIT 2
        FOR UPDATE`
     );
-    const item = itemResult.rows[0];
-    if (!item) {
+    const [videoItem, hoverItem] = itemResult.rows;
+    if (!videoItem || !hoverItem) {
       throw new Error(
-        "No hay un juego publicado con imagen base para el fixture visual."
+        "Se necesitan dos juegos publicados con imagen base para probar Video e Imagen + hover."
       );
     }
 
-    const current = parseEditorialPayload("game", item.published_payload);
-    const fixtureMedia = await writeFixtureWebm(current.slug);
-    const next = parseEditorialPayload("game", {
-      ...current,
-      mediaModes: {
-        ...(current.mediaModes ?? {}),
-        card: "video",
-      },
-      videoMedia: {
-        ...(current.videoMedia ?? {}),
-        card: {
-          source: "independent",
-          clip: fixtureMedia.publicPath,
-          viewport: {
-            x: 0.5,
-            y: 0.5,
-            zoom: 1,
-            aspect: "3:2",
-            confirmed: true,
-          },
-          playback: "always",
-        },
-      },
-    });
-    const normalized = normalizeEditorialPayload(next);
-    const serialized = JSON.stringify(normalized);
-    const digest = hashEditorialPayload(normalized);
-    const draftStatus =
-      digest === item.source_checksum ? "synced" : "modified";
-    const nextRevision = item.revision + 1;
-    const nextPublication = item.publication_number + 1;
-
-    await client.query(
-      `UPDATE deuna_admin.editorial_items
-       SET draft_payload = $2::jsonb,
-           draft_status = $3,
-           revision = $4,
-           updated_at = now(),
-           updated_by = $5
-       WHERE id = $1`,
-      [item.id, serialized, draftStatus, nextRevision, actorUserId]
+    const videoFixture = await publishFixtureGame(
+      client,
+      videoItem,
+      actorUserId,
+      "video"
     );
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions
-         (item_id, revision, payload, action, actor_user_id)
-       VALUES ($1, $2, $3::jsonb, 'draft_saved', $4)`,
-      [item.id, nextRevision, serialized, actorUserId]
-    );
-    await client.query(
-      `INSERT INTO deuna_admin.admin_audit_log
-         (user_id, action, entity_type, entity_id, details)
-       VALUES ($1, 'draft_saved', 'game', $2, $3::jsonb)`,
-      [
-        actorUserId,
-        item.item_key,
-        JSON.stringify({
-          revision: nextRevision,
-          fixture: "card-video-browser-runtime",
-        }),
-      ]
-    );
-
-    await client.query(
-      `UPDATE deuna_admin.editorial_items
-       SET published_payload = $2::jsonb,
-           published_checksum = $3,
-           published_from_revision = $4,
-           publication_number = $5,
-           published_at = now(),
-           published_by = $6,
-           public_visible = true
-       WHERE id = $1`,
-      [
-        item.id,
-        serialized,
-        digest,
-        nextRevision,
-        nextPublication,
-        actorUserId,
-      ]
-    );
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_publications
-         (
-           item_id,
-           publication_number,
-           payload,
-           checksum,
-           source_revision,
-           action,
-           actor_user_id
-         )
-       VALUES ($1, $2, $3::jsonb, $4, $5, 'published', $6)`,
-      [
-        item.id,
-        nextPublication,
-        serialized,
-        digest,
-        nextRevision,
-        actorUserId,
-      ]
-    );
-    await client.query(
-      `INSERT INTO deuna_admin.admin_audit_log
-         (user_id, action, entity_type, entity_id, details)
-       VALUES ($1, 'content_published', 'game', $2, $3::jsonb)`,
-      [
-        actorUserId,
-        item.item_key,
-        JSON.stringify({
-          publicationNumber: nextPublication,
-          revision: nextRevision,
-          firstVisibility: false,
-          fixture: "card-video-browser-runtime",
-        }),
-      ]
+    const hoverFixture = await publishFixtureGame(
+      client,
+      hoverItem,
+      actorUserId,
+      "hover-video"
     );
 
     await client.query("COMMIT");
@@ -269,13 +303,12 @@ async function main() {
       path.join(outputRoot, "card-video-fixture.json"),
       `${JSON.stringify(
         {
-          itemKey: item.item_key,
-          slug: normalized.slug,
-          clip: fixtureMedia.publicPath,
-          mediaDigest: fixtureMedia.digest,
-          mediaBytes: fixtureMedia.bytes,
-          revision: nextRevision,
-          publicationNumber: nextPublication,
+          ...videoFixture,
+          hoverItemKey: hoverFixture.itemKey,
+          hoverSlug: hoverFixture.slug,
+          hoverClip: hoverFixture.clip,
+          hoverRevision: hoverFixture.revision,
+          hoverPublicationNumber: hoverFixture.publicationNumber,
         },
         null,
         2
@@ -284,7 +317,7 @@ async function main() {
     );
 
     console.log(
-      `Card video visual fixture: OK (${normalized.slug}, bytes=${fixtureMedia.bytes}, revision=${nextRevision}, publication=${nextPublication}).`
+      `Card media visual fixture: OK (video=${videoFixture.slug}, hover=${hoverFixture.slug}, bytes=${videoFixture.mediaBytes}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
