@@ -89,7 +89,7 @@ async function writeFixtureWebm(slug: string) {
   };
 }
 
-type FixtureMode = "video" | "hover-video";
+type FixtureMode = "video" | "image";
 
 type GameRow = {
   id: string;
@@ -107,28 +107,35 @@ async function publishFixtureGame(
   mode: FixtureMode
 ) {
   const current = parseEditorialPayload("game", item.published_payload);
-  const fixtureMedia = await writeFixtureWebm(current.slug);
+  const fixtureMedia = mode === "video" ? await writeFixtureWebm(current.slug) : null;
+  const { card: _previousCardVideo, ...otherVideoMedia } = current.videoMedia ?? {};
+  const videoMedia =
+    mode === "video" && fixtureMedia
+      ? {
+          ...otherVideoMedia,
+          card: {
+            source: "independent" as const,
+            clip: fixtureMedia.publicPath,
+            viewport: {
+              x: 0.5,
+              y: 0.5,
+              zoom: 1,
+              aspect: "3:2" as const,
+              confirmed: true,
+            },
+            playback: "always" as const,
+          },
+        }
+      : Object.keys(otherVideoMedia).length > 0
+        ? otherVideoMedia
+        : undefined;
   const next = parseEditorialPayload("game", {
     ...current,
     mediaModes: {
       ...(current.mediaModes ?? {}),
       card: mode,
     },
-    videoMedia: {
-      ...(current.videoMedia ?? {}),
-      card: {
-        source: "independent",
-        clip: fixtureMedia.publicPath,
-        viewport: {
-          x: 0.5,
-          y: 0.5,
-          zoom: 1,
-          aspect: "3:2",
-          confirmed: true,
-        },
-        playback: mode === "hover-video" ? "hover" : "always",
-      },
-    },
+    videoMedia,
   });
   const normalized = normalizeEditorialPayload(next);
   const serialized = JSON.stringify(normalized);
@@ -227,9 +234,9 @@ async function publishFixtureGame(
   return {
     itemKey: item.item_key,
     slug: normalized.slug,
-    clip: fixtureMedia.publicPath,
-    mediaDigest: fixtureMedia.digest,
-    mediaBytes: fixtureMedia.bytes,
+    clip: fixtureMedia?.publicPath ?? null,
+    mediaDigest: fixtureMedia?.digest ?? null,
+    mediaBytes: fixtureMedia?.bytes ?? null,
     revision: nextRevision,
     publicationNumber: nextPublication,
   };
@@ -273,10 +280,10 @@ async function main() {
        LIMIT 2
        FOR UPDATE`
     );
-    const [videoItem, hoverItem] = itemResult.rows;
-    if (!videoItem || !hoverItem) {
+    const [videoItem, imageItem] = itemResult.rows;
+    if (!videoItem || !imageItem) {
       throw new Error(
-        "Se necesitan dos juegos publicados con imagen base para probar Video e Imagen + hover."
+        "Se necesitan dos juegos publicados con imagen base para probar Card Video e Imagen."
       );
     }
 
@@ -286,11 +293,11 @@ async function main() {
       actorUserId,
       "video"
     );
-    const hoverFixture = await publishFixtureGame(
+    const imageFixture = await publishFixtureGame(
       client,
-      hoverItem,
+      imageItem,
       actorUserId,
-      "hover-video"
+      "image"
     );
 
     await client.query("COMMIT");
@@ -304,11 +311,10 @@ async function main() {
       `${JSON.stringify(
         {
           ...videoFixture,
-          hoverItemKey: hoverFixture.itemKey,
-          hoverSlug: hoverFixture.slug,
-          hoverClip: hoverFixture.clip,
-          hoverRevision: hoverFixture.revision,
-          hoverPublicationNumber: hoverFixture.publicationNumber,
+          imageItemKey: imageFixture.itemKey,
+          imageSlug: imageFixture.slug,
+          imageRevision: imageFixture.revision,
+          imagePublicationNumber: imageFixture.publicationNumber,
         },
         null,
         2
@@ -317,7 +323,7 @@ async function main() {
     );
 
     console.log(
-      `Card media visual fixture: OK (video=${videoFixture.slug}, hover=${hoverFixture.slug}, bytes=${videoFixture.mediaBytes}).`
+      `Card media visual fixture: OK (video=${videoFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
