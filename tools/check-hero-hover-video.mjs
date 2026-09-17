@@ -13,6 +13,7 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   gameTypes,
   contentValidation,
+  modePolicy,
   gameVideoMedia,
   libraryRoute,
   assignmentsWorkspace,
@@ -21,6 +22,7 @@ const [
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/media/game-media-mode-policy.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
@@ -37,7 +39,7 @@ assert(
     'export type GameDestinationMediaMode =',
     '| "hover-video"'
   ),
-  "El contrato debe modelar reproducción always/hover y el modo editorial Imagen+hover."
+  "El contrato compatible debe seguir pudiendo representar reproducción always/hover y el modo editorial Imagen+hover del Hero."
 );
 
 assert(
@@ -50,7 +52,20 @@ assert(
     "hero: inferredMode(",
     '"hover-video"'
   ),
-  "La validación editorial debe aceptar sólo modos/playback conocidos y usar Imagen+hover como default histórico del Hero cuando corresponde."
+  "La validación de compatibilidad debe aceptar modos/playback históricos y mantener Imagen+hover como default histórico del Hero."
+);
+
+const heroModes = modePolicy.match(
+  /HERO_GAME_MEDIA_MODES\s*=\s*\[([\s\S]*?)\]/
+)?.[1] ?? "";
+const standardModes = modePolicy.match(
+  /STANDARD_GAME_MEDIA_MODES\s*=\s*\[([\s\S]*?)\]/
+)?.[1] ?? "";
+assert(
+  has(heroModes, '"image"', '"video"', '"hover-video"') &&
+    has(standardModes, '"image"', '"video"') &&
+    !standardModes.includes('"hover-video"'),
+  "Imagen+hover debe pertenecer sólo al conjunto activo de modos del Hero."
 );
 
 assert(
@@ -62,7 +77,7 @@ assert(
     ': "always"',
     'hero: "hover-video"'
   ),
-  "El runtime debe derivar playback del modo explícito del Hero y mantener Imagen+hover como default editorial."
+  "El runtime debe derivar playback del modo explícito del Hero y mantener Imagen+hover como default editorial del Hero."
 );
 
 assert(
@@ -71,24 +86,28 @@ assert(
     '"hero-mode"',
     '"hero-image"',
     '"hero-video"',
+    "HERO_GAME_MEDIA_MODES",
+    "heroMediaModeSchema",
     "mediaModeUpdate",
     'target.data === "hero-video"',
-    'mode === "hover-video" ? "hover" : "always"',
+    'target === "hero" && mode === "hover-video" ? "hover" : "always"',
     "saveGameMediaDraft"
   ) &&
     !libraryRoute.includes("hero-hover-video") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn("),
-  "Cambiar Hero entre Imagen/Video/Imagen+hover debe guardar metadata y asignaciones, sin copiar ni recodificar el WebM."
+  "Cambiar Hero entre Imagen/Video/Imagen+hover debe guardar sólo metadata/asignaciones y hover sólo puede producir playback=hover en Hero."
 );
 
 assert(
   has(
     assignmentsWorkspace,
-    "const MODES",
-    '{ value: "image", label: "Imagen" }',
-    '{ value: "video", label: "Video" }',
-    '{ value: "hover-video", label: "Imagen + hover" }',
+    "HERO_GAME_MEDIA_MODES",
+    "STANDARD_GAME_MEDIA_MODES",
+    "const HERO_MODES",
+    "const CARD_MODES",
+    '"hover-video": "Imagen + hover"',
+    'const options = target === "hero" ? HERO_MODES : CARD_MODES',
     'target="hero"',
     "const heroMode = assignments.heroMode",
     'target="hero-image"',
@@ -101,7 +120,7 @@ assert(
     "HERO LISTO · 3:1",
     "HERO INCOMPLETO · 3:1"
   ),
-  "El Admin debe ofrecer los tres modos del Hero y estados independientes de selección/recorte 3:1 para imagen y video."
+  "El Admin debe ofrecer los tres modos sólo al Hero y estados independientes de selección/recorte 3:1 para imagen y video."
 );
 
 assert(
@@ -156,5 +175,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, selección/recortes por capa, hidratación determinista y reproducción pública accesible)."
+  "Hero hover video: OK (Imagen | Video | Imagen+hover exclusivo del Hero, selección/recortes por capa, hidratación determinista y reproducción pública accesible)."
 );
