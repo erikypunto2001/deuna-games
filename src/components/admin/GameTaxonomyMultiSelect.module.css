@@ -40,6 +40,125 @@
   font-weight: 700;
 }
 
+.selectedPanel {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, #354354);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand) 3%, #09121c);
+}
+
+.selectedPanelHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.selectedPanelHeading strong {
+  color: #eef3f7;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.selectedPanelHeading span {
+  color: #93a5b7;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.selectedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.selectedChip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--brand) 72%, #536273);
+  border-radius: 9px;
+  outline: none;
+  background: color-mix(in srgb, var(--brand) 18%, #0c151f);
+  color: color-mix(in srgb, var(--brand) 20%, #ffffff);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.selectedChip > svg:first-child {
+  width: 22px;
+  height: 22px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.selectedChip > svg:last-child {
+  color: #aebdca;
+}
+
+.selectedChip:hover {
+  border-color: color-mix(in srgb, var(--brand) 88%, #ffffff);
+  background: color-mix(in srgb, var(--brand) 24%, #101a24);
+  transform: translateY(-1px);
+}
+
+.selectedChip:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
+.selectedChip small {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8e1ea;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.selectedChipInactive {
+  border-color: rgba(255, 190, 92, 0.52);
+  background: rgba(255, 190, 92, 0.08);
+}
+
+.selectedChipInactive > svg:first-child {
+  background: #b97821;
+  color: #ffffff;
+}
+
+.selectedChipMissing {
+  border-color: rgba(255, 102, 102, 0.56);
+  background: rgba(255, 102, 102, 0.09);
+}
+
+.selectedChipMissing > svg:first-child {
+  background: #b74242;
+  color: #ffffff;
+}
+
+.selectedEmpty {
+  margin: 9px 0 0;
+  color: #8fa0b1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .search {
   display: flex;
   align-items: center;
@@ -101,7 +220,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 9px;
   padding: 8px 12px;
   outline: none;
@@ -123,9 +242,10 @@
 }
 
 .selected {
-  border: 1px solid color-mix(in srgb, var(--brand) 58%, #445363);
-  background: color-mix(in srgb, var(--brand) 11%, #0c151f);
-  color: color-mix(in srgb, var(--brand) 35%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--brand) 78%, #536273);
+  background: color-mix(in srgb, var(--brand) 20%, #0c151f);
+  color: color-mix(in srgb, var(--brand) 18%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 16%, transparent);
 }
 
 .option:hover,
@@ -138,8 +258,8 @@
 .selected:hover,
 .selected:focus-visible {
   color: #ffffff;
-  border-color: color-mix(in srgb, var(--brand) 72%, #536273);
-  background: color-mix(in srgb, var(--brand) 15%, #111b26);
+  border-color: color-mix(in srgb, var(--brand) 88%, #ffffff);
+  background: color-mix(in srgb, var(--brand) 25%, #111b26);
 }
 
 .option:focus-visible,
@@ -154,6 +274,10 @@
   color: #e4b16e;
   font-size: 11px;
   font-weight: 700;
+}
+
+.selected > svg {
+  color: color-mix(in srgb, var(--brand) 74%, #ffffff);
 }
 
 .empty {
@@ -173,12 +297,25 @@
   .search input {
     font-size: 16px;
   }
+
+  .selectedPanelHeading {
+    align-items: flex-start;
+  }
+
+  .selectedChip {
+    max-width: 100%;
+  }
+
+  .selectedChip span {
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .search,
   .option,
-  .selected {
+  .selected,
+  .selectedChip {
     transition: none;
   }
 }
