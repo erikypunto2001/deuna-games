@@ -516,11 +516,13 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
                 </span>
               </div>
               <div className={styles.current}>
-                {cardMode === "video" && cardVideoResource
-                  ? <AdminMediaThumbnail kind="video" src={cardVideoResource.src} viewport={resolvedCardViewport} mode="destination" frameAspect={3 / 2} label="Card · video principal 3:2" sizes="96px" playIndicator className={`${styles.thumb} ${styles.thumbDetail}`} />
+                {cardMode === "video"
+                  ? cardVideoResource
+                    ? <AdminMediaThumbnail kind="video" src={cardVideoResource.src} viewport={resolvedCardViewport} mode="destination" frameAspect={3 / 2} label="Card · video principal 3:2" sizes="96px" playIndicator className={`${styles.thumb} ${styles.thumbDetail}`} />
+                    : <Clapperboard size={28} aria-hidden="true" />
                   : cardImageResource
                     ? <AdminMediaThumbnail kind="image" src={cardImageResource.src} viewport={cardImageViewport} mode="destination" frameAspect={3 / 2} label="Card · imagen 3:2" sizes="96px" className={`${styles.thumb} ${styles.thumbDetail}`} />
-                    : <MonitorPlay size={28} aria-hidden="true" />}
+                    : <ImageIcon size={28} aria-hidden="true" />}
                 <div className={styles.currentMeta}>
                   <span>{cardCopy.summaryEyebrow}</span>
                   <strong>{modeLabel(cardMode)}</strong>
