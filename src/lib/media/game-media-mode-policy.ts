@@ -1,7 +1,4 @@
-import type {
-  Game,
-  GameDestinationMediaMode,
-} from "@/types/game";
+import type { GameDestinationMediaMode } from "@/types/game";
 
 export type GameMediaModeTarget = "hero" | "card" | "detail" | "background";
 
@@ -48,40 +45,4 @@ export function normalizeGameMediaMode(
   mode: GameDestinationMediaMode
 ): GameDestinationMediaMode {
   return isGameMediaModeAllowed(target, mode) ? mode : "image";
-}
-
-/**
- * Canoniza un payload nuevo sin borrar recursos históricos. Los WebM que
- * pertenecían a un antiguo Imagen + hover siguen referenciados en videoMedia
- * y en el historial; sólo cambia el modo activo que puede publicarse desde
- * ahora.
- */
-export function normalizeGameActiveMediaModes(game: Game): Game {
-  if (!game.mediaModes) return game;
-
-  const mediaModes = {
-    ...game.mediaModes,
-    ...(game.mediaModes.hero
-      ? { hero: normalizeGameMediaMode("hero", game.mediaModes.hero) }
-      : {}),
-    ...(game.mediaModes.card
-      ? { card: normalizeGameMediaMode("card", game.mediaModes.card) }
-      : {}),
-    ...(game.mediaModes.detail
-      ? { detail: normalizeGameMediaMode("detail", game.mediaModes.detail) }
-      : {}),
-    ...(game.mediaModes.background
-      ? {
-          background: normalizeGameMediaMode(
-            "background",
-            game.mediaModes.background
-          ),
-        }
-      : {}),
-  };
-
-  return {
-    ...game,
-    mediaModes,
-  };
 }
