@@ -15,6 +15,8 @@ const [
   types,
   imageViewportPolicy,
   previewPolicy,
+  modePolicy,
+  gameVideoMedia,
   assignmentsWorkspace,
   galleryManager,
   detailEditor,
@@ -24,11 +26,14 @@ const [
   imageLayoutRoute,
   videoLayoutRoute,
   mediaLibraryRoute,
+  backgroundRoute,
   contentValidation,
   gameMedia,
   gameMediaCss,
   backgroundEditor,
   backgroundViewportEditor,
+  detailRuntime,
+  backgroundRuntime,
   publicationReadiness,
   publicationWorkspace,
   publishRoute,
@@ -38,6 +43,8 @@ const [
   source("src/types/game.ts"),
   source("src/lib/media/image-viewport.ts"),
   source("src/lib/media/preview-video-policy.ts"),
+  source("src/lib/media/game-media-mode-policy.ts"),
+  source("src/lib/media/game-video-media.ts"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
@@ -47,11 +54,14 @@ const [
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/background-media/route.ts"),
   source("src/lib/admin/content-validation.ts"),
   source("src/components/ui/GameMedia.tsx"),
   source("src/components/ui/GameMedia.module.css"),
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
+  source("src/components/games/GameDetailContainerMedia.tsx"),
+  source("src/components/games/GameDetailBackground.tsx"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
@@ -75,9 +85,10 @@ assert(
     'GAME_DETAIL_VIEWPORT_ASPECT = "source"',
     "detail.cropReady",
     "background.cropReady",
-    "galleryCropReady"
+    "galleryCropReady",
+    'normalizeGameMediaMode("background"'
   ),
-  "El contrato central debe exigir Portada 4:5, Hero 3:1 y Card 3:2, ligar crops al recurso activo y detectar metadata obsoleta."
+  "El contrato central debe exigir Portada 4:5, Hero 3:1 y Card 3:2, ligar crops al recurso activo, normalizar Fondo legacy y detectar metadata obsoleta."
 );
 
 assert(
@@ -135,6 +146,40 @@ assert(
   "La validación editorial debe aceptar 3:1, conservar Galería mixta/Libre y normalizar la intención Card/Portada."
 );
 
+const heroModes = modePolicy.match(
+  /HERO_GAME_MEDIA_MODES\s*=\s*\[([\s\S]*?)\]/
+)?.[1] ?? "";
+const standardModes = modePolicy.match(
+  /STANDARD_GAME_MEDIA_MODES\s*=\s*\[([\s\S]*?)\]/
+)?.[1] ?? "";
+
+assert(
+  has(heroModes, '"image"', '"video"', '"hover-video"') &&
+    has(standardModes, '"image"', '"video"') &&
+    !standardModes.includes('"hover-video"') &&
+    has(
+      modePolicy,
+      "card: STANDARD_GAME_MEDIA_MODES",
+      "detail: STANDARD_GAME_MEDIA_MODES",
+      "background: STANDARD_GAME_MEDIA_MODES",
+      'return isGameMediaModeAllowed(target, mode) ? mode : "image"',
+      "normalizeGameActiveMediaModes"
+    ),
+  "La política compartida debe reservar Imagen + hover exclusivamente para Hero y degradar snapshots legacy de Card/Contenedor/Fondo a Imagen."
+);
+
+assert(
+  has(
+    gameVideoMedia,
+    'hero: "hover-video"',
+    'card: "image"',
+    'detail: "image"',
+    "normalizeGameMediaMode(target, explicit)",
+    "video.playback === \"hover\" ? \"hover-video\" : \"video\""
+  ),
+  "El resolver público debe mantener hover en Hero, usar Imagen como default de Card y normalizar modos legacy antes de renderizar."
+);
+
 const cardSummaryPreview = assignmentsWorkspace.match(
   /\{cardMode === "video"[\s\S]*?<div className=\{styles\.currentMeta\}>/
 )?.[0] ?? "";
@@ -142,6 +187,9 @@ const cardSummaryPreview = assignmentsWorkspace.match(
 assert(
   has(
     assignmentsWorkspace,
+    "HERO_GAME_MEDIA_MODES",
+    "STANDARD_GAME_MEDIA_MODES",
+    'const options = target === "hero" ? HERO_MODES : CARD_MODES',
     "isImageCropConfirmed",
     "isVideoCropConfirmed",
     "LEGACY_DESTINATION_IMAGE_ASPECTS",
@@ -160,7 +208,6 @@ assert(
     "Video principal + imagen de respaldo obligatoria.",
     "Imagen de respaldo obligatoria",
     'data-card-media-role={cardMode === "video" ? "fallback" : "primary"}',
-    "Imagen es el estado inicial. El video entra al hover o foco",
     "HERO LISTO · 3:1",
     "HERO INCOMPLETO · 3:1",
     "GameDetailMediaEditor",
@@ -174,11 +221,12 @@ assert(
       ': <ImageIcon size={28} aria-hidden="true" />'
     ) &&
     !cardSummaryPreview.includes('cardMode === "video" && cardVideoResource') &&
+    !assignmentsWorkspace.includes("Imagen es el estado inicial. El video entra al hover o foco") &&
     !assignmentsWorkspace.includes("Hero · 16:9") &&
     !assignmentsWorkspace.includes("Recorte 16:9 del Hero") &&
     !assignmentsWorkspace.includes('target="cover-video"') &&
     !assignmentsWorkspace.includes('target="cover-mode"'),
-  "Asignaciones debe usar el contrato real Card/Portada, distinguir Video principal de su imagen de respaldo obligatoria, impedir que el respaldo suplante al video en el resumen, exigir la imagen 3:2 en todos los modos y mantener Hero 3:1 sin video de Portada."
+  "Asignaciones debe conservar Imagen + hover sólo en Hero, limitar Card a Imagen/Video y mantener la imagen 3:2 como fallback obligatorio del modo Video."
 );
 
 assert(
@@ -197,15 +245,18 @@ assert(
 assert(
   has(
     detailEditor,
+    "STANDARD_GAME_MEDIA_MODES",
     "Contenedor de la ficha",
-    "Imagen + hover",
     "Recorte adaptable ·",
     "RECORTE ADAPTABLE CONFIRMADO",
     'target="detail"',
     "ImageViewportEditor",
     "GameVideoViewportEditor"
-  ),
-  "Contenedor debe conservar sus tres modos y el recorte adaptable independiente."
+  ) &&
+    !detailEditor.includes("Imagen + hover") &&
+    !detailEditor.includes("hoverMode") &&
+    !detailEditor.includes('mode === "hover-video"'),
+  "Contenedor debe ofrecer únicamente Imagen/Video y conservar su recorte adaptable independiente."
 );
 
 assert(
@@ -289,30 +340,83 @@ assert(
     '"detail-video"',
     '"gallery-image"',
     '"gallery-remove"',
+    "HERO_GAME_MEDIA_MODES",
+    "STANDARD_GAME_MEDIA_MODES",
+    "heroMediaModeSchema",
+    "standardMediaModeSchema",
+    'const playback: "hover" | "always" =',
+    'target === "hero" && mode === "hover-video" ? "hover" : "always"',
+    'playback: "always"',
     "pendingImageViewport",
     "coverArtworkSource: \"custom\"",
     "const sharesCover = resolveGameCoverArtworkSource(current) === \"card\"",
     "card: pendingImageViewport(imageResource.src)",
     "cover: pendingImageViewport(imageResource.src)"
   ),
-  "Biblioteca debe conservar asignaciones por referencia e invalidar los crops correctos al reemplazar Card/Portada."
+  "Biblioteca debe permitir hover sólo para Hero, rechazarlo en Card/Contenedor y conservar asignaciones/crops por referencia."
+);
+
+assert(
+  has(
+    backgroundRoute,
+    "STANDARD_GAME_MEDIA_MODES",
+    "const mediaModeSchema = z.enum(STANDARD_GAME_MEDIA_MODES)",
+    'playback: "always"',
+    'normalizeGameMediaMode("background"'
+  ) &&
+    !backgroundRoute.includes('z.enum(["image", "video", "hover-video"])'),
+  "La API de Fondo debe aceptar sólo Imagen/Video y normalizar cualquier modo legacy antes de volver a guardarlo."
 );
 
 assert(
   has(
     backgroundEditor,
+    "STANDARD_GAME_MEDIA_MODES",
     "Recorte adaptable ·",
     "RECORTE ADAPTABLE CONFIRMADO",
     "RECORTE ADAPTABLE NO CONFIRMADO",
     "Usar fondo global"
   ) &&
+    !backgroundEditor.includes("Imagen + hover") &&
+    !backgroundEditor.includes("hoverMode") &&
+    !backgroundEditor.includes('mode === "hover-video"') &&
     has(
       backgroundViewportEditor,
       "Confirmando el recorte adaptable",
       "Confirmar recorte adaptable",
       'requiredAspect="source"'
     ),
-  "Fondo debe seguir siendo adaptable y opcional."
+  "Fondo debe ofrecer sólo Imagen/Video, seguir siendo adaptable y conservar el fallback al Fondo global."
+);
+
+assert(
+  has(
+    detailRuntime,
+    'mode === "video"',
+    "prefers-reduced-motion: reduce",
+    "documentVisible",
+    "failedVideo"
+  ) &&
+    !detailRuntime.includes("hoverActive") &&
+    !detailRuntime.includes("FINE_POINTER_MEDIA") &&
+    !detailRuntime.includes("pointerenter") &&
+    !detailRuntime.includes("focusin"),
+  "El runtime del Contenedor no debe conservar listeners ni estados de hover multimedia."
+);
+
+assert(
+  has(
+    backgroundRuntime,
+    'mode === "video"',
+    "prefers-reduced-motion: reduce",
+    "documentVisible",
+    "failedVideo"
+  ) &&
+    !backgroundRuntime.includes("hoverActive") &&
+    !backgroundRuntime.includes("FINE_POINTER_MEDIA") &&
+    !backgroundRuntime.includes("onPointerEnter") &&
+    !backgroundRuntime.includes("onPointerLeave"),
+  "El runtime del Fondo no debe conservar activación por hover."
 );
 
 assert(
@@ -347,8 +451,9 @@ assert(
     'label: `Hero · recorte ${REQUIRED_DESTINATION_ASPECTS.hero}`',
     'label: `Card · recorte ${REQUIRED_DESTINATION_ASPECTS.card}`'
   ) &&
-    !publicationReadiness.includes('label: "Hero · recorte 16:9"'),
-  "El panel de publicación debe derivar Portada/Hero/Card del contrato central de relaciones."
+    !publicationReadiness.includes('label: "Hero · recorte 16:9"') &&
+    !publicationReadiness.includes("Imagen + hover"),
+  "Publicación debe derivar relaciones del contrato central y no reintroducir hover en Card/Contenedor/Fondo."
 );
 
 assert(
@@ -377,5 +482,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Destinos multimedia: OK (Portada 4:5 · Hero 3:1 · Card 3:2 · crops ligados a fuente · Fondo/Contenedor adaptables · Galería mixta/Libre)."
+  "Destinos multimedia: OK (Portada 4:5 · Hero 3:1 con hover opcional · Card/Contenedor/Fondo sólo Imagen/Video · crops ligados a fuente · Galería mixta/Libre)."
 );
