@@ -149,6 +149,23 @@ function publicationReferences(
     : [];
 }
 
+function safePublicationReferences(
+  owner: MediaOwner,
+  payload: unknown
+) {
+  try {
+    return publicationReferences(owner, payload);
+  } catch {
+    /*
+     * Una publicación histórica que ya no pueda interpretarse con el contrato
+     * actual no debe exponer ninguno de sus recursos, pero tampoco debe bloquear
+     * las publicaciones posteriores válidas del mismo item. La decisión sigue
+     * siendo fail-closed para ese snapshot concreto.
+     */
+    return [];
+  }
+}
+
 function rememberPublishedReferences(
   key: string,
   entry: PublishedReferenceCacheEntry
@@ -217,7 +234,7 @@ async function loadEverPublishedReferences(
   );
 
   for (const publication of publicationResult.rows) {
-    for (const reference of publicationReferences(
+    for (const reference of safePublicationReferences(
       owner,
       publication.payload
     )) {
@@ -284,7 +301,7 @@ export async function resolveEditorialMediaServingAccess(
       return "public";
     }
   } catch {
-    // Fallamos cerrado: un problema leyendo/parsing la historia editorial
+    // Fallamos cerrado: un problema leyendo la historia editorial completa
     // nunca convierte un recurso de borrador en público.
   }
 
