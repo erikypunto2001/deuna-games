@@ -13,7 +13,6 @@ import type { Game } from "@/types/game";
 
 import styles from "./GameDetailBackground.module.css";
 
-const FINE_POINTER_MEDIA = "(hover: hover) and (pointer: fine)";
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 
 type Props = {
@@ -31,28 +30,21 @@ function mediaStyle(x: number, y: number, zoom: number) {
 
 export default function GameDetailBackground({ game, children }: Props) {
   const mode = game ? resolveGameBackgroundMediaMode(game) : null;
-  const [motionCapable, setMotionCapable] = useState(false);
+  const [motionAllowed, setMotionAllowed] = useState(false);
   const [documentVisible, setDocumentVisible] = useState(true);
-  const [hoverActive, setHoverActive] = useState(false);
   const [failedVideo, setFailedVideo] = useState<string | null>(null);
 
   useEffect(() => {
-    const pointer = window.matchMedia(FINE_POINTER_MEDIA);
     const reduced = window.matchMedia(REDUCED_MOTION_MEDIA);
-
-    const sync = () => {
-      setMotionCapable(pointer.matches && !reduced.matches);
-    };
+    const sync = () => setMotionAllowed(!reduced.matches);
     const syncVisibility = () => setDocumentVisible(!document.hidden);
 
     sync();
     syncVisibility();
-    pointer.addEventListener("change", sync);
     reduced.addEventListener("change", sync);
     document.addEventListener("visibilitychange", syncVisibility);
 
     return () => {
-      pointer.removeEventListener("change", sync);
       reduced.removeEventListener("change", sync);
       document.removeEventListener("visibilitychange", syncVisibility);
     };
@@ -60,15 +52,13 @@ export default function GameDetailBackground({ game, children }: Props) {
 
   const video = game?.videoMedia?.background;
   const videoEnabled = Boolean(
-    mode &&
-      mode !== "image" &&
+    mode === "video" &&
       video?.clip &&
       video.viewport.confirmed === true &&
       video.viewport.aspect === "source" &&
-      motionCapable &&
+      motionAllowed &&
       documentVisible &&
-      failedVideo !== video.clip &&
-      (mode === "video" || hoverActive)
+      failedVideo !== video.clip
   );
   const imageEnabled = Boolean(
     game?.backgroundImage &&
@@ -93,15 +83,7 @@ export default function GameDetailBackground({ game, children }: Props) {
   if (!game || !mode) return <>{children}</>;
 
   return (
-    <div
-      className={styles.root}
-      onPointerEnter={() => {
-        if (mode === "hover-video" && motionCapable) setHoverActive(true);
-      }}
-      onPointerLeave={() => {
-        if (mode === "hover-video") setHoverActive(false);
-      }}
-    >
+    <div className={styles.root}>
       {hasVisibleOverride && (
         <div className={styles.backdrop} aria-hidden="true">
           {imageEnabled && game.backgroundImage && (
