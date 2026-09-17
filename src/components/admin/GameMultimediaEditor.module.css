@@ -114,11 +114,6 @@
   gap: 6px;
 }
 
-.currentMediaPair .currentThumb {
-  width: 70px;
-  height: 60px;
-}
-
 .currentResource > div {
   display: grid;
   min-width: 0;
@@ -146,7 +141,7 @@
 
 .modeSwitch {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid #283744;
   border-radius: 8px;
