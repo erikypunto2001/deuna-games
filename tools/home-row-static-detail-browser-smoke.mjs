@@ -27,6 +27,7 @@ const mobileScreenshotPath = path.join(
   outputRoot,
   "home-row-static-detail-mobile.png"
 );
+const HOVER_START_TIMEOUT_MS = 900;
 
 function assertVisualCiOnly() {
   if (
@@ -290,6 +291,8 @@ async function staticCardState(cdp, lookup) {
     const cardStyle = getComputedStyle(card);
     return {
       revealMode: card.dataset.cardRevealMode ?? null,
+      mediaMode: card.dataset.cardMediaMode ?? null,
+      previewDelayMs: card.dataset.cardPreviewDelayMs ?? null,
       detailVisible: card.dataset.detailVisible ?? null,
       expanded: card.dataset.cardExpanded ?? null,
       expansionScale: card.dataset.cardExpansionScale ?? null,
@@ -323,6 +326,7 @@ function assertStaticState(state, label) {
   if (!state) throw new Error(`${label}: no se pudo medir la Card.`);
   if (
     state.revealMode !== "static-detail" ||
+    state.previewDelayMs !== "0" ||
     state.detailVisible !== "true" ||
     state.expanded !== "false" ||
     state.expansionScale !== "1.000" ||
@@ -367,6 +371,18 @@ function assertStaticState(state, label) {
   }
 }
 
+async function cardCenter(cdp, lookup) {
+  return cdp.evaluate(`(() => {
+    const card = ${lookup};
+    if (!(card instanceof HTMLElement)) return null;
+    const rect = card.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+  })()`);
+}
+
 async function capture(cdp, targetPath) {
   const screenshot = await cdp.send("Page.captureScreenshot", {
     format: "png",
@@ -381,7 +397,12 @@ async function capture(cdp, targetPath) {
 async function main() {
   assertVisualCiOnly();
   const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
-  if (!fixture.slug || !fixture.clip) {
+  if (
+    !fixture.slug ||
+    !fixture.clip ||
+    !fixture.hoverSlug ||
+    !fixture.hoverClip
+  ) {
     throw new Error("El descriptor del fixture Home estático es inválido.");
   }
 
@@ -437,15 +458,21 @@ async function main() {
 
     await navigate(cdp, `${baseUrl}/`);
     const lookup = cardLookup(fixture.slug);
+    const hoverLookup = cardLookup(fixture.hoverSlug);
     await scrollCardIntoView(cdp, lookup);
 
     const desktopState = await staticCardState(cdp, lookup);
-    assertStaticState(desktopState, "Desktop");
+    assertStaticState(desktopState, "Desktop · Video");
+    if (desktopState.mediaMode !== "video") {
+      throw new Error(
+        `El fixture Video no llegó al renderer público: ${JSON.stringify(desktopState)}.`
+      );
+    }
 
     const playing = await waitFor(
       cdp,
       playingVideoExpression(lookup),
-      "La Card estática visible no reprodujo su WebM"
+      "La Card estática visible en modo Video no reprodujo su WebM"
     );
     if (
       playing.src !== fixture.clip ||
@@ -458,16 +485,40 @@ async function main() {
       );
     }
 
-    const hoverPoint = await cdp.evaluate(`(() => {
-      const card = ${lookup};
-      if (!(card instanceof HTMLElement)) return null;
-      const rect = card.getBoundingClientRect();
-      return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
+    const videoHoverPoint = await cardCenter(cdp, lookup);
+    if (!videoHoverPoint) throw new Error("No se pudo medir el centro de la Card Video.");
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: videoHoverPoint.x,
+      y: videoHoverPoint.y,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+    await delay(300);
+    assertStaticState(
+      await staticCardState(cdp, lookup),
+      "Desktop · Video tras hover"
+    );
+
+    await scrollCardIntoView(cdp, hoverLookup);
+    const hoverState = await staticCardState(cdp, hoverLookup);
+    assertStaticState(hoverState, "Desktop · Imagen + hover");
+    if (hoverState.mediaMode !== "hover-video") {
+      throw new Error(
+        `El fixture Imagen + hover no llegó al renderer público: ${JSON.stringify(hoverState)}.`
+      );
+    }
+    const videoBeforeHover = await cdp.evaluate(`(() => {
+      const card = ${hoverLookup};
+      return Boolean(card instanceof HTMLElement && card.querySelector("video"));
     })()`);
-    if (!hoverPoint) throw new Error("No se pudo medir el centro de la Card.");
+    if (videoBeforeHover) {
+      throw new Error("Imagen + hover montó video antes de recibir hover/foco.");
+    }
+
+    const hoverPoint = await cardCenter(cdp, hoverLookup);
+    if (!hoverPoint) throw new Error("No se pudo medir el centro de Imagen + hover.");
+    const hoverStartedAt = Date.now();
     await cdp.send("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       x: hoverPoint.x,
@@ -475,10 +526,38 @@ async function main() {
       buttons: 0,
       pointerType: "mouse",
     });
-    await delay(300);
-    assertStaticState(
-      await staticCardState(cdp, lookup),
-      "Desktop tras hover"
+    const hoverPlaying = await waitFor(
+      cdp,
+      playingVideoExpression(hoverLookup),
+      "Imagen + hover no inició el WebM inmediatamente",
+      HOVER_START_TIMEOUT_MS
+    );
+    const hoverStartElapsedMs = Date.now() - hoverStartedAt;
+    if (hoverPlaying.src !== fixture.hoverClip) {
+      throw new Error(
+        `Imagen + hover reprodujo un clip inesperado: ${JSON.stringify(hoverPlaying)}.`
+      );
+    }
+    if (hoverStartElapsedMs >= 1000) {
+      throw new Error(
+        `Imagen + hover conservó una demora artificial (${hoverStartElapsedMs}ms).`
+      );
+    }
+
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: 2,
+      y: 2,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${hoverLookup};
+        return Boolean(card instanceof HTMLElement && !card.querySelector("video"));
+      })()`,
+      "Imagen + hover no volvió a imagen al salir con el puntero"
     );
 
     await capture(cdp, desktopScreenshotPath);
@@ -557,20 +636,21 @@ async function main() {
     await scrollCardIntoView(cdp, lookup);
     assertStaticState(
       await staticCardState(cdp, lookup),
-      "Mobile"
+      "Mobile · Video"
     );
     await waitFor(
       cdp,
       playingVideoExpression(lookup),
-      "La Card estática mobile visible no reprodujo su WebM"
+      "La Card estática mobile visible en modo Video no reprodujo su WebM"
     );
     await capture(cdp, mobileScreenshotPath);
 
     console.log(
       "Home row static detail browser smoke: OK " +
-        `(slug=${fixture.slug}, desktop/mobile=detalle estable, ` +
-        "hover=sin expansión/tilt, offscreen=sin video, " +
-        "reingreso=reproduciendo, reduced-motion=imagen)."
+        `(video=${fixture.slug}, hover=${fixture.hoverSlug}, ` +
+        `hoverStart=${hoverStartElapsedMs}ms, desktop/mobile=detalle estable, ` +
+        "Video=automático visible, Imagen+hover=inmediato y reversible, " +
+        "offscreen=sin video, reduced-motion=imagen)."
     );
   } catch (error) {
     if (browserError.trim()) {
