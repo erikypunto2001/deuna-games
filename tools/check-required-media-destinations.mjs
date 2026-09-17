@@ -135,6 +135,10 @@ assert(
   "La validación editorial debe aceptar 3:1, conservar Galería mixta/Libre y normalizar la intención Card/Portada."
 );
 
+const cardSummaryPreview = assignmentsWorkspace.match(
+  /\{cardMode === "video"[\s\S]*?<div className=\{styles\.currentMeta\}>/
+)?.[0] ?? "";
+
 assert(
   has(
     assignmentsWorkspace,
@@ -156,18 +160,25 @@ assert(
     "Video principal + imagen de respaldo obligatoria.",
     "Imagen de respaldo obligatoria",
     'data-card-media-role={cardMode === "video" ? "fallback" : "primary"}',
-    'cardMode === "video" && cardVideoResource',
     "Imagen es el estado inicial. El video entra al hover o foco",
     "HERO LISTO · 3:1",
     "HERO INCOMPLETO · 3:1",
     "GameDetailMediaEditor",
     "GameBackgroundMediaEditor"
   ) &&
+    has(
+      cardSummaryPreview,
+      '? cardVideoResource',
+      ': <Clapperboard size={28} aria-hidden="true" />',
+      ': cardImageResource',
+      ': <ImageIcon size={28} aria-hidden="true" />'
+    ) &&
+    !cardSummaryPreview.includes('cardMode === "video" && cardVideoResource') &&
     !assignmentsWorkspace.includes("Hero · 16:9") &&
     !assignmentsWorkspace.includes("Recorte 16:9 del Hero") &&
     !assignmentsWorkspace.includes('target="cover-video"') &&
     !assignmentsWorkspace.includes('target="cover-mode"'),
-  "Asignaciones debe usar el contrato real Card/Portada, distinguir Video principal de su imagen de respaldo obligatoria, exigir la imagen 3:2 en todos los modos y mantener Hero 3:1 sin video de Portada."
+  "Asignaciones debe usar el contrato real Card/Portada, distinguir Video principal de su imagen de respaldo obligatoria, impedir que el respaldo suplante al video en el resumen, exigir la imagen 3:2 en todos los modos y mantener Hero 3:1 sin video de Portada."
 );
 
 assert(
