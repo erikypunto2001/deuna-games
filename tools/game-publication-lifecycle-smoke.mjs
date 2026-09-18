@@ -458,6 +458,10 @@ for (const [pathname, label] of [
     `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/media`,
     "Mutación multimedia bulk legacy",
   ],
+  [
+    `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/preview-remove`,
+    "Desasignación de video legacy",
+  ],
 ]) {
   await assertRetiredAdminMutation(
     pathname,
@@ -480,6 +484,38 @@ if (categories.length === 0) {
 const category = categories[0];
 
 const fixtureMedia = await mediaSnapshot(representativeGameSlug, cookie);
+const fixtureRevisionBeforeRejectedVideoAssignment = fixtureMedia.revision;
+const rejectedDirectVideoAssignment = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/preview-import`,
+  `/admin/juegos/${encodeURIComponent(representativeGameSlug)}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(fixtureRevisionBeforeRejectedVideoAssignment),
+    sourceToken: "0".repeat(48),
+    startSeconds: "0",
+    endSeconds: "1",
+    quality: "1080p",
+    fps: "50",
+    target: "card",
+  },
+  "La asignación directa legacy de video"
+);
+assertRedirectState(
+  rejectedDirectVideoAssignment,
+  "preview-destino-invalido",
+  "Rechazo de asignación directa de video"
+);
+const fixtureAfterRejectedVideoAssignment =
+  await mediaSnapshot(representativeGameSlug, cookie);
+if (
+  fixtureAfterRejectedVideoAssignment.revision !==
+  fixtureRevisionBeforeRejectedVideoAssignment
+) {
+  throw new Error(
+    `Rechazar la asignación directa de video avanzó la revisión (${fixtureRevisionBeforeRejectedVideoAssignment} -> ${fixtureAfterRejectedVideoAssignment.revision}).`
+  );
+}
+
 const fixtureCandidates = [
   fixtureMedia.assignments?.coverImage,
   fixtureMedia.assignments?.heroImage,
@@ -1111,5 +1147,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 5 mutaciones legacy retiradas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignación directa de video bloqueada verificadas).`
 );
