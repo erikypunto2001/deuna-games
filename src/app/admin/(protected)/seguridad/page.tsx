@@ -21,6 +21,7 @@ const eventLabels: Record<string, string> = {
   login_failed: "Intento de acceso rechazado",
   login_blocked: "Acceso bloqueado temporalmente",
   logout: "Sesión cerrada",
+  critical_action_reauthenticated: "Acción sensible reautenticada",
 };
 
 export default async function AdminSecurityPage() {
