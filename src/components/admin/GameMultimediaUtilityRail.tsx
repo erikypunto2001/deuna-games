@@ -209,9 +209,7 @@ export default function GameMultimediaUtilityRail({
   }
 
   const assignments = state?.assignments;
-  const cardClip = assignments?.cardVideo?.source === "hero"
-    ? assignments.heroVideo?.clip
-    : assignments?.cardVideo?.clip;
+  const cardClip = assignments?.resolvedCardVideo?.src;
   const galleryLead = firstGalleryItem(state);
 
   function statusPreview(
