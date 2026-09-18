@@ -128,12 +128,18 @@ function encodedRef(branch) {
 }
 
 async function branchContainedInDefault(branch) {
-  const compareRef =
-    encodeURIComponent(branch) +
-    "..." +
-    encodeURIComponent(defaultBranch);
+  const headSha = branch?.commit?.sha;
+  if (typeof headSha !== "string" || !/^[0-9a-f]{40}$/.test(headSha)) {
+    return false;
+  }
+
   const result = await request(
-    "/repos/" + repository + "/compare/" + compareRef,
+    "/repos/" +
+      repository +
+      "/compare/" +
+      headSha +
+      "..." +
+      defaultBranch,
     { allowed: [200, 404] }
   );
 
@@ -185,7 +191,7 @@ async function deleteRedundantBranches() {
       continue;
     }
 
-    if (await branchContainedInDefault(branch.name)) {
+    if (await branchContainedInDefault(branch)) {
       reasons.set(branch.name, "contained-in-master");
     }
   }
