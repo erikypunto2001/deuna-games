@@ -180,11 +180,11 @@ try {
 } catch {}
 
 if (failures.length) {
-  console.error("\nMultimedia v2 hardening: ERROR\n");
+  console.error("\nMultimedia hardening: ERROR\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
 
 console.log(
-  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legacy eliminado)."
+  "Multimedia hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legacy eliminado)."
 );

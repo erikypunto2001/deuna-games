@@ -1,4 +1,4 @@
-import "./check-game-taxonomy-editorial-v2.mjs";
+import "./check-game-taxonomy-editorial-core.mjs";
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";

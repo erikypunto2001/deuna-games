@@ -100,6 +100,19 @@ for (const removedRecoveryFile of [
   );
 }
 
+for (const retiredVersionedTool of [
+  "tools/admin/preflight-v2.ts",
+  "tools/check-performance-editorial-v2.mjs",
+  "tools/check-game-editorial-flow-v3.mjs",
+  "tools/check-game-taxonomy-editorial-v2.mjs",
+  "tools/check-multimedia-v2-hardening.mjs",
+]) {
+  assert(
+    !trackedFiles.includes(retiredVersionedTool),
+    `${retiredVersionedTool} es una implementación histórica reemplazada y no debe volver al repo.`
+  );
+}
+
 for (const [label, relativePath] of [
   ["Curaduría de Inicio", "src/components/admin/HomeCurationEditor.tsx"],
   ["Presentación de Inicio", "src/components/admin/HomePresentationEditor.tsx"],
@@ -136,6 +149,39 @@ assert(
   ),
   "El control de mantenimiento debe permanecer integrado en package.json."
 );
+
+assert(
+  scripts["admin:purge-junk:check"] ===
+    "node --env-file=.env.admin-migration.local ./tools/admin/purge-junk.ts" &&
+    scripts["admin:purge-junk"] ===
+      "node --env-file=.env.admin-migration.local ./tools/admin/purge-junk.ts --apply",
+  "La purga de basura transitoria debe conservar modos lectura/aplicar explícitos."
+);
+
+const purgeJunk = await read("tools/admin/purge-junk.ts");
+for (const allowedDelete of [
+  "DELETE FROM deuna_admin.admin_sessions",
+  "DELETE FROM deuna_accounts.sessions",
+  "DELETE FROM deuna_accounts.recovery_codes",
+]) {
+  assert(
+    purgeJunk.includes(allowedDelete),
+    `La purga transitoria debe conservar ${allowedDelete}.`
+  );
+}
+for (const forbiddenDeleteTarget of [
+  "editorial_items",
+  "editorial_revisions",
+  "editorial_publications",
+  "admin_audit_log",
+  "reward_events",
+]) {
+  assert(
+    !purgeJunk.includes(`DELETE FROM deuna_admin.${forbiddenDeleteTarget}`) &&
+      !purgeJunk.includes(`DELETE FROM deuna_accounts.${forbiddenDeleteTarget}`),
+    `La purga transitoria no debe borrar ${forbiddenDeleteTarget}.`
+  );
+}
 
 for (const temporaryFile of [
   "tools/admin/test-owner-rollback.ts",
