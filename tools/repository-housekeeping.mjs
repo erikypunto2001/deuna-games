@@ -3,6 +3,7 @@ import process from "node:process";
 const API_VERSION = "2022-11-28";
 const RETENTION_HOURS = 24;
 const PAGE_SIZE = 100;
+const TEMPORARY_BRANCH_PATTERN = /^(?:tmp(?:\\/|-|$)|noop-temp-do-not-use(?:-|$))|(?:tmp-ignore|do-not-use)/i;
 
 function requiredEnvironment(name) {
   const value = process.env[name]?.trim();
@@ -126,7 +127,23 @@ function encodedRef(branch) {
     .join("/");
 }
 
-async function deleteMergedBranches() {
+async function branchContainedInDefault(branch) {
+  const compareRef =
+    encodeURIComponent(branch) +
+    "..." +
+    encodeURIComponent(defaultBranch);
+  const result = await request(
+    "/repos/" + repository + "/compare/" + compareRef,
+    { allowed: [200, 404] }
+  );
+
+  return (
+    result.status === 200 &&
+    Number(result.body?.behind_by) === 0
+  );
+}
+
+async function deleteRedundantBranches() {
   const [branches, openPulls, closedPulls] = await Promise.all([
     pagedArray("/repos/" + repository + "/branches"),
     pagedArray("/repos/" + repository + "/pulls?state=open"),
@@ -139,31 +156,51 @@ async function deleteMergedBranches() {
       .map((pull) => pull.head.ref)
       .filter(Boolean)
   );
-  const existing = new Map(
-    branches.map((branch) => [branch.name, branch])
-  );
-  const mergedHeads = new Set(
+  const closedHeads = new Set(
     closedPulls
       .filter(
         (pull) =>
-          pull?.merged_at &&
           pull?.head?.repo?.full_name === repository &&
           typeof pull.head.ref === "string"
       )
       .map((pull) => pull.head.ref)
   );
 
-  const candidates = [...mergedHeads]
-    .filter((branch) => branch !== defaultBranch)
-    .filter((branch) => !openHeads.has(branch))
-    .filter((branch) => existing.has(branch))
-    .filter((branch) => existing.get(branch)?.protected !== true)
-    .sort();
+  const eligible = branches
+    .filter((branch) => branch.name !== defaultBranch)
+    .filter((branch) => !openHeads.has(branch.name))
+    .filter((branch) => branch.protected !== true)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
+  const reasons = new Map();
+
+  for (const branch of eligible) {
+    if (closedHeads.has(branch.name)) {
+      reasons.set(branch.name, "closed-pr");
+      continue;
+    }
+
+    if (TEMPORARY_BRANCH_PATTERN.test(branch.name)) {
+      reasons.set(branch.name, "temporary");
+      continue;
+    }
+
+    if (await branchContainedInDefault(branch.name)) {
+      reasons.set(branch.name, "contained-in-master");
+    }
+  }
+
+  const candidates = [...reasons.keys()].sort();
   let deleted = 0;
   let alreadyGone = 0;
+  const deletedByReason = {
+    "closed-pr": 0,
+    temporary: 0,
+    "contained-in-master": 0,
+  };
 
   for (const branch of candidates) {
+    const reason = reasons.get(branch);
     const result = await request(
       "/repos/" +
         repository +
@@ -174,7 +211,13 @@ async function deleteMergedBranches() {
 
     if (result.status === 204) {
       deleted += 1;
-      console.log("Rama mergeada eliminada: " + branch);
+      deletedByReason[reason] += 1;
+      console.log(
+        "Rama redundante eliminada (" +
+          reason +
+          "): " +
+          branch
+      );
     } else {
       alreadyGone += 1;
     }
@@ -184,6 +227,7 @@ async function deleteMergedBranches() {
     candidates: candidates.length,
     deleted,
     alreadyGone,
+    deletedByReason,
   };
 }
 
@@ -233,7 +277,7 @@ async function deleteOldArtifacts() {
   };
 }
 
-const branchResult = await deleteMergedBranches();
+const branchResult = await deleteRedundantBranches();
 const artifactResult = await deleteOldArtifacts();
 
 console.log(
@@ -244,6 +288,8 @@ console.log(
     branchResult.deleted +
     ", ya ausentes=" +
     branchResult.alreadyGone +
+    ", por razón=" +
+    JSON.stringify(branchResult.deletedByReason) +
     "; artifacts candidatos=" +
     artifactResult.candidates +
     ", eliminados=" +
