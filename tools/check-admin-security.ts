@@ -276,6 +276,50 @@ assert(
   "Los formularios deben verificar su tamaño real y rechazar multipart innecesario."
 );
 
+const sessionStore = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "session-store.ts"
+  ),
+  "utf8"
+);
+
+const adminSessionAdapter = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "session.ts"
+  ),
+  "utf8"
+);
+
+const adminAuthService = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "auth-service.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  sessionStore.includes("createAdminSession") &&
+    sessionStore.includes("resolveAdminSession") &&
+    sessionStore.includes("revokeAdminSession") &&
+    !sessionStore.includes("next/headers") &&
+    !sessionStore.includes("next/navigation") &&
+    adminAuthService.includes('from "./session-store"') &&
+    adminSessionAdapter.includes('from "./session-store"'),
+  "Persistencia y autenticación de sesiones Admin deben permanecer desacopladas del adaptador HTTP de Next."
+);
+
 const criticalAdminRoutes = await Promise.all(
   ["create", "status", "password"].map((action) =>
     readFile(
