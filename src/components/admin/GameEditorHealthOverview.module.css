@@ -3,6 +3,7 @@
   gap: 12px;
   margin-bottom: 18px;
 }
+
 .summary {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 1.6fr) auto;
@@ -13,105 +14,213 @@
   border-radius: 14px;
   background: var(--surface);
 }
+
 .summary > div:first-child {
   display: grid;
   gap: 3px;
 }
+
 .summary span,
 .summary small {
   color: var(--text-soft);
   font-size: 11px;
 }
+
 .summary > div:first-child > span {
   color: var(--brand);
   font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.12em;
 }
+
 .summary strong {
   color: var(--text);
   font-size: 18px;
 }
+
 .progress {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--surface-3);
 }
+
 .progress span {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: var(--brand);
 }
+
 .summaryMeta {
   display: grid;
   gap: 4px;
   text-align: right;
 }
-.sections {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+
+.attention,
+.ready {
+  border: 1px solid var(--surface-3);
+  border-radius: 12px;
+  background: var(--surface-2);
 }
-.section {
+
+.attention {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.attentionHeading {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 54px;
-  padding: 9px 11px;
-  border: 1px solid var(--surface-3);
-  border-radius: 11px;
-  background: var(--surface-2);
-  color: var(--text-soft);
-  text-decoration: none;
+  color: var(--warning);
 }
-.section > span {
+
+.attentionHeading > div {
   display: grid;
   gap: 2px;
+}
+
+.attentionHeading strong,
+.ready strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.attentionHeading span,
+.ready span,
+.morePending {
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.attention ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attention li {
   min-width: 0;
 }
-.section strong {
+
+.attention li a {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 8px 10px;
+  color: inherit;
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--surface-3));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--warning) 4%, var(--surface));
+  text-decoration: none;
+}
+
+.attention li a > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.attention li a strong {
   overflow: hidden;
   color: var(--text);
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.section small {
+
+.attention li a small {
+  color: var(--text-soft);
   font-size: 11px;
 }
-.section[data-state="ready"] > svg {
-  color: var(--success);
-}
-.section[data-state="danger"] > svg {
+
+.attention li a > svg {
+  flex: 0 0 auto;
   color: var(--warning);
 }
-.section[data-active="true"] {
-  border-color: var(--brand);
-  background: var(--surface);
+
+.attention li a:hover,
+.attention li a:focus-visible {
+  border-color: color-mix(in srgb, var(--warning) 46%, var(--surface-3));
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
 }
-@media (hover: hover) and (pointer: fine) {
-  .section:hover {
-    border-color: var(--brand);
-    transform: translateY(-1px);
-  }
+
+.morePending {
+  margin: 0 2px;
 }
+
+.ready {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.ready > svg {
+  color: var(--success);
+}
+
+.ready > div {
+  display: grid;
+  gap: 2px;
+}
+
+.ready > a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--brand) 42%, var(--surface-3));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+  font-size: 12px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.ready > a:hover,
+.ready > a:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 64%, var(--surface-3));
+  background: color-mix(in srgb, var(--brand) 13%, var(--surface));
+}
+
 @media (max-width: 1050px) {
   .summary {
     grid-template-columns: 1fr;
   }
+
   .summaryMeta {
     display: flex;
     justify-content: space-between;
     text-align: left;
   }
-  .sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
+
 @media (max-width: 620px) {
-  .sections {
+  .attention ul {
     grid-template-columns: 1fr;
+  }
+
+  .ready {
+    grid-template-columns: auto 1fr;
+  }
+
+  .ready > a {
+    grid-column: 1 / -1;
+    min-height: 44px;
   }
 }
