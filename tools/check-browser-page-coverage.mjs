@@ -10,6 +10,7 @@ import {
   publicVisualPages,
   redirectChecks,
   representativeGameSlug,
+  representativeUpdateId,
 } from "./browser-page-manifest.mjs";
 
 const appRoot = path.resolve("src/app");
@@ -47,10 +48,15 @@ function routePatternForFile(file) {
 
 function scenarioPattern(pathname) {
   const route = pathname.split("?", 1)[0] || "/";
-  return route.replace(
-    `/${representativeGameSlug}`,
-    "/[slug]"
-  );
+  return route
+    .replace(
+      `/${representativeGameSlug}`,
+      "/[slug]"
+    )
+    .replace(
+      `/${representativeUpdateId}`,
+      "/[id]"
+    );
 }
 
 function duplicates(values) {
@@ -90,13 +96,11 @@ const redirectPatterns = new Set(
   redirectChecks.map((check) => scenarioPattern(check.pathname))
 );
 
-// These two dynamic pages need data-dependent behavior instead of a fixed
-// screenshot: download may render or redirect depending on the published
-// snapshot, while historical update drafts may redirect into the integrated
-// Distribution workspace. sitewide-browser-smoke.mjs exercises both.
+// Download is data-dependent: it may render or redirect depending on the
+// published snapshot. Historical update drafts use a dedicated visual fixture
+// and therefore must remain directly represented in adminVisualPages.
 const dynamicSweepPatterns = new Set([
   "/juegos/[slug]/descargar",
-  "/admin/actualizaciones/[id]",
 ]);
 
 const scenarioCovered = discovered.filter(
