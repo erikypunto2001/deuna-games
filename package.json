@@ -80,7 +80,8 @@
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "security:scan": "node ./tools/security-audit.mjs",
     "images:strip-metadata": "node ./tools/strip-webp-metadata.mjs",
-    "build:secure": "node ./tools/build-secure-deploy.mjs"
+    "build:secure": "node ./tools/build-secure-deploy.mjs",
+    "repo:housekeeping": "node ./tools/repository-housekeeping.mjs"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
