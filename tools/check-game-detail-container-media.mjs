@@ -76,7 +76,9 @@ assert(
     "inheritedDetailViewport",
     "detail: {",
     "confirmed: true as const",
-    "detail: inferredMode("
+    'detail: normalizeGameMediaMode(',
+    '"detail",',
+    "inferredMode("
   ) &&
     !validation.includes("storeEditorialWebp") &&
     !validation.includes("storeEditorialPreviewVideo"),
