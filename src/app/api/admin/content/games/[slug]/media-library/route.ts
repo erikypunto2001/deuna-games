@@ -38,13 +38,6 @@ import {
   resolveGameCoverImage,
 } from "@/lib/media/game-card-presentation";
 import {
-  MAX_GAME_GALLERY_ITEMS,
-  galleryImageSources,
-  resolveGameGalleryItems,
-  withGalleryItem,
-  withoutGalleryItem,
-} from "@/lib/media/game-gallery-media";
-import {
   HERO_GAME_MEDIA_MODES,
   STANDARD_GAME_MEDIA_MODES,
 } from "@/lib/media/game-media-mode-policy";
@@ -84,8 +77,6 @@ const assignmentTargetSchema = z.enum([
   "detail-mode",
   "detail-image",
   "detail-video",
-  "gallery-image",
-  "gallery-remove",
 ]);
 
 const coverSourceSchema = z.enum(["card", "custom"]);
@@ -167,7 +158,6 @@ type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
       | "cardImage"
       | "coverArtworkSource"
       | "detailImage"
-      | "galleryMedia"
       | "mediaModes"
     >
   >;
@@ -570,71 +560,6 @@ export async function POST(
     };
   }
 
-  if (target.data === "gallery-image") {
-    if (!imageResource) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-invalido")
-      );
-    }
-
-    const currentGallery = resolveGameGalleryItems(current);
-    const alreadyAssigned = currentGallery.some(
-      (item) => item.kind === "image" && item.src === imageResource.src
-    );
-    if (!alreadyAssigned && currentGallery.length >= MAX_GAME_GALLERY_ITEMS) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "galeria-llena")
-      );
-    }
-
-    const galleryMedia = withGalleryItem(current, {
-      kind: "image",
-      src: imageResource.src,
-    });
-    update = mediaUpdate(
-      {
-        galleryMedia,
-        screenshots: galleryImageSources(galleryMedia),
-      },
-      {
-        ...current.imageMedia,
-        gallery: {
-          ...current.imageMedia?.gallery,
-          [imageResource.src]: current.imageMedia?.gallery?.[imageResource.src]
-            ?? pendingImageViewport(imageResource.src),
-        },
-      }
-    );
-  }
-
-  if (target.data === "gallery-remove") {
-    const currentGallery = resolveGameGalleryItems(current);
-    if (!currentGallery.some(
-      (item) => item.kind === "image" && item.src === resource
-    )) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-invalido")
-      );
-    }
-
-    const galleryMedia = withoutGalleryItem(current, "image", resource);
-    const gallery = { ...current.imageMedia?.gallery };
-    delete gallery[resource];
-
-    update = mediaUpdate(
-      {
-        galleryMedia,
-        screenshots: galleryImageSources(galleryMedia),
-      },
-      {
-        ...current.imageMedia,
-        ...(Object.keys(gallery).length ? { gallery } : { gallery: undefined }),
-      }
-    );
-  }
 
   if (!update) {
     return adminRedirect(
@@ -665,9 +590,6 @@ export async function POST(
 
   return adminRedirect(
     authorized.adminOrigin,
-    redirectPath(
-      slug,
-      target.data === "gallery-remove" ? "galeria-actualizada" : "recurso-asignado"
-    )
+    redirectPath(slug, "recurso-asignado")
   );
 }
