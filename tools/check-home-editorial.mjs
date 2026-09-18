@@ -241,42 +241,17 @@ assert(
 );
 
 assert(
-  curationEditor.includes("deuna:home-curation-draft:latest") &&
-    curationEditor.includes("useInitialSessionStorageSnapshot") &&
-    curationEditor.includes("useInitialSessionStorageSnapshot(CURATION_DRAFT_KEY)") &&
-    !curationEditor.includes("useSyncExternalStore(") &&
-    !curationEditor.includes("readRecoveryRaw") &&
-    curationEditor.includes("const recovery = useMemo") &&
-    curationEditor.includes("parseRecoveryDraft") &&
-    curationEditor.includes("recoveryDismissed") &&
-    !curationEditor.includes("setRecovery(") &&
-    presentationEditor.includes("deuna:home-presentation-draft:latest") &&
-    presentationEditor.includes("useInitialSessionStorageSnapshot") &&
-    presentationEditor.includes("useInitialSessionStorageSnapshot(PRESENTATION_DRAFT_KEY)") &&
-    !presentationEditor.includes("useSyncExternalStore(") &&
-    !presentationEditor.includes("readRecoveryRaw") &&
-    presentationEditor.includes("const recovery = useMemo") &&
-    presentationEditor.includes("parseRecoveryDraft") &&
-    presentationEditor.includes("recoveryDismissed") &&
-    !presentationEditor.includes("setRecovery("),
-  "Los dos bloques de Resto de Inicio deben capturar el recovery una sola vez tras hidratar, derivarlo sin setState en efectos, validarlo y conservarlo hasta una decisión explícita sin observar las escrituras de la sesión activa."
-);
-
-assert(
-  curationEditor.includes("const recoveryMatchesRevision = recovery?.revision === revision") &&
-    curationEditor.includes("disabled={!recoveryMatchesRevision}") &&
-    curationEditor.includes("if (!recoveryMatchesRevision) return") &&
-    presentationEditor.includes("const recoveryMatchesRevision = recovery?.revision === revision") &&
-    presentationEditor.includes("disabled={!recoveryMatchesRevision}") &&
-    presentationEditor.includes("if (!recoveryMatchesRevision) return") &&
-    curationEditor.includes("no puede recuperarse automáticamente sobre una revisión posterior") &&
-    presentationEditor.includes("no puede recuperarse automáticamente sobre una revisión posterior"),
-  "Una copia local de una revisión anterior nunca debe poder rebasarse silenciosamente sobre la revisión actual; debe permanecer visible pero no recuperable hasta descartarla explícitamente."
+  !curationEditor.includes("sessionStorage") &&
+    !presentationEditor.includes("sessionStorage") &&
+    !curationEditor.includes("useInitialSessionStorageSnapshot") &&
+    !presentationEditor.includes("useInitialSessionStorageSnapshot") &&
+    !curationEditor.includes("Cambios locales recuperables") &&
+    !presentationEditor.includes("Cambios locales recuperables"),
+  "Resto de Inicio no debe mantener copias locales de recuperación: el borrador de servidor es la única persistencia editorial previa a publicación."
 );
 
 assert(
   presentationEditor.includes('hero: Pick<HomeCopy["hero"], "accessibleTitle">') &&
-    presentationEditor.includes("normalizeRecoveryCopy") &&
     presentationEditor.includes("SEO y accesibilidad de Inicio") &&
     presentationEditor.includes("copy.hero.accessibleTitle") &&
     presentationEditor.includes("buildPayload") &&
@@ -285,7 +260,7 @@ assert(
     !presentationEditor.includes("showHeroStudio") &&
     !presentationEditor.includes("primaryCta") &&
     !presentationEditor.includes("secondaryCta"),
-  "Presentación debe poseer secciones, copy no-Hero y sólo el título SEO/accesible; la recuperación vieja debe normalizarse sin reintroducir copy fantasma del Hero."
+  "Presentación debe poseer secciones, copy no-Hero y sólo el título SEO/accesible, sin reintroducir copy fantasma del Hero."
 );
 
 assert(
@@ -460,6 +435,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, título SEO/accesible publicado con dueño explícito, guardado atómico con lock, recuperación post-hidratación sin rebase silencioso de revisiones obsoletas, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, título SEO/accesible publicado con dueño explícito, guardado atómico con lock, sin recovery local redundante, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
   );
 }

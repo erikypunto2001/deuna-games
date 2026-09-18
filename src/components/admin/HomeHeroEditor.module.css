@@ -25,7 +25,7 @@
 .actions .publish { display: inline-flex; align-items: center; min-height: 42px; padding: 0 14px; border-radius: 7px; text-decoration: none; font-weight: 800; }
 .actions form button { min-height: 42px; font-size: 13px; }
 .workspaceTabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 18px 0; }
-.workspaceTabs button, .contentBlock > button, .recovery button { padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: inherit; }
+.workspaceTabs button, .contentBlock > button { padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: inherit; }
 .workspaceNote { margin: 8px 18px 0; color: var(--muted); }
 .app[data-workspace="content"] .grid { grid-template-columns: 1fr; }
 .app[data-workspace="content"] :is(.inspector, .designBlock, .motionBlock), .app[data-workspace="design"] :is(.contentBlock, .motionBlock), .app[data-workspace="motion"] :is(.contentBlock, .designBlock) { display: none; }
@@ -73,7 +73,6 @@
 .select select { min-height: 42px; }
 .inspector > header { min-height: 76px; }
 .inspector .accordion > button { min-height: 48px; font-size: 13px; }
-.recovery { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px; padding: 14px; border: 1px solid var(--admin-brand-border); border-radius: 8px; background: var(--admin-brand-surface); }
 .livePreview { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--background, #080d13); }
 .livePreview > p { padding: 12px; }
 @media (max-width: 900px) {

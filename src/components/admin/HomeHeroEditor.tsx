@@ -23,7 +23,6 @@ import {
   useReducer,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import type React from "react";
 
@@ -39,7 +38,6 @@ import type {
   HomeHeroPresentation,
   ResolvedHomeConfig,
 } from "@/data/home-config";
-import { homeHeroEditorFormSchema } from "@/lib/admin/home-config-forms";
 import { HOME_HERO_MAX_SLIDES } from "@/lib/home/hero-contract";
 import {
   resolveHeroDeviceDesign,
@@ -81,8 +79,6 @@ const HERO_FRAME_MIN_WIDTH = 260;
 const HERO_FRAME_MAX_WIDTH = 1800;
 const HERO_FRAME_MIN_HEIGHT = 220;
 const HERO_FRAME_MAX_HEIGHT = 1200;
-const HERO_DRAFT_PREFIX = "deuna:hero-draft:";
-const HERO_DRAFT_LATEST_KEY = `${HERO_DRAFT_PREFIX}latest`;
 
 const devices: Array<{
   id: HomeHeroDevice;
@@ -336,50 +332,6 @@ function historyReducer(
     : history;
 }
 
-const subscribeStorage = () => () => {};
-const clientReady = () => true;
-const serverReady = () => false;
-
-function readStoredHeroDraft(editingRevision: number) {
-  try {
-    const stable = sessionStorage.getItem(HERO_DRAFT_LATEST_KEY);
-    if (stable) return stable;
-
-    const current = sessionStorage.getItem(
-      `${HERO_DRAFT_PREFIX}${editingRevision}`
-    );
-    if (current) return current;
-
-    let newestRevision = -1;
-    let newestDraft: string | null = null;
-    for (let index = 0; index < sessionStorage.length; index += 1) {
-      const key = sessionStorage.key(index);
-      const match = key?.match(/^deuna:hero-draft:(\d+)$/);
-      if (!match) continue;
-      const revision = Number(match[1]);
-      if (revision <= newestRevision) continue;
-      const value = sessionStorage.getItem(key!);
-      if (!value) continue;
-      newestRevision = revision;
-      newestDraft = value;
-    }
-    return newestDraft;
-  } catch {
-    return null;
-  }
-}
-
-function clearStoredHeroDrafts() {
-  try {
-    const keys: string[] = [];
-    for (let index = 0; index < sessionStorage.length; index += 1) {
-      const key = sessionStorage.key(index);
-      if (key?.startsWith(HERO_DRAFT_PREFIX)) keys.push(key);
-    }
-    keys.forEach((key) => sessionStorage.removeItem(key));
-  } catch {}
-}
-
 export default function HomeHeroEditor({
   config,
   games,
@@ -418,17 +370,11 @@ export default function HomeHeroEditor({
   const [workspace, setWorkspace] = useState<
     "content" | "design" | "motion"
   >("content");
-  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
   const [editScope, setEditScope] = useState<"device" | "all">(
     "device"
   );
 
   const router = useRouter();
-  const recoveryReady = useSyncExternalStore(
-    subscribeStorage,
-    clientReady,
-    serverReady
-  );
   const rankingNow = rankingReferenceTime;
   const dirty = JSON.stringify(state) !== JSON.stringify(baseline);
   const bySlug = useMemo(
@@ -463,86 +409,6 @@ export default function HomeHeroEditor({
         .slice(0, 8),
     [games, query, state.slugs]
   );
-
-  const draftKey = `${HERO_DRAFT_PREFIX}${editingRevision}`;
-  const storedDraft = useSyncExternalStore(
-    subscribeStorage,
-    () => readStoredHeroDraft(editingRevision),
-    () => null
-  );
-  const recovery = useMemo(() => {
-    if (!storedDraft || recoveryDismissed) return null;
-    try {
-      const saved = JSON.parse(storedDraft) as
-        | { revision?: unknown; state?: unknown }
-        | State;
-      const wrappedState =
-        typeof saved === "object" &&
-        saved !== null &&
-        "state" in saved
-          ? saved.state
-          : saved;
-      const savedRevision =
-        typeof saved === "object" &&
-        saved !== null &&
-        "revision" in saved &&
-        Number.isInteger(saved.revision)
-          ? Number(saved.revision)
-          : null;
-      const parsed = homeHeroEditorFormSchema.safeParse({
-        expectedRevision: String(editingRevision),
-        heroJson: JSON.stringify({
-          ...(wrappedState as State),
-          copy: config.copy.hero,
-        }),
-      });
-      if (!parsed.success) return null;
-      const recoveredState = {
-        slugs: parsed.data.heroJson.slugs,
-        mode: parsed.data.heroJson.mode,
-        presentation: parsed.data.heroJson.presentation,
-      } as State;
-      if (JSON.stringify(recoveredState) === JSON.stringify(baseline)) {
-        return null;
-      }
-      return { state: recoveredState, revision: savedRevision };
-    } catch {
-      return null;
-    }
-  }, [
-    storedDraft,
-    recoveryDismissed,
-    editingRevision,
-    config.copy.hero,
-    baseline,
-  ]);
-  const recoveryRequiresDecision = Boolean(recovery);
-  const recoveryMatchesRevision = Boolean(
-    recovery &&
-      (recovery.revision === null || recovery.revision === editingRevision)
-  );
-
-  useEffect(() => {
-    if (!recoveryReady || recovery) return;
-    try {
-      if (dirty) {
-        sessionStorage.setItem(
-          HERO_DRAFT_LATEST_KEY,
-          JSON.stringify({ revision: editingRevision, state })
-        );
-        sessionStorage.setItem(draftKey, JSON.stringify(state));
-      } else {
-        clearStoredHeroDrafts();
-      }
-    } catch {}
-  }, [
-    state,
-    dirty,
-    draftKey,
-    editingRevision,
-    recoveryReady,
-    recovery,
-  ]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -601,8 +467,6 @@ export default function HomeHeroEditor({
       editScope === "all" ? "all" : device,
     restoreAll = false
   ) => {
-    if (recoveryRequiresDecision) return;
-    setRecoveryDismissed(true);
     dispatch({
       type: "edit",
       update: (current) => {
@@ -836,7 +700,7 @@ export default function HomeHeroEditor({
     >
       <header
         className={styles.topbar}
-        inert={recoveryRequiresDecision || undefined}
+       
       >
         <div className={styles.title}>
           <i>H</i>
@@ -916,46 +780,10 @@ export default function HomeHeroEditor({
         </p>
       )}
 
-      {recovery && (
-        <div className={styles.recovery} role="alert">
-          <span>
-            {recoveryMatchesRevision
-              ? "Hay cambios de esta revisión conservados en esta pestaña. Recupéralos o descártalos antes de continuar editando."
-              : `Hay cambios locales conservados de la revisión ${recovery.revision ?? "desconocida"}. Resuelve la copia desde el aviso de seguridad antes de continuar.`}
-          </span>
-          {recoveryMatchesRevision && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setRecoveryDismissed(true);
-                  dispatch({
-                    type: "edit",
-                    update: () => clone(recovery.state),
-                    coalesce: false,
-                  });
-                }}
-              >
-                Recuperar cambios
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  clearStoredHeroDrafts();
-                  setRecoveryDismissed(true);
-                }}
-              >
-                Descartar copia local
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
       <nav
         className={styles.workspaceTabs}
         aria-label="Tareas del editor"
-        inert={recoveryRequiresDecision || undefined}
+       
       >
         {(
           [
@@ -986,7 +814,7 @@ export default function HomeHeroEditor({
 
       <div
         className={styles.grid}
-        inert={recoveryRequiresDecision || undefined}
+       
       >
         <div className={styles.main}>
           <section

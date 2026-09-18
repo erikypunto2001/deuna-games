@@ -1,11 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useMemo, useState } from "react";
 
 import type {
   HomeCopy,
@@ -14,10 +10,6 @@ import type {
 } from "@/data/home-config";
 
 import styles from "./HomePresentationEditor.module.css";
-import { useInitialSessionStorageSnapshot } from "./useInitialSessionStorageSnapshot";
-
-const PRESENTATION_DRAFT_KEY =
-  "deuna:home-presentation-draft:latest";
 
 const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   hero: "Hero principal",
@@ -34,12 +26,6 @@ const sectionLabels: Record<HomeSectionConfig["id"], string> = {
 type EditableHomeCopy = Omit<HomeCopy, "hero"> & {
   hero: Pick<HomeCopy["hero"], "accessibleTitle">;
 };
-type PresentationDraft = {
-  revision: number;
-  sections: HomeSectionConfig[];
-  copy: EditableHomeCopy;
-};
-
 function editableCopyFromConfig(
   copy: HomeCopy
 ): EditableHomeCopy {
@@ -59,145 +45,6 @@ function buildPayload(
   copy: EditableHomeCopy
 ) {
   return JSON.stringify({ sections, copy });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function hasSameShape(value: unknown, template: unknown): boolean {
-  if (template === null) return value === null;
-
-  if (Array.isArray(template)) {
-    return (
-      Array.isArray(value) &&
-      value.length === template.length &&
-      template.every((item, index) =>
-        hasSameShape(value[index], item)
-      )
-    );
-  }
-
-  if (isRecord(template)) {
-    if (!isRecord(value)) return false;
-
-    const templateKeys = Object.keys(template);
-    const valueKeys = Object.keys(value);
-    if (templateKeys.length !== valueKeys.length) return false;
-
-    return templateKeys.every(
-      (key) =>
-        Object.hasOwn(value, key) &&
-        hasSameShape(value[key], template[key])
-    );
-  }
-
-  return typeof value === typeof template;
-}
-
-function clearRecoveryDraft() {
-  try {
-    sessionStorage.removeItem(PRESENTATION_DRAFT_KEY);
-  } catch {
-    // El guardado del servidor sigue siendo la fuente de verdad.
-  }
-}
-
-function normalizeRecoveryCopy(
-  value: unknown,
-  baselineCopy: EditableHomeCopy
-): unknown {
-  if (!isRecord(value)) return value;
-
-  const { hero, ...rest } = value;
-
-  if (hero === undefined) {
-    return {
-      ...rest,
-      hero: structuredClone(baselineCopy.hero),
-    };
-  }
-
-  if (
-    !isRecord(hero) ||
-    typeof hero.accessibleTitle !== "string"
-  ) {
-    return value;
-  }
-
-  return {
-    ...rest,
-    hero: {
-      accessibleTitle: hero.accessibleTitle,
-    },
-  };
-}
-
-function parseRecoveryDraft(
-  raw: string | null,
-  baselineSections: HomeSectionConfig[],
-  baselineCopy: EditableHomeCopy
-): PresentationDraft | null {
-  if (!raw) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      !isRecord(parsed) ||
-      typeof parsed.revision !== "number" ||
-      !Number.isInteger(parsed.revision) ||
-      parsed.revision < 0 ||
-      !Array.isArray(parsed.sections)
-    ) {
-      return null;
-    }
-
-    const recoveryCopy = normalizeRecoveryCopy(
-      parsed.copy,
-      baselineCopy
-    );
-    if (!hasSameShape(recoveryCopy, baselineCopy)) {
-      return null;
-    }
-
-    const allowedIds = new Set(
-      baselineSections.map((section) => section.id)
-    );
-    const seenIds = new Set<HomeSectionConfig["id"]>();
-    const sections: HomeSectionConfig[] = [];
-
-    for (const item of parsed.sections) {
-      if (
-        !isRecord(item) ||
-        typeof item.id !== "string" ||
-        !allowedIds.has(item.id as HomeSectionConfig["id"]) ||
-        typeof item.visible !== "boolean"
-      ) {
-        return null;
-      }
-
-      const id = item.id as HomeSectionConfig["id"];
-      if (seenIds.has(id)) return null;
-
-      seenIds.add(id);
-      sections.push({ id, visible: item.visible });
-    }
-
-    if (
-      sections.length !== baselineSections.length ||
-      seenIds.size !== allowedIds.size
-    ) {
-      return null;
-    }
-
-    return {
-      revision: parsed.revision,
-      sections,
-      copy: structuredClone(recoveryCopy) as EditableHomeCopy,
-    };
-  } catch {
-    return null;
-  }
 }
 
 export default function HomePresentationEditor({
@@ -225,72 +72,12 @@ export default function HomePresentationEditor({
   const [copy, setCopy] = useState<EditableHomeCopy>(
     () => structuredClone(baselineCopy)
   );
-  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
-  const {
-    ready: recoveryReady,
-    value: storedDraft,
-  } = useInitialSessionStorageSnapshot(PRESENTATION_DRAFT_KEY);
 
   const serialized = useMemo(
     () => buildPayload(sections, copy),
     [copy, sections]
   );
   const dirty = serialized !== baselinePayload;
-  const recovery = useMemo(() => {
-    if (!storedDraft || recoveryDismissed) return null;
-
-    const candidate = parseRecoveryDraft(
-      storedDraft,
-      baselineSections,
-      baselineCopy
-    );
-    if (!candidate) return null;
-
-    return buildPayload(
-      candidate.sections,
-      candidate.copy
-    ) === baselinePayload
-      ? null
-      : candidate;
-  }, [
-    baselineCopy,
-    baselinePayload,
-    baselineSections,
-    recoveryDismissed,
-    storedDraft,
-  ]);
-  const recoveryMatchesRevision = recovery?.revision === revision;
-  const recoveryRequiresDecision = Boolean(recovery);
-
-  useEffect(() => {
-    if (!recoveryReady || recovery) return;
-
-    try {
-      if (!dirty) {
-        clearRecoveryDraft();
-        return;
-      }
-
-      sessionStorage.setItem(
-        PRESENTATION_DRAFT_KEY,
-        JSON.stringify({
-          revision,
-          sections,
-          copy,
-        } satisfies PresentationDraft)
-      );
-    } catch {
-      // El navegador puede bloquear storage; el formulario sigue funcionando.
-    }
-  }, [
-    copy,
-    dirty,
-    recovery,
-    recoveryReady,
-    revision,
-    sections,
-  ]);
-
   function moveSection(index: number, direction: -1 | 1) {
     setSections((current) => {
       const target = index + direction;
@@ -378,47 +165,6 @@ export default function HomePresentationEditor({
         value={serialized}
       />
 
-      {recovery && (
-        <div
-          className={styles.recovery}
-          role={recoveryMatchesRevision ? "status" : "alert"}
-        >
-          <div>
-            <strong>Cambios locales recuperables</strong>
-            <span>
-              {recoveryMatchesRevision
-                ? "Hay una copia local de esta revisión que todavía no fue guardada. Recupérala o descártala antes de continuar editando."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior. Descarta la copia para desbloquear la edición de la revisión actual.`}
-            </span>
-          </div>
-          <div>
-            <button
-              type="button"
-              disabled={!recoveryMatchesRevision}
-              onClick={() => {
-                if (!recoveryMatchesRevision) return;
-                setSections(
-                  recovery.sections.map((section) => ({ ...section }))
-                );
-                setCopy(structuredClone(recovery.copy));
-                setRecoveryDismissed(true);
-              }}
-            >
-              {recoveryMatchesRevision ? "Recuperar" : "Copia obsoleta"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearRecoveryDraft();
-                setRecoveryDismissed(true);
-              }}
-            >
-              Descartar copia
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className={styles.summary}>
         <div>
           <strong>Presentación pública de Inicio</strong>
@@ -431,7 +177,7 @@ export default function HomePresentationEditor({
         </span>
       </div>
 
-      <section className={styles.structurePanel} inert={recoveryRequiresDecision}>
+      <section className={styles.structurePanel}>
         <p className={styles.structureIntro}>
           El orden se reutiliza directamente al renderizar Inicio. Ocultar un bloque no borra su configuración ni sus juegos seleccionados.
         </p>
@@ -473,7 +219,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <section className={styles.copyPanel} inert={recoveryRequiresDecision}>
+      <section className={styles.copyPanel}>
         <div className={styles.copyHeader}>
           <strong>Textos de los bloques</strong>
           <p>
@@ -644,7 +390,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <div className={styles.actions} inert={recoveryRequiresDecision}>
+      <div className={styles.actions}>
         <p>
           Guardar sólo modifica el borrador de Portada. El orden, visibilidad y textos públicos no cambian hasta publicar.
         </p>
