@@ -14,6 +14,7 @@ const [
   packageJson,
   library,
   libraryRoute,
+  mediaWorkspaceRoute,
   mediaResourceDeleteRoute,
   publishedVideoReferences,
   imageUploadRoute,
@@ -34,6 +35,7 @@ const [
   source("package.json"),
   source("src/lib/media/editorial-media-library.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-workspace/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-resource-delete/route.ts"),
   source("src/lib/admin/published-game-video-references.ts"),
   source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
@@ -95,7 +97,6 @@ assert(
 assert(
   has(
     libraryRoute,
-    "verifyAdminSession",
     "authorizeAdminFormRequest",
     "hasExactAdminFormFields",
     "findEditorialMediaResource",
@@ -109,6 +110,14 @@ assert(
     "reconcileEditorialMediaDeletions",
     "saveGameMediaDraft"
   ) &&
+    !libraryRoute.includes("export async function GET") &&
+    has(
+      mediaWorkspaceRoute,
+      "export async function GET",
+      "verifyAdminSession",
+      "getGameMediaWorkspaceSnapshot",
+      '"Cache-Control": "no-store"'
+    ) &&
     !libraryRoute.includes('"image-delete"') &&
     !libraryRoute.includes('"video-delete"') &&
     !libraryRoute.includes("markEditorialMediaForDeletion") &&
@@ -118,7 +127,7 @@ assert(
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile(") &&
     !libraryRoute.includes("unlink("),
-  "La ruta de biblioteca debe ser de lectura/asignación, proteger publicación e historial y no contener borrado físico."
+  "media-workspace debe ser la única lectura autenticada; media-library debe limitarse a asignación, proteger publicación/historial y no contener borrado físico."
 );
 
 assert(
