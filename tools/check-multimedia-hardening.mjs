@@ -166,6 +166,13 @@ assert(
 );
 
 try {
+  await access(path.join(root, "src/app/api/admin/content/games/[slug]/media/route.ts"));
+  failures.push(
+    "La mutación bulk multimedia legacy /games/[slug]/media volvió a aparecer aunque Biblioteca/Galería/crops son las rutas canónicas."
+  );
+} catch {}
+
+try {
   await access(path.join(root, "src/components/admin/GamePreviewClipUploadForm.tsx"));
   failures.push(
     "GamePreviewClipUploadForm.tsx volvió a aparecer aunque el editor ya usa GameVideoLibraryEditor directamente."
@@ -186,5 +193,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Multimedia hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legacy eliminado)."
+  "Multimedia hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · master único · Galería no destructiva · Biblioteca con borrado seguro · mutación bulk y workspace legacy retirados)."
 );
