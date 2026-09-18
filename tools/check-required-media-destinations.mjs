@@ -28,6 +28,7 @@ const [
   videoLayoutRoute,
   mediaLibraryRoute,
   backgroundRoute,
+  contentService,
   contentValidation,
   gameMedia,
   gameMediaCss,
@@ -57,6 +58,7 @@ const [
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/app/api/admin/content/games/[slug]/background-media/route.ts"),
+  source("src/lib/admin/content-service.ts"),
   source("src/lib/admin/content-validation.ts"),
   source("src/components/ui/GameMedia.tsx"),
   source("src/components/ui/GameMedia.module.css"),
@@ -131,6 +133,33 @@ assert(
     "customAspectRatio?: number"
   ),
   "El motor de encuadre de video debe conocer Hero 3:1 y conservar Libre para los flujos compatibles."
+);
+
+const mediaDraftContract = contentService.match(
+  /export type GameMediaDraftInput = Pick<[\s\S]*?>;/
+)?.[0] ?? "";
+
+assert(
+  has(
+    mediaDraftContract,
+    '"coverArtworkSource"',
+    '"coverImage"',
+    '"heroImage"',
+    '"cardImage"',
+    '"detailImage"',
+    '"backgroundImage"',
+    '"screenshots"',
+    '"galleryMedia"',
+    '"imageMedia"',
+    '"mediaModes"',
+    '"videoMedia"',
+    '"previewClip"'
+  ) &&
+    !mediaDraftContract.includes('"previewMode"') &&
+    !mediaDraftContract.includes('"youtubePreview"') &&
+    !mediaLibraryRoute.includes("Partial<") &&
+    !backgroundRoute.includes("Partial<"),
+  "El servicio editorial debe ser la única fuente del contrato de escritura multimedia y no reintroducir campos legacy ni ensanchados locales."
 );
 
 assert(
