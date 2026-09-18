@@ -223,7 +223,9 @@ for (const requiredGuard of [
   'Number(result.body?.behind_by) === 0',
   '"closed-pr"',
   '"temporary"',
+  '"superseded"',
   '"contained-in-master"',
+  'SUPERSEDED_BRANCHES',
   'RETENTION_HOURS = 24',
   '/actions/artifacts/',
 ]) {
@@ -236,6 +238,11 @@ assert(
   !repositoryHousekeeping.includes("pull?.merged_at"),
   "El housekeeping debe retirar heads de PRs cerrados, no limitarse a los mergeados."
 );
+assert(
+  repositoryHousekeeping.includes('"fix/game-taxonomy-ghost-selections"') === false,
+  "La rama válida fix/game-taxonomy-ghost-selections no debe entrar en la allowlist de ramas superadas."
+);
+
 assert(
   !repositoryHousekeeping.includes("force") &&
     !repositoryHousekeeping.includes("editorial_") &&
