@@ -8,6 +8,8 @@ import type {
   EditorialPayloadByType,
 } from "./content-validation-core.ts";
 
+import { normalizeGameMediaMode } from "../media/game-media-mode-policy.ts";
+
 import type { Game } from "@/types/game";
 
 export * from "./content-validation-core.ts";
@@ -581,25 +583,41 @@ export function parseEditorialPayload(
     backgroundImage
   );
   const resolvedMediaModes = {
-    hero: inferredMode(
-      mediaModes?.hero,
-      activeVideoMedia?.hero,
-      game.heroImage,
-      "hover-video"
+    hero: normalizeGameMediaMode(
+      "hero",
+      inferredMode(
+        mediaModes?.hero,
+        activeVideoMedia?.hero,
+        game.heroImage,
+        "hover-video"
+      )
     ),
-    card: inferredMode(
-      mediaModes?.card,
-      activeVideoMedia?.card,
-      resolvedCardImage,
-      "hover-video"
+    card: normalizeGameMediaMode(
+      "card",
+      inferredMode(
+        mediaModes?.card,
+        activeVideoMedia?.card,
+        resolvedCardImage,
+        "image"
+      )
     ),
-    detail: inferredMode(
-      mediaModes?.detail,
-      activeVideoMedia?.detail,
-      resolvedDetailImage,
-      "image"
+    detail: normalizeGameMediaMode(
+      "detail",
+      inferredMode(
+        mediaModes?.detail,
+        activeVideoMedia?.detail,
+        resolvedDetailImage,
+        "image"
+      )
     ),
-    ...(backgroundMode ? { background: backgroundMode } : {}),
+    ...(backgroundMode
+      ? {
+          background: normalizeGameMediaMode(
+            "background",
+            backgroundMode
+          ),
+        }
+      : {}),
   };
 
   const normalizedGame: Game = {
