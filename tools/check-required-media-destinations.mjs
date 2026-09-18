@@ -20,6 +20,7 @@ const [
   gameVideoMedia,
   assignmentsWorkspace,
   galleryManager,
+  galleryRoute,
   detailEditor,
   mediaViewportEditor,
   imageEditor,
@@ -50,6 +51,7 @@ const [
   source("src/lib/media/game-video-media.ts"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/app/api/admin/content/games/[slug]/gallery-media/route.ts"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
@@ -158,7 +160,8 @@ assert(
     !mediaDraftContract.includes('"previewMode"') &&
     !mediaDraftContract.includes('"youtubePreview"') &&
     !mediaLibraryRoute.includes("Partial<") &&
-    !backgroundRoute.includes("Partial<"),
+    !backgroundRoute.includes("Partial<") &&
+    !galleryRoute.includes("Partial<"),
   "El servicio editorial debe ser la única fuente del contrato de escritura multimedia y no reintroducir campos legacy ni ensanchados locales."
 );
 
