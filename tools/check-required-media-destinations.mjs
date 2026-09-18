@@ -13,6 +13,7 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   requirements,
   types,
+  contentService,
   imageViewportPolicy,
   previewPolicy,
   modePolicy,
@@ -20,6 +21,7 @@ const [
   gameVideoMedia,
   assignmentsWorkspace,
   galleryManager,
+  galleryRoute,
   detailEditor,
   mediaViewportEditor,
   imageEditor,
@@ -42,6 +44,7 @@ const [
 ] = await Promise.all([
   source("src/lib/media/game-media-requirements.ts"),
   source("src/types/game.ts"),
+  source("src/lib/admin/content-service.ts"),
   source("src/lib/media/image-viewport.ts"),
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/game-media-mode-policy.ts"),
@@ -49,6 +52,7 @@ const [
   source("src/lib/media/game-video-media.ts"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/app/api/admin/content/games/[slug]/gallery-media/route.ts"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
@@ -108,6 +112,40 @@ assert(
     "confirmed?: true"
   ),
   "El modelo debe persistir 3:1, intención Card/Portada y procedencia opcional del crop sin romper snapshots históricos."
+);
+
+assert(
+  has(
+    contentService,
+    "export type GameMediaDraftInput = Pick<",
+    '"coverArtworkSource"',
+    '"coverImage"',
+    '"heroImage"',
+    '"cardImage"',
+    '"detailImage"',
+    '"backgroundImage"',
+    '"screenshots"',
+    '"galleryMedia"',
+    '"imageMedia"',
+    '"mediaModes"',
+    '"videoMedia"',
+    '"previewClip"'
+  ) &&
+    !contentService.includes('| "previewMode"') &&
+    !contentService.includes('| "youtubePreview"') &&
+    has(
+      mediaLibraryRoute,
+      "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];"
+    ) &&
+    has(
+      backgroundRoute,
+      "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];"
+    ) &&
+    has(
+      galleryRoute,
+      "} as Parameters<typeof saveGameMediaDraft>[3];"
+    ),
+  "El servicio editorial debe ser la única fuente del contrato de escritura multimedia moderno, conservando previewClip legacy sólo mientras siga activo y sin widenings paralelos por ruta."
 );
 
 assert(
