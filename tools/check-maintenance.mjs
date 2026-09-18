@@ -213,11 +213,16 @@ const repositoryHousekeeping = await read(
 );
 for (const requiredGuard of [
   'process.env.GITHUB_ACTIONS !== "true"',
-  'pull?.merged_at',
+  '"/pulls?state=closed"',
   'pull?.head?.repo?.full_name === repository',
-  'branch !== defaultBranch',
-  '!openHeads.has(branch)',
-  'existing.get(branch)?.protected !== true',
+  'branch.name !== defaultBranch',
+  '!openHeads.has(branch.name)',
+  'branch.protected !== true',
+  'TEMPORARY_BRANCH_PATTERN',
+  'Number(result.body?.behind_by) === 0',
+  '"closed-pr"',
+  '"temporary"',
+  '"contained-in-master"',
   'RETENTION_HOURS = 24',
   '/actions/artifacts/',
 ]) {
@@ -226,6 +231,10 @@ for (const requiredGuard of [
     `El housekeeping remoto debe conservar la guarda ${requiredGuard}.`
   );
 }
+assert(
+  !repositoryHousekeeping.includes("pull?.merged_at"),
+  "El housekeeping debe retirar heads de PRs cerrados, no limitarse a los mergeados."
+);
 assert(
   !repositoryHousekeeping.includes("force") &&
     !repositoryHousekeeping.includes("editorial_") &&
