@@ -341,13 +341,17 @@ assert(
 );
 
 assert(
-  gamesCatalog.includes('data-admin-games-mobile-list="true"') &&
+  gamesCatalog.includes("MOBILE_GAMES_PER_PAGE = 8") &&
+    gamesCatalog.includes('data-admin-games-mobile-list="true"') &&
+    gamesCatalog.includes('data-admin-games-mobile-card="true"') &&
+    gamesCatalog.includes('data-admin-games-mobile-pagination="true"') &&
     gamesCatalog.includes('data-admin-games-table="true"') &&
     gamesCatalog.includes('data-mobile-actions={mobile ? "true" : undefined}') &&
     catalogCss.includes(".mobileList") &&
+    catalogCss.includes(".mobilePagination") &&
     catalogCss.includes(".tableViewport") &&
     catalogCss.includes("display: none;"),
-  "Juegos debe ofrecer una presentación móvil propia con acciones visibles, no depender de desplazar una tabla de 980px."
+  "Juegos debe ofrecer una presentación móvil paginada con acciones visibles, no depender de desplazar una tabla de 980px ni renderizar el catálogo completo en una sola columna."
 );
 
 assert(
@@ -389,12 +393,14 @@ assert(
 );
 
 assert(
-  taxonomyEditor.includes("TERMS_PER_PAGE = 12") &&
+  taxonomyEditor.includes("DEFAULT_TERMS_PER_PAGE = 12") &&
+    taxonomyEditor.includes("VISUAL_TERMS_PER_PAGE = 6") &&
+    taxonomyEditor.includes("termsPerPage") &&
     taxonomyEditor.includes("matchingTerms") &&
     taxonomyEditor.includes("visibleTerms") &&
     taxonomyEditor.includes("data-taxonomy-term-row") &&
     taxonomyEditor.includes("moveTerm(currentSection.kind, index"),
-  "Catálogos debe limitar la densidad visible y conservar el índice absoluto al reordenar términos filtrados o paginados."
+  "Catálogos debe limitar Clasificaciones ricas a 6 filas, mantener Etiquetas compactas en 12 y conservar el índice absoluto al reordenar términos filtrados o paginados."
 );
 
 assert(
