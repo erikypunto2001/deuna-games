@@ -337,8 +337,6 @@ assert(
     '"detail-mode"',
     '"detail-image"',
     '"detail-video"',
-    '"gallery-image"',
-    '"gallery-remove"',
     "HERO_GAME_MEDIA_MODES",
     "STANDARD_GAME_MEDIA_MODES",
     "heroMediaModeSchema",
@@ -351,8 +349,17 @@ assert(
     "const sharesCover = resolveGameCoverArtworkSource(current) === \"card\"",
     "card: pendingImageViewport(imageResource.src)",
     "cover: pendingImageViewport(imageResource.src)"
-  ),
-  "Biblioteca debe permitir hover sólo para Hero, rechazarlo en Card/Contenedor y conservar asignaciones/crops por referencia."
+  ) &&
+    !mediaLibraryRoute.includes('"gallery-image"') &&
+    !mediaLibraryRoute.includes('"gallery-remove"') &&
+    has(
+      galleryManager,
+      'action={`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`}',
+      '"gallery-add"',
+      '"gallery-remove"',
+      '"gallery-move"'
+    ),
+  "Biblioteca debe gestionar sólo destinos fijos; Galería conserva su única superficie en gallery-media."
 );
 
 assert(

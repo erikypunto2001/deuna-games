@@ -725,7 +725,6 @@ for (const target of [
   "hero-image",
   "card-image",
   "detail-image",
-  "gallery-image",
 ]) {
   const assigned = await postAdminForm(
     `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
@@ -742,6 +741,51 @@ for (const target of [
   media = await mediaSnapshot(slug, cookie);
   revision = media.revision;
 }
+
+const revisionBeforeRejectedGalleryLibraryTarget = revision;
+const rejectedGalleryLibraryTarget = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    target: "gallery-image",
+    resource: libraryImage,
+  },
+  "El target legacy de Galería en media-library"
+);
+assertRedirectState(
+  rejectedGalleryLibraryTarget,
+  "solicitud",
+  "Rechazo de gallery-image en media-library"
+);
+media = await mediaSnapshot(slug, cookie);
+if (media.revision !== revisionBeforeRejectedGalleryLibraryTarget) {
+  throw new Error(
+    `Rechazar gallery-image en media-library avanzó la revisión (${revisionBeforeRejectedGalleryLibraryTarget} -> ${media.revision}).`
+  );
+}
+revision = media.revision;
+
+const galleryAssigned = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    target: "gallery-add",
+    kind: "image",
+    resource: libraryImage,
+  },
+  "La asignación canónica de Galería"
+);
+assertRedirectState(
+  galleryAssigned,
+  "galeria-actualizada",
+  "Asignación canónica de Galería"
+);
+media = await mediaSnapshot(slug, cookie);
+revision = media.revision;
 
 const revisionBeforeRejectedCoverMode = revision;
 const rejectedCoverMode = await postAdminForm(
