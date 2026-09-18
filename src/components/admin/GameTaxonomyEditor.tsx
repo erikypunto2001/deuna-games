@@ -720,7 +720,12 @@ export default function GameTaxonomyEditor({
                     <div className={styles.orderButtons}>
                       <button
                         type="button"
-                        disabled={index === 0}
+                        disabled={Boolean(normalizedQuery) || index === 0}
+                        title={
+                          normalizedQuery
+                            ? "Limpia la búsqueda para reordenar el catálogo completo."
+                            : undefined
+                        }
                         aria-label={`Subir ${term.label}`}
                         onClick={() =>
                           moveTerm(currentSection.kind, index, -1)
@@ -730,7 +735,15 @@ export default function GameTaxonomyEditor({
                       </button>
                       <button
                         type="button"
-                        disabled={index === terms.length - 1}
+                        disabled={
+                          Boolean(normalizedQuery) ||
+                          index === terms.length - 1
+                        }
+                        title={
+                          normalizedQuery
+                            ? "Limpia la búsqueda para reordenar el catálogo completo."
+                            : undefined
+                        }
                         aria-label={`Bajar ${term.label}`}
                         onClick={() =>
                           moveTerm(currentSection.kind, index, 1)
