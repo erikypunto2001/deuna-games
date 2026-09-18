@@ -51,7 +51,6 @@ const files = Object.fromEntries(
       classificationRoute: "src/app/api/admin/content/games/[slug]/classification/route.ts",
       compatibilityRoute: "src/app/api/admin/content/games/[slug]/compatibility/route.ts",
       performanceRoute: "src/app/api/admin/content/games/[slug]/performance/route.ts",
-      mediaRoute: "src/app/api/admin/content/games/[slug]/media/route.ts",
       downloadRoute: "src/app/api/admin/content/games/[slug]/download/route.ts",
       valuationRoute: "src/app/api/admin/content/games/[slug]/valuation/route.ts",
       publishRoute: "src/app/api/admin/content/games/[slug]/publish/route.ts",
@@ -83,6 +82,7 @@ const retiredGameMutationRoutes = [
   "src/app/api/admin/content/games/[slug]/route.ts",
   "src/app/api/admin/content/games/[slug]/advanced/route.ts",
   "src/app/api/admin/content/games/[slug]/requirements/route.ts",
+  "src/app/api/admin/content/games/[slug]/media/route.ts",
 ];
 const retiredGameMutationRoutePresence = await Promise.all(
   retiredGameMutationRoutes.map(exists)
@@ -92,7 +92,7 @@ const validation = `${files.contentValidation}\n${files.contentValidationCore}`;
 
 assert(
   retiredGameMutationRoutePresence.every((present) => !present),
-  "Las mutaciones legacy core/advanced/requirements no deben reaparecer: Información, Clasificación y Compatibilidad son las únicas rutas canónicas de esos datos."
+  "Las mutaciones legacy core/advanced/requirements/media no deben reaparecer: Información, Clasificación, Compatibilidad y el workspace multimedia dividido son las superficies canónicas."
 );
 assert(
   files.informationRoute.includes("getGamePublicationIdentity") &&
@@ -212,6 +212,11 @@ assert(
   "El formulario de Rendimiento debe validar rangos y coherencia."
 );
 assert(
+  !files.contentForms.includes("editorialGameMediaFormSchema") &&
+    !files.contentForms.includes("screenshotsTextSchema"),
+  "El contrato bulk multimedia legacy no debe volver: Biblioteca, Galería y crops poseen las mutaciones vigentes."
+);
+assert(
   files.performanceService.includes("verifyAdminSession") &&
     files.performanceService.includes("FOR UPDATE") &&
     files.performanceService.includes("editorial_revisions") &&
@@ -270,7 +275,6 @@ for (const [name, route, current] of [
   ["Clasificación", files.classificationRoute, '"datos"'],
   ["Compatibilidad", files.compatibilityRoute, '"requisitos"'],
   ["Rendimiento", files.performanceRoute, '"rendimiento"'],
-  ["Multimedia", files.mediaRoute, '"multimedia"'],
   ["Distribución", files.downloadRoute, '"descargas"'],
   ["Valoración", files.valuationRoute, '"valoracion"'],
 ]) {
