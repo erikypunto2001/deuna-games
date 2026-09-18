@@ -15,8 +15,6 @@ import localStyles from "./GameMediaUploadForm.module.css";
 type GameMediaUploadFormProps = {
   slug: string;
   revision: number;
-  screenshotCount: number;
-  libraryOnly?: boolean;
 };
 
 type SourceMode = "file" | "url";
@@ -202,10 +200,6 @@ function uploadRedirectError(state: string | null) {
     return "Otra pestaña guardó una revisión más reciente. Recarga el editor antes de volver a subir.";
   }
 
-  if (state === "galeria-llena") {
-    return "La galería ya tiene ocho capturas. Retira una antes de añadir otra.";
-  }
-
   if (state === "solicitud") {
     return "La solicitud multimedia fue rechazada por seguridad. Recarga el editor e inténtalo otra vez.";
   }
@@ -242,8 +236,6 @@ function formatLocalFileSize(bytes: number) {
 export default function GameMediaUploadForm({
   slug,
   revision,
-  screenshotCount,
-  libraryOnly = false,
 }: GameMediaUploadFormProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -387,14 +379,7 @@ export default function GameMediaUploadForm({
 
     if (busy) return;
 
-    const submittedForm = new FormData(
-      event.currentTarget
-    );
-    const kind = libraryOnly
-      ? "library"
-      : String(
-          submittedForm.get("kind") ?? "cover"
-        );
+    const kind = "library";
 
     setBusy(true);
     setStatus("Preparando imagen…");
@@ -448,11 +433,7 @@ export default function GameMediaUploadForm({
       );
       const resultState =
         resultUrl.searchParams.get("estado");
-      const expectedState = libraryOnly
-        ? "recurso-subido"
-        : "imagen-subida";
-
-      if (resultState !== expectedState) {
+      if (resultState !== "recurso-subido") {
         throw new Error(
           uploadRedirectError(resultState)
         );
@@ -483,33 +464,15 @@ export default function GameMediaUploadForm({
         value={revision}
       />
 
-      {libraryOnly ? (
-        <>
-          <input type="hidden" name="kind" value="library" />
-          <div
-            className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}
-          >
-            <strong>Destino · Biblioteca compartida</strong>
-            <span>
-              El archivo se almacena una sola vez por hash. Después podrás asignarlo a Portada, Hero o Galería sin volver a subirlo.
-            </span>
-          </div>
-        </>
-      ) : (
-        <label>
-          <span>Destino de la imagen</span>
-          <select name="kind" defaultValue="cover" required>
-            <option value="cover">Portada</option>
-            <option value="hero">Imagen hero</option>
-            <option
-              value="screenshot"
-              disabled={screenshotCount >= 8}
-            >
-              Captura de galería
-            </option>
-          </select>
-        </label>
-      )}
+      <input type="hidden" name="kind" value="library" />
+      <div
+        className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}
+      >
+        <strong>Destino · Biblioteca compartida</strong>
+        <span>
+          El archivo se almacena una sola vez por hash. Después podrás asignarlo a Portada, Hero, Card, Contenedor o Galería sin volver a subirlo.
+        </span>
+      </div>
 
       <label>
         <span>Origen de la imagen</span>
@@ -678,16 +641,12 @@ export default function GameMediaUploadForm({
 
       <div className={adminStyles.formActions}>
         <p>
-          {libraryOnly
-            ? "Subir aquí no cambia Portada, Hero ni Galería: sólo agrega el WebP seguro a la biblioteca para reutilizarlo después."
-            : "La imagen se normaliza antes de salir del navegador. Las URLs se descargan mediante el panel privado, sólo desde HTTPS público. Si el servidor rechaza la carga, esta pantalla conserva la selección y los ajustes para poder corregir o reintentar."}
+          Subir aquí no cambia Portada, Hero, Card, Contenedor ni Galería: sólo agrega el WebP seguro a la Biblioteca para reutilizarlo después.
         </p>
         <button type="submit" disabled={busy}>
           {busy
             ? "Preparando…"
-            : libraryOnly
-              ? "Preparar y guardar en biblioteca"
-              : "Preparar, subir y guardar"}
+            : "Preparar y guardar en biblioteca"}
         </button>
       </div>
     </form>
