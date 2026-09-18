@@ -22,6 +22,10 @@ import {
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
 import {
+  HERO_GAME_MEDIA_MODES,
+  STANDARD_GAME_MEDIA_MODES,
+} from "@/lib/media/game-media-mode-policy";
+import {
   isImageCropConfirmed,
   isVideoCropConfirmed,
   LEGACY_DESTINATION_IMAGE_ASPECTS,
@@ -37,11 +41,19 @@ import type {
 import styles from "./GameMediaAssignmentsWorkspace.module.css";
 
 const EMPTY_RESOURCES: MultimediaLibraryResource[] = [];
-const MODES: Array<{ value: GameDestinationMediaMode; label: string }> = [
-  { value: "image", label: "Imagen" },
-  { value: "video", label: "Video" },
-  { value: "hover-video", label: "Imagen + hover" },
-];
+const MODE_LABELS: Record<GameDestinationMediaMode, string> = {
+  image: "Imagen",
+  video: "Video",
+  "hover-video": "Imagen + hover",
+};
+const HERO_MODES = HERO_GAME_MEDIA_MODES.map((value) => ({
+  value,
+  label: MODE_LABELS[value],
+}));
+const CARD_MODES = STANDARD_GAME_MEDIA_MODES.map((value) => ({
+  value,
+  label: MODE_LABELS[value],
+}));
 
 const COVER_SOURCES: Array<{ value: GameCoverArtworkSource; label: string }> = [
   { value: "card", label: "Misma imagen que Card" },
@@ -86,8 +98,7 @@ function cardVideoViewport(card: GameCardVideo | null | undefined): GameVideoVie
 }
 
 function modeLabel(mode: GameDestinationMediaMode) {
-  if (mode === "hover-video") return "Imagen + hover";
-  return mode === "video" ? "Video" : "Imagen";
+  return MODE_LABELS[mode];
 }
 
 function cardModeCopy(mode: GameDestinationMediaMode): CardModeCopy {
@@ -104,24 +115,6 @@ function cardModeCopy(mode: GameDestinationMediaMode): CardModeCopy {
       videoRole: "Video principal",
       videoHelp: "Es el medio que se reproduce cuando la Card permite movimiento y el recurso está disponible.",
       readyLabel: "CARD LISTA · VIDEO 3:2 + RESPALDO",
-    };
-  }
-
-  if (mode === "hover-video") {
-    return {
-      heading: "Imagen inicial + video inmediato al hover o foco.",
-      summaryEyebrow: "Estado inicial",
-      summaryDetail: (image, video) => {
-        const imageName = image ? multimediaShortName(image) : "imagen pendiente";
-        const videoName = video ? multimediaShortName(video) : "video pendiente";
-        return `${imageName} → hover: ${videoName}`;
-      },
-      imageRole: "Imagen inicial",
-      imageHelp: "Se muestra en reposo y también funciona como fallback si el video no puede reproducirse.",
-      imagePickerLabel: "Imagen inicial 3:2",
-      videoRole: "Video al interactuar",
-      videoHelp: "Entra sin demora artificial al hover o foco y vuelve a imagen al salir.",
-      readyLabel: "CARD LISTA · IMAGEN + HOVER",
     };
   }
 
@@ -243,6 +236,8 @@ function ModeSwitch({
   mode: GameDestinationMediaMode;
   disabled: boolean;
 }) {
+  const options = target === "hero" ? HERO_MODES : CARD_MODES;
+
   return (
     <form
       method="post"
@@ -252,7 +247,7 @@ function ModeSwitch({
     >
       <input type="hidden" name="expectedRevision" value={revision} />
       <input type="hidden" name="target" value={`${target}-mode`} />
-      {MODES.map((option) => (
+      {options.map((option) => (
         <button
           key={option.value}
           type="submit"
@@ -475,7 +470,7 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
             <div><b>A</b><h3 id="card-destination-heading">Card del juego</h3></div>
             <small>Portada 4:5 + media 3:2</small>
           </header>
-          <p className={styles.cardIntro}>La Portada es el estado inicial 4:5. La Vista informativa siempre conserva una imagen 3:2 segura; el modo elegido define si esa imagen es principal, inicial o respaldo del video.</p>
+          <p className={styles.cardIntro}>La Portada es el estado inicial 4:5. La Vista informativa conserva una imagen 3:2 segura: puede ser el medio principal o el respaldo técnico cuando elegís Video.</p>
 
           <div className={styles.cardLayers}>
             <section className={styles.layer} id="cover-crop" aria-labelledby="card-poster-heading">
@@ -510,9 +505,7 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
                 <span>
                   {cardMode === "video"
                     ? "Video es el medio principal. La imagen se mantiene sólo como fallback seguro y nunca reemplaza al video mientras éste pueda reproducirse."
-                    : cardMode === "hover-video"
-                      ? "Imagen es el estado inicial. El video entra al hover o foco y vuelve a la imagen al salir."
-                      : "Imagen es el único medio de esta vista; no se monta video."}
+                    : "Imagen es el único medio de esta vista; no se monta video."}
                 </span>
               </div>
               <div className={styles.current}>

@@ -12,6 +12,9 @@ import { useState } from "react";
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameBackgroundViewportEditor from "@/components/admin/GameBackgroundViewportEditor";
+import {
+  STANDARD_GAME_MEDIA_MODES,
+} from "@/lib/media/game-media-mode-policy";
 import type {
   GameBackgroundVideo,
   GameDestinationMediaMode,
@@ -57,11 +60,10 @@ type Props = {
   stale?: boolean;
 };
 
-const MODES: Array<{ value: GameDestinationMediaMode; label: string }> = [
-  { value: "image", label: "Imagen" },
-  { value: "video", label: "Video" },
-  { value: "hover-video", label: "Imagen + hover" },
-];
+const MODES = STANDARD_GAME_MEDIA_MODES.map((value) => ({
+  value,
+  label: value === "video" ? "Video" : "Imagen",
+}));
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
@@ -123,24 +125,22 @@ function ResourcePicker({
   resources,
   selected,
   busy,
-  hoverMode,
   onSelect,
 }: {
   kind: "image" | "video";
   resources: LibraryResource[];
   selected: string | null;
   busy: boolean;
-  hoverMode: boolean;
   onSelect: (src: string) => void;
 }) {
   const available = resources.filter((resource) => resource.kind === kind);
   const complete = Boolean(selected);
   const missingLabel = kind === "image"
-    ? hoverMode ? "Falta seleccionar imagen base" : "Falta seleccionar imagen"
-    : hoverMode ? "Falta seleccionar video hover" : "Falta seleccionar video";
+    ? "Falta seleccionar imagen"
+    : "Falta seleccionar video";
   const completeLabel = kind === "image"
-    ? hoverMode ? "Imagen base seleccionada" : "Imagen seleccionada"
-    : hoverMode ? "Video hover seleccionado" : "Video seleccionado";
+    ? "Imagen seleccionada"
+    : "Video seleccionado";
 
   return (
     <details className={styles.resourcePicker}>
@@ -212,8 +212,8 @@ export default function GameBackgroundMediaEditor({
   const videoSelected = Boolean(assignment.video?.clip);
   const videoCropReady = assignment.video?.viewport.confirmed === true &&
     assignment.video?.viewport.aspect === "source";
-  const needsImage = mode === "image" || mode === "hover-video";
-  const needsVideo = mode === "video" || mode === "hover-video";
+  const needsImage = mode === "image";
+  const needsVideo = mode === "video";
   const activeReady = Boolean(
     mode &&
       (!needsImage || (imageSelected && imageCropReady)) &&
@@ -222,11 +222,9 @@ export default function GameBackgroundMediaEditor({
   const controlsDisabled = busy || stale;
   const currentLabel = !mode
     ? "Fondo global"
-    : mode === "image"
-      ? "Imagen"
-      : mode === "video"
-        ? "Video"
-        : "Imagen + hover";
+    : mode === "video"
+      ? "Video"
+      : "Imagen";
   const imageResource = resources.find(
     (resource): resource is ResourceImage => resource.kind === "image" && resource.src === assignment.image
   ) ?? null;
@@ -263,11 +261,9 @@ export default function GameBackgroundMediaEditor({
 
   const resourceDescription = !mode
     ? "Usa el fondo global de Juegos; no agrega un recurso propio."
-    : mode === "hover-video"
-      ? `${assignment.image ? shortName(assignment.image) : "Imagen pendiente"} + ${videoResource ? shortName(videoResource.src) : "video pendiente"}`
-      : mode === "video"
-        ? videoResource ? shortName(videoResource.src) : "Selecciona un video"
-        : assignment.image ? shortName(assignment.image) : "Selecciona una imagen";
+    : mode === "video"
+      ? videoResource ? shortName(videoResource.src) : "Selecciona un video"
+      : assignment.image ? shortName(assignment.image) : "Selecciona una imagen";
 
   return (
     <>
@@ -293,9 +289,9 @@ export default function GameBackgroundMediaEditor({
         </div>
 
         <div className={assignmentStyles.currentResource}>
-          {(mode !== "video" && imageResource) || (mode !== "image" && videoResource) ? (
-            <span className={`${assignmentStyles.currentMediaSet} ${mode === "hover-video" && imageResource && videoResource ? assignmentStyles.currentMediaPair : ""}`}>
-              {mode !== "video" && imageResource && (
+          {(mode === "image" && imageResource) || (mode === "video" && videoResource) ? (
+            <span className={assignmentStyles.currentMediaSet}>
+              {mode === "image" && imageResource && (
                 <AdminMediaThumbnail
                   kind="image"
                   src={imageResource.src}
@@ -307,7 +303,7 @@ export default function GameBackgroundMediaEditor({
                   className={assignmentStyles.currentThumb}
                 />
               )}
-              {mode !== "image" && videoResource && (
+              {mode === "video" && videoResource && (
                 <AdminMediaThumbnail
                   kind="video"
                   src={videoResource.src}
@@ -340,7 +336,6 @@ export default function GameBackgroundMediaEditor({
                 resources={resources}
                 selected={assignment.image}
                 busy={controlsDisabled}
-                hoverMode={mode === "hover-video"}
                 onSelect={(src) => void mutate("select-image", src)}
               />
             )}
@@ -350,7 +345,6 @@ export default function GameBackgroundMediaEditor({
                 resources={resources}
                 selected={assignment.video?.clip ?? null}
                 busy={controlsDisabled}
-                hoverMode={mode === "hover-video"}
                 onSelect={(src) => void mutate("select-video", src)}
               />
             )}

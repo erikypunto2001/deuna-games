@@ -13,6 +13,7 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   types,
   validation,
+  modePolicy,
   requirements,
   integrity,
   readiness,
@@ -30,6 +31,7 @@ const [
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/media/game-media-mode-policy.ts"),
   source("src/lib/media/game-media-requirements.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
@@ -69,7 +71,17 @@ assert(
     "inferredOptionalMode",
     "backgroundMode"
   ),
-  "La validación editorial debe preservar el Fondo opcional con viewport fijo y reservar relaciones seleccionables para Galería."
+  "La validación de compatibilidad debe seguir pudiendo leer snapshots históricos del Fondo sin reescribirlos."
+);
+
+assert(
+  has(
+    modePolicy,
+    "STANDARD_GAME_MEDIA_MODES",
+    "background: STANDARD_GAME_MEDIA_MODES",
+    'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
+  ),
+  "La política activa del Fondo debe limitarse a Imagen/Video y degradar hover histórico a Imagen."
 );
 
 assert(
@@ -77,13 +89,14 @@ assert(
     requirements,
     'GAME_BACKGROUND_VIEWPORT_ASPECT = "source"',
     "resolveGameBackgroundMediaMode",
+    'normalizeGameMediaMode("background"',
     "backgroundMode !== null",
     "game.backgroundImage",
     "game.imageMedia?.background",
     "game.videoMedia?.background?.clip",
     "background.cropReady"
   ),
-  "Fondo debe ser opcional en global, pero obligatorio de completar cuando se activa."
+  "Fondo debe ser opcional en global, obligatorio de completar cuando se activa y normalizar modos legacy."
 );
 
 assert(
@@ -101,9 +114,10 @@ assert(
     'id: "background-media"',
     "media.background.active",
     "complete: media.background.cropReady",
-    'priority: "essential"'
-  ),
-  "Publicación debe bloquear únicamente un Fondo activo que esté incompleto."
+    'priority: "essential"',
+    "el recurso exigido por Imagen o Video"
+  ) && !readiness.includes("Imagen, Video o Imagen + hover"),
+  "Publicación debe bloquear únicamente un Fondo activo incompleto y describir sólo Imagen/Video."
 );
 
 assert(
@@ -115,6 +129,10 @@ assert(
     '"select-video"',
     '"layout-image"',
     '"layout-video"',
+    "STANDARD_GAME_MEDIA_MODES",
+    "const mediaModeSchema = z.enum(STANDARD_GAME_MEDIA_MODES)",
+    "normalizeGameMediaMode(",
+    'playback: "always"',
     "listEditorialMediaLibrary",
     "mergeEditorialMediaResources",
     "backgroundImage: match.src",
@@ -125,10 +143,11 @@ assert(
     "Recorte adaptable de imagen inválido",
     "Recorte adaptable de video inválido"
   ) &&
+    !api.includes('z.enum(["image", "video", "hover-video"])') &&
     !api.includes("storeEditorialWebp") &&
     !api.includes("storeEditorialPreviewVideo") &&
     !api.includes("spawn("),
-  "La API de Fondo debe guardar sólo referencias/metadata y nunca copiar o recodificar al asignar destinos."
+  "La API de Fondo debe aceptar sólo Imagen/Video, guardar referencias/metadata y nunca copiar o recodificar al asignar destinos."
 );
 
 assert(
@@ -159,7 +178,7 @@ assert(
     admin,
     "Fondo del juego",
     "Opcional · recorte adaptable",
-    "Imagen + hover",
+    "STANDARD_GAME_MEDIA_MODES",
     "Usar fondo global",
     "Falta seleccionar imagen",
     "Falta seleccionar video",
@@ -167,8 +186,6 @@ assert(
     'complete ? "confirmado" : "no confirmado"',
     "RECORTE ADAPTABLE CONFIRMADO",
     "RECORTE ADAPTABLE NO CONFIRMADO",
-    "Imagen base seleccionada",
-    "Video hover seleccionado",
     "GameBackgroundViewportEditor",
     "assignmentStyles.assignmentCard",
     "assignmentStyles.modeSwitch",
@@ -178,11 +195,15 @@ assert(
     "resources: LibraryResource[]",
     "assignment: BackgroundAssignment"
   ) &&
+    !admin.includes("Imagen + hover") &&
+    !admin.includes("Video hover seleccionado") &&
+    !admin.includes("hoverMode") &&
+    !admin.includes('mode === "hover-video"') &&
     !admin.includes("Falta ajustar el foco de la imagen") &&
     !admin.includes("Foco adaptable de imagen confirmado") &&
     !admin.includes("useEffect(") &&
     !admin.includes('fetch(endpoint, {\n          credentials: "same-origin"'),
-  "Fondo debe verse como un destino más, usar terminología de recorte y reutilizar revisión/recursos del workspace sin una segunda lectura de biblioteca."
+  "Fondo debe verse como un destino Imagen/Video, usar terminología de recorte y reutilizar revisión/recursos del workspace sin una segunda lectura de biblioteca."
 );
 
 assert(
@@ -205,25 +226,29 @@ assert(
   has(
     publicBackground,
     "resolveGameBackgroundMediaMode",
-    "FINE_POINTER_MEDIA",
     "REDUCED_MOTION_MEDIA",
-    "motionCapable",
-    "mode === \"hover-video\"",
+    "motionAllowed",
+    'mode === "video"',
     "game.backgroundImage",
     "game?.videoMedia?.background",
     "mediaStyle(",
     '"--game-background-position"',
     '"--game-background-zoom"',
     "autoPlay",
+    "documentVisible",
     "failedVideo"
   ) &&
+    !publicBackground.includes("FINE_POINTER_MEDIA") &&
+    !publicBackground.includes("hoverActive") &&
+    !publicBackground.includes("onPointerEnter") &&
+    !publicBackground.includes("onPointerLeave") &&
     has(
       publicBackgroundCss,
       "object-position: var(--game-background-position, 50% 50%)",
       "transform-origin: var(--game-background-position, 50% 50%)",
       "transform: scale(var(--game-background-zoom, 1))"
     ),
-  "El runtime público debe usar imagen/video por referencia, hover fino, fallback de movimiento reducido y aplicar X/Y/zoom adaptables en el fondo."
+  "El runtime público debe usar Imagen/Video por referencia, sin activación por hover, respetando reduced-motion, visibilidad, error y X/Y/zoom adaptables."
 );
 
 assert(
@@ -285,5 +310,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (Fondo integrado en destinos, biblioteca no destructiva, override opcional, bytes compartidos y recorte adaptable)."
+  "Game background media: OK (Fondo Imagen/Video integrado, biblioteca no destructiva, override opcional, bytes compartidos y recorte adaptable)."
 );

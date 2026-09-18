@@ -85,10 +85,6 @@ function cardMediaReadinessDetail(mode: GameDestinationMediaMode) {
     return "Video principal 3:2 y su imagen de respaldo 3:2 deben tener recurso y recorte confirmados.";
   }
 
-  if (mode === "hover-video") {
-    return "La imagen inicial 3:2 y el video que entra al hover o foco deben tener recurso y recorte confirmados.";
-  }
-
   return "La imagen principal 3:2 debe tener recurso y recorte confirmados; este modo no utiliza video.";
 }
 
@@ -101,7 +97,7 @@ export function evaluateGamePublicationReadiness(
         {
           id: "background-media",
           label: "Fondo del juego · adaptable",
-          detail: "Cuando el Fondo propio está activo, las capas exigidas por Imagen, Video o Imagen + hover deben tener recurso y recorte confirmados.",
+          detail: "Cuando el Fondo propio está activo, el recurso exigido por Imagen o Video debe tener su recorte confirmado.",
           section: "multimedia",
           complete: media.background.cropReady,
           priority: "essential",
@@ -243,7 +239,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "detail-container-media",
       label: "Contenedor de la ficha · adaptable",
-      detail: "El contenedor principal debe completar su recurso y recorte adaptable.",
+      detail: "El contenedor principal debe completar el recurso de Imagen o Video y su recorte adaptable.",
       section: "multimedia",
       complete: media.detail.cropReady,
       priority: "essential",
