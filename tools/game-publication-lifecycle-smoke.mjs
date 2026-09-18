@@ -377,6 +377,10 @@ for (const [pathname, label] of [
     `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/requirements`,
     "Mutación legacy aislada de requisitos",
   ],
+  [
+    `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/media`,
+    "Mutación multimedia bulk legacy",
+  ],
 ]) {
   await assertRetiredAdminMutation(
     pathname,
@@ -1014,5 +1018,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 4 mutaciones legacy retiradas verificados).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 5 mutaciones legacy retiradas verificadas).`
 );
