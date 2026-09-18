@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { Pool } from "pg";
 
 import {
   createAdministrator,
@@ -13,6 +14,9 @@ import {
   adminQuery,
   getAdminPool,
 } from "../src/lib/admin/database.ts";
+import {
+  getAdminDatabaseConfig,
+} from "../src/lib/admin/database-config.ts";
 import {
   resolveAdminSession,
 } from "../src/lib/admin/session-store.ts";
@@ -49,6 +53,9 @@ const initialPassword =
   `Initial-${randomBytes(18).toString("base64url")}-Aa9!`;
 const nextPassword =
   `Reset-${randomBytes(18).toString("base64url")}-Bb8!`;
+const migrationPool = new Pool(
+  getAdminDatabaseConfig("migration")
+);
 
 try {
   const ownerResult = await adminQuery<OwnerRow>(
@@ -141,7 +148,7 @@ try {
     "La cuenta reactivada no pudo volver a iniciar sesión."
   );
 
-  const audit = await adminQuery<AuditRow>(
+  const audit = await migrationPool.query<AuditRow>(
     `SELECT action
      FROM deuna_admin.admin_audit_log
      WHERE user_id = $1
@@ -168,5 +175,8 @@ try {
     "Cuentas administrativas lifecycle: OK (crear, reautenticar Owner, login, reset con revocación, desactivar, rechazo, reactivar y auditoría PostgreSQL)."
   );
 } finally {
-  await getAdminPool().end();
+  await Promise.all([
+    getAdminPool().end(),
+    migrationPool.end(),
+  ]);
 }
