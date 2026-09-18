@@ -3,7 +3,7 @@ import process from "node:process";
 const API_VERSION = "2022-11-28";
 const RETENTION_HOURS = 24;
 const PAGE_SIZE = 100;
-const TEMPORARY_BRANCH_PATTERN = /^(?:tmp(?:\\/|-|$)|noop-temp-do-not-use(?:-|$))|(?:tmp-ignore|do-not-use)/i;
+const TEMPORARY_BRANCH_PATTERN = /^(?:tmp(?:\\x2f|-|$)|noop-temp-do-not-use(?:-|$))|(?:tmp-ignore|do-not-use)/i;
 
 function requiredEnvironment(name) {
   const value = process.env[name]?.trim();
