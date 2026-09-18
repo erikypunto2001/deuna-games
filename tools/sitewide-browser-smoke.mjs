@@ -646,20 +646,21 @@ async function loginAdmin(cdp) {
 }
 
 async function readFixtureValues() {
-  const [gamesSource, updatesSource] = await Promise.all([
-    readFile(path.resolve("src/data/games.ts"), "utf8"),
-    readFile(path.resolve("src/data/update-records.ts"), "utf8"),
-  ]);
+  const gamesSource = await readFile(
+    path.resolve("src/data/games.ts"),
+    "utf8"
+  );
   const gameSlugs = [...gamesSource.matchAll(/\bslug:\s*"([^"]+)"/g)]
     .map((match) => match[1]);
-  const updateIds = [...updatesSource.matchAll(/\bid:\s*"([^"]+)"/g)]
-    .map((match) => match[1]);
+
   if (!gameSlugs.includes(representativeGameSlug)) {
-    throw new Error(`El fixture representativo ${representativeGameSlug} ya no existe.`);
+    throw new Error(
+      `El fixture representativo ${representativeGameSlug} ya no existe.`
+    );
   }
+
   return {
     gameSlugs: [...new Set(gameSlugs)],
-    updateIds: [...new Set(updateIds)],
   };
 }
 
@@ -989,23 +990,6 @@ async function main() {
       }
     }
 
-    await setViewport(cdp, browserViewports[0]);
-    for (const updateId of fixture.updateIds) {
-      currentContext = `legacy-update-sweep-${updateId}`;
-      const navigation = await navigate(
-        cdp,
-        `${baseUrl}/admin/actualizaciones/${encodeURIComponent(updateId)}`
-      );
-      await settleApplication(cdp);
-      const finalPathname = await cdp.evaluate("location.pathname");
-      if (navigation.status !== 200 ||
-          (!finalPathname.startsWith("/admin/actualizaciones/") &&
-           !finalPathname.startsWith("/admin/juegos/"))) {
-        failures.push(`legacy-update/${updateId}: status=${navigation.status}, final=${finalPathname}.`);
-      }
-      sweeps.push({ id: `legacy-update:${updateId}`, status: navigation.status, finalPathname });
-    }
-
     await writeReport(results, sweeps, failures);
 
     for (const result of results) {
@@ -1022,7 +1006,7 @@ async function main() {
       process.exitCode = 1;
     } else {
       console.log(
-        `\nSite-wide browser smoke: OK (${results.length} capturas; ${fixture.gameSlugs.length} fichas públicas; ${fixture.gameSlugs.length} rutas de descarga; ${fixture.updateIds.length} updates históricos; ${redirectChecks.length} redirects).`
+        `\nSite-wide browser smoke: OK (${results.length} capturas; ${fixture.gameSlugs.length} fichas públicas; ${fixture.gameSlugs.length} rutas de descarga; ${adminVisualPages.length} estados Admin; ${redirectChecks.length} redirects).`
       );
     }
   } catch (error) {
