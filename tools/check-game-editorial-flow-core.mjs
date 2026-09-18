@@ -91,6 +91,17 @@ const retiredGameMutationRoutePresence = await Promise.all(
 const validation = `${files.contentValidation}\n${files.contentValidationCore}`;
 
 assert(
+  retiredGameMutationRoutePresence.every((present) => !present),
+  "Las mutaciones legacy core/advanced/requirements no deben reaparecer: Información, Clasificación y Compatibilidad son las únicas rutas canónicas de esos datos."
+);
+assert(
+  files.informationRoute.includes("getGamePublicationIdentity") &&
+    files.informationRoute.includes("publicationIdentity?.everPublished") &&
+    files.informationRoute.includes("item.payload.version"),
+  "Información debe conservar la versión publicada y obligar a usar Nueva versión para cambiarla."
+);
+
+assert(
   files.creationService.includes("public_visible") &&
     files.creationService.includes("false") &&
     files.creationService.includes("'modified'") &&
