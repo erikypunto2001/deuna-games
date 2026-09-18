@@ -9,23 +9,12 @@ import {
 
 import type {
   GamePublicationReadiness,
-  GameReadinessSection,
 } from "@/lib/admin/game-publication-readiness";
+import {
+  gameReadinessSections,
+} from "@/lib/admin/game-editor-sections";
 
 import styles from "./GameEditorHealthOverview.module.css";
-
-const sections: Array<{
-  key: GameReadinessSection;
-  label: string;
-}> = [
-  { key: "ficha", label: "Información" },
-  { key: "datos", label: "Clasificación" },
-  { key: "requisitos", label: "Compatibilidad" },
-  { key: "rendimiento", label: "Rendimiento" },
-  { key: "multimedia", label: "Multimedia" },
-  { key: "descargas", label: "Distribución" },
-  { key: "valoracion", label: "Valoración" },
-];
 
 export default function GameEditorHealthOverview({
   slug,
@@ -64,7 +53,7 @@ export default function GameEditorHealthOverview({
       </div>
 
       <nav className={styles.sections} aria-label="Secciones del editor del juego">
-        {sections.map((section) => {
+        {gameReadinessSections.map((section) => {
           const items = readiness.items.filter(
             (item) => item.section === section.key
           );
