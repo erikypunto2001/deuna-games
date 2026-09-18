@@ -122,14 +122,19 @@ assert(
 );
 
 assert(
-  has(
-    libraryRoute,
-    'target.data === "gallery-remove"',
-    'withoutGalleryItem(current, "image", resource)',
-    "delete gallery[resource]",
-    "galleryImageSources(galleryMedia)"
-  ),
-  "Quitar una captura de Galería debe retirar sólo asignación/crop y preservar el master."
+  !libraryRoute.includes('"gallery-image"') &&
+    !libraryRoute.includes('"gallery-remove"') &&
+    !libraryRoute.includes("resolveGameGalleryItems") &&
+    !libraryRoute.includes("withGalleryItem") &&
+    !libraryRoute.includes("withoutGalleryItem") &&
+    has(
+      galleryManager,
+      'action={`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`}',
+      '"gallery-add"',
+      '"gallery-remove"',
+      '"gallery-move"'
+    ),
+  "Galería debe tener una única superficie de escritura en gallery-media; media-library sólo asigna destinos fijos."
 );
 
 assert(
