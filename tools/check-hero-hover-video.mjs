@@ -49,7 +49,9 @@ assert(
     '"image",',
     '"video",',
     '"hover-video",',
-    "hero: inferredMode(",
+    'hero: normalizeGameMediaMode(',
+    '"hero",',
+    "inferredMode(",
     '"hover-video"'
   ),
   "La validación de compatibilidad debe aceptar modos/playback históricos y mantener Imagen+hover como default histórico del Hero."
