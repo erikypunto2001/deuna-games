@@ -7,6 +7,9 @@ import {
   resolveGameCoverImage,
 } from "./game-card-presentation";
 import {
+  normalizeGameMediaMode,
+} from "./game-media-mode-policy";
+import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
@@ -95,9 +98,14 @@ export function resolveGameBackgroundMediaMode(
   game: Game
 ): GameDestinationMediaMode | null {
   const explicit = game.mediaModes?.background;
-  if (explicit) return explicit;
+  if (explicit) return normalizeGameMediaMode("background", explicit);
   const video = game.videoMedia?.background;
-  if (video) return video.playback === "hover" ? "hover-video" : "video";
+  if (video) {
+    return normalizeGameMediaMode(
+      "background",
+      video.playback === "hover" ? "hover-video" : "video"
+    );
+  }
   if (game.backgroundImage) return "image";
   return null;
 }

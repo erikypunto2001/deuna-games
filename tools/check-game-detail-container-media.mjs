@@ -13,6 +13,7 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   types,
   validation,
+  modePolicy,
   requirements,
   videoMedia,
   integrity,
@@ -32,6 +33,7 @@ const [
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/media/game-media-mode-policy.ts"),
   source("src/lib/media/game-media-requirements.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
@@ -83,6 +85,16 @@ assert(
 
 assert(
   has(
+    modePolicy,
+    "STANDARD_GAME_MEDIA_MODES",
+    "detail: STANDARD_GAME_MEDIA_MODES",
+    'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
+  ),
+  "La política activa del Contenedor debe limitarse a Imagen/Video y degradar hover histórico a Imagen."
+);
+
+assert(
+  has(
     requirements,
     'GAME_DETAIL_VIEWPORT_ASPECT = "source"',
     'resolveGameDestinationMediaMode(game, "detail")',
@@ -91,7 +103,7 @@ assert(
     "game.videoMedia?.detail?.clip",
     "detail.cropReady"
   ),
-  "Contenedor debe ser adaptable y participar del gate según Imagen/Video/Imagen+hover."
+  "Contenedor debe ser adaptable y participar del gate según Imagen/Video."
 );
 
 assert(
@@ -102,11 +114,12 @@ assert(
     'detail: "image"',
     'return game.detailImage ?? game.heroImage ?? game.coverImage',
     "resolveGameDetailVideo",
+    "normalizeGameMediaMode(target, explicit)",
     'target === "detail"',
     "detail: {",
     "detail: undefined"
   ),
-  "Los helpers compartidos deben mantener Contenedor como destino de video independiente con default Imagen, mientras Portada queda fuera de GameVideoTarget."
+  "Los helpers compartidos deben mantener Contenedor como destino de video independiente, normalizar legacy y usar Imagen como default."
 );
 
 assert(
@@ -124,9 +137,10 @@ assert(
     'id: "detail-container-media"',
     "Contenedor de la ficha · adaptable",
     "complete: media.detail.cropReady",
-    'priority: "essential"'
+    'priority: "essential"',
+    "recurso de Imagen o Video"
   ),
-  "Publicación debe exigir un Contenedor completo después de la migración compatible."
+  "Publicación debe exigir un Contenedor Imagen/Video completo después de la migración compatible."
 );
 
 assert(
@@ -135,12 +149,15 @@ assert(
     '"detail-mode"',
     '"detail-image"',
     '"detail-video"',
+    "STANDARD_GAME_MEDIA_MODES",
+    "standardMediaModeSchema",
     "detailImage: item.payload.detailImage ?? null",
     'detailMode: resolveGameDestinationMediaMode(item.payload, "detail")',
     "detailVideo: item.payload.videoMedia?.detail ?? null",
     'target.data === "detail-image"',
     'target.data === "detail-video"',
     'requiredVideoViewport("detail")',
+    'playback: "always"',
     "protectedReferencesForGame",
     "getHistoricalGameMediaReferences"
   ) &&
@@ -151,7 +168,7 @@ assert(
     !libraryRoute.includes("storeEditorialWebp") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn("),
-  "Biblioteca debe asignar Contenedor por referencia sin trabajo físico ni desasignación destructiva implícita; retirar Contenedor pertenece a su flujo editorial explícito."
+  "Biblioteca debe limitar Contenedor a Imagen/Video, asignarlo por referencia y evitar trabajo físico o desasignación destructiva implícita."
 );
 
 assert(
@@ -203,9 +220,9 @@ assert(
 assert(
   has(
     detailEditor,
+    "STANDARD_GAME_MEDIA_MODES",
     "Contenedor de la ficha",
     "Obligatorio · recorte adaptable",
-    "Imagen + hover",
     "Recurso independiente del Hero",
     "Recorte adaptable ·",
     "RECORTE ADAPTABLE CONFIRMADO",
@@ -214,8 +231,11 @@ assert(
     "GameVideoViewportEditor",
     'target="detail"'
   ) &&
+    !detailEditor.includes("Imagen + hover") &&
+    !detailEditor.includes("hoverMode") &&
+    !detailEditor.includes('mode === "hover-video"') &&
     !detailEditor.includes("fetch(endpoint"),
-  "La tarjeta debe reutilizar revisión/recursos del workspace y los editores comunes, sin segunda lectura de biblioteca."
+  "La tarjeta debe ofrecer sólo Imagen/Video y reutilizar revisión/recursos y editores comunes sin segunda lectura de biblioteca."
 );
 
 assert(
@@ -256,27 +276,27 @@ assert(
     publicRuntime,
     "GameMedia",
     "FramedVideo",
-    "FINE_POINTER_MEDIA",
     "REDUCED_MOTION_MEDIA",
-    'INTERACTION_SCOPE = "[data-game-detail-media-scope]"',
     "documentVisible",
-    "hoverActive",
     "failedVideo",
-    'mode === "video" || (fineHover && hoverActive)',
-    "pointerenter",
-    "pointerleave",
-    "focusin",
-    "focusout",
+    'mode === "video"',
     'preload="metadata"',
     "onError={() => setFailedVideo(video.clip)}"
   ) &&
+    !publicRuntime.includes("FINE_POINTER_MEDIA") &&
+    !publicRuntime.includes("INTERACTION_SCOPE") &&
+    !publicRuntime.includes("hoverActive") &&
+    !publicRuntime.includes("pointerenter") &&
+    !publicRuntime.includes("pointerleave") &&
+    !publicRuntime.includes("focusin") &&
+    !publicRuntime.includes("focusout") &&
     has(
       publicRuntimeCss,
       ".imageLayer",
       ".videoLayer",
       "@media (prefers-reduced-motion: reduce)"
     ),
-  "Runtime debe mantener imagen fallback y montar video sólo cuando corresponda, respetando hover real, teclado, reduced-motion, visibilidad y error."
+  "Runtime debe mantener imagen fallback y montar video sólo en modo Video, respetando reduced-motion, visibilidad y error sin listeners de hover."
 );
 
 if (failures.length) {
@@ -286,5 +306,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game detail container media: OK (destino independiente, migración sin copias, biblioteca no destructiva, recorte adaptable, tres modos y runtime con presupuesto de movimiento)."
+  "Game detail container media: OK (destino independiente, migración sin copias, biblioteca no destructiva, recorte adaptable, Imagen/Video y runtime con presupuesto de movimiento)."
 );

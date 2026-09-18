@@ -21,6 +21,10 @@ import {
   mergeEditorialMediaResources,
 } from "@/lib/media/editorial-media-library";
 import {
+  STANDARD_GAME_MEDIA_MODES,
+  normalizeGameMediaMode,
+} from "@/lib/media/game-media-mode-policy";
+import {
   GAME_BACKGROUND_VIEWPORT_ASPECT,
   evaluateGameMediaRequirements,
   resolveGameBackgroundMediaMode,
@@ -49,7 +53,7 @@ const actionSchema = z.enum([
   "layout-image",
   "layout-video",
 ]);
-const mediaModeSchema = z.enum(["image", "video", "hover-video"]);
+const mediaModeSchema = z.enum(STANDARD_GAME_MEDIA_MODES);
 
 const assignmentFields = [
   "expectedRevision",
@@ -182,7 +186,6 @@ export async function POST(
     const mode = mediaModeSchema.safeParse(resource);
     if (!mode.success) return jsonError("Modo de fondo inválido.");
 
-    const playback = mode.data === "hover-video" ? "hover" : "always";
     update = {
       mediaModes: {
         ...current.mediaModes,
@@ -194,7 +197,7 @@ export async function POST(
               ...current.videoMedia,
               background: {
                 ...current.videoMedia.background,
-                playback,
+                playback: "always" as const,
               },
             },
           }
@@ -211,7 +214,10 @@ export async function POST(
     }
 
     if (kind === "image") {
-      const mode: GameDestinationMediaMode = current.mediaModes?.background ?? "image";
+      const mode: GameDestinationMediaMode = normalizeGameMediaMode(
+        "background",
+        current.mediaModes?.background ?? "image"
+      );
       update = {
         backgroundImage: match.src,
         imageMedia: {
@@ -224,14 +230,17 @@ export async function POST(
         },
       };
     } else {
-      const mode: GameDestinationMediaMode = current.mediaModes?.background ?? "video";
+      const mode: GameDestinationMediaMode = normalizeGameMediaMode(
+        "background",
+        current.mediaModes?.background ?? "video"
+      );
       update = {
         videoMedia: {
           ...current.videoMedia,
           background: {
             clip: match.src,
             viewport: defaultBackgroundVideoViewport(),
-            playback: mode === "hover-video" ? "hover" : "always",
+            playback: "always",
           },
         },
         mediaModes: {

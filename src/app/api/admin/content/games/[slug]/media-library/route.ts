@@ -45,6 +45,10 @@ import {
   withoutGalleryItem,
 } from "@/lib/media/game-gallery-media";
 import {
+  HERO_GAME_MEDIA_MODES,
+  STANDARD_GAME_MEDIA_MODES,
+} from "@/lib/media/game-media-mode-policy";
+import {
   evaluateGameMediaRequirements,
   GAME_DETAIL_VIEWPORT_ASPECT,
   REQUIRED_DESTINATION_ASPECTS,
@@ -85,11 +89,8 @@ const assignmentTargetSchema = z.enum([
 ]);
 
 const coverSourceSchema = z.enum(["card", "custom"]);
-const mediaModeSchema = z.enum([
-  "image",
-  "video",
-  "hover-video",
-]);
+const heroMediaModeSchema = z.enum(HERO_GAME_MEDIA_MODES);
+const standardMediaModeSchema = z.enum(STANDARD_GAME_MEDIA_MODES);
 
 const fields = [
   "expectedRevision",
@@ -187,7 +188,7 @@ function mediaModeUpdate(
   mode: GameDestinationMediaMode
 ): MediaDraftUpdate {
   const playback: "hover" | "always" =
-    mode === "hover-video" ? "hover" : "always";
+    target === "hero" && mode === "hover-video" ? "hover" : "always";
   const videoMedia = game.videoMedia
     ? {
         ...game.videoMedia,
@@ -416,15 +417,17 @@ export async function POST(
     target.data === "card-mode" ||
     target.data === "detail-mode"
   ) {
-    const mode = mediaModeSchema.safeParse(resource);
+    const destination = target.data.replace("-mode", "") as
+      "hero" | "card" | "detail";
+    const mode = destination === "hero"
+      ? heroMediaModeSchema.safeParse(resource)
+      : standardMediaModeSchema.safeParse(resource);
     if (!mode.success) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "solicitud")
       );
     }
-    const destination = target.data.replace("-mode", "") as
-      "hero" | "card" | "detail";
     update = mediaModeUpdate(current, destination, mode.data);
   }
 
@@ -534,7 +537,6 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    const mode = resolveGameDestinationMediaMode(current, "card");
     update = {
       videoMedia: {
         ...current.videoMedia,
@@ -542,7 +544,7 @@ export async function POST(
           source: "independent",
           clip: videoResource.src,
           viewport: requiredVideoViewport("card"),
-          playback: mode === "hover-video" ? "hover" : "always",
+          playback: "always",
         },
       },
       previewClip: videoResource.src,
@@ -556,14 +558,13 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    const mode = resolveGameDestinationMediaMode(current, "detail");
     update = {
       videoMedia: {
         ...current.videoMedia,
         detail: {
           clip: videoResource.src,
           viewport: requiredVideoViewport("detail"),
-          playback: mode === "hover-video" ? "hover" : "always",
+          playback: "always",
         },
       },
     };

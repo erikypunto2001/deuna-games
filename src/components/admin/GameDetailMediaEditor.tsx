@@ -12,6 +12,9 @@ import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
+import {
+  STANDARD_GAME_MEDIA_MODES,
+} from "@/lib/media/game-media-mode-policy";
 import type {
   GameDestinationMediaMode,
   GameDetailVideo,
@@ -58,11 +61,10 @@ type Props = {
   onAddResource: (kind: "image" | "video") => void;
 };
 
-const MODES: Array<{ value: GameDestinationMediaMode; label: string }> = [
-  { value: "image", label: "Imagen" },
-  { value: "video", label: "Video" },
-  { value: "hover-video", label: "Imagen + hover" },
-];
+const MODES = STANDARD_GAME_MEDIA_MODES.map((value) => ({
+  value,
+  label: value === "video" ? "Video" : "Imagen",
+}));
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
@@ -133,7 +135,6 @@ function ResourcePicker({
   resources,
   kind,
   selected,
-  hoverMode,
   disabled,
   onAddResource,
 }: {
@@ -142,18 +143,17 @@ function ResourcePicker({
   resources: LibraryResource[];
   kind: "image" | "video";
   selected: string | null;
-  hoverMode: boolean;
   disabled: boolean;
   onAddResource: (kind: "image" | "video") => void;
 }) {
   const available = resources.filter((resource) => resource.kind === kind);
   const complete = Boolean(selected);
   const missingLabel = kind === "image"
-    ? hoverMode ? "Falta seleccionar imagen base" : "Falta seleccionar imagen"
-    : hoverMode ? "Falta seleccionar video hover" : "Falta seleccionar video";
+    ? "Falta seleccionar imagen"
+    : "Falta seleccionar video";
   const completeLabel = kind === "image"
-    ? hoverMode ? "Imagen base seleccionada" : "Imagen seleccionada"
-    : hoverMode ? "Video hover seleccionado" : "Video seleccionado";
+    ? "Imagen seleccionada"
+    : "Video seleccionado";
 
   return (
     <details className={assignmentStyles.resourcePicker}>
@@ -248,7 +248,6 @@ function RequirementButton({
 }
 
 function modeLabel(mode: GameDestinationMediaMode) {
-  if (mode === "hover-video") return "Imagen + hover";
   return mode === "video" ? "Video" : "Imagen";
 }
 
@@ -267,8 +266,8 @@ export default function GameDetailMediaEditor({
   const imageCropReady = assignment.imageViewport?.confirmed === true;
   const videoCropReady = assignment.video?.viewport.confirmed === true &&
     assignment.video.viewport.aspect === "source";
-  const needsImage = assignment.mode === "image" || assignment.mode === "hover-video";
-  const needsVideo = assignment.mode === "video" || assignment.mode === "hover-video";
+  const needsImage = assignment.mode === "image";
+  const needsVideo = assignment.mode === "video";
   const ready = (!needsImage || (imageSelected && imageCropReady)) &&
     (!needsVideo || (videoSelected && videoCropReady));
   const imageResource = resources.find(
@@ -277,11 +276,9 @@ export default function GameDetailMediaEditor({
   const videoResource = resources.find(
     (resource): resource is ResourceVideo => resource.kind === "video" && resource.src === assignment.video?.clip
   ) ?? null;
-  const description = assignment.mode === "hover-video"
-    ? `${assignment.image ? shortName(assignment.image) : "Imagen pendiente"} + ${videoResource ? shortName(videoResource.src) : "video pendiente"}`
-    : assignment.mode === "video"
-      ? videoResource ? shortName(videoResource.src) : "Selecciona un video"
-      : assignment.image ? shortName(assignment.image) : "Selecciona una imagen";
+  const description = assignment.mode === "video"
+    ? videoResource ? shortName(videoResource.src) : "Selecciona un video"
+    : assignment.image ? shortName(assignment.image) : "Selecciona una imagen";
 
   return (
     <>
@@ -299,9 +296,9 @@ export default function GameDetailMediaEditor({
         />
 
         <div className={assignmentStyles.currentResource}>
-          {(assignment.mode !== "video" && imageResource) || (assignment.mode !== "image" && videoResource) ? (
-            <span className={`${assignmentStyles.currentMediaSet} ${assignment.mode === "hover-video" && imageResource && videoResource ? assignmentStyles.currentMediaPair : ""}`}>
-              {assignment.mode !== "video" && imageResource && (
+          {(assignment.mode === "image" && imageResource) || (assignment.mode === "video" && videoResource) ? (
+            <span className={assignmentStyles.currentMediaSet}>
+              {assignment.mode === "image" && imageResource && (
                 <AdminMediaThumbnail
                   kind="image"
                   src={imageResource.src}
@@ -313,7 +310,7 @@ export default function GameDetailMediaEditor({
                   className={assignmentStyles.currentThumb}
                 />
               )}
-              {assignment.mode !== "image" && videoResource && (
+              {assignment.mode === "video" && videoResource && (
                 <AdminMediaThumbnail
                   kind="video"
                   src={videoResource.src}
@@ -348,7 +345,6 @@ export default function GameDetailMediaEditor({
               resources={resources}
               kind="image"
               selected={assignment.image}
-              hoverMode={assignment.mode === "hover-video"}
               disabled={stale}
               onAddResource={onAddResource}
             />
@@ -360,7 +356,6 @@ export default function GameDetailMediaEditor({
               resources={resources}
               kind="video"
               selected={assignment.video?.clip ?? null}
-              hoverMode={assignment.mode === "hover-video"}
               disabled={stale}
               onAddResource={onAddResource}
             />
