@@ -15,7 +15,6 @@ import type {
 } from "./session-store";
 import {
   resolveAdminSession,
-  revokeAdminSession,
 } from "./session-store";
 
 export type {
@@ -113,4 +112,3 @@ export const verifyAdminOwnerSession = cache(
   }
 );
 
-void revokeAdminSession;
