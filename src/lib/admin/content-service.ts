@@ -28,7 +28,6 @@ import {
 import type {
   Game,
   GameDistributionMetadata,
-  GameHardwareRequirements,
 } from "@/types/game";
 import type { GameUpdate } from "@/types/update";
 
@@ -107,30 +106,6 @@ export type EditorialMutationResult =
   | { outcome: "conflict"; revision: number }
   | { outcome: "not_found" };
 
-export type GameCoreDraftInput = Pick<
-  Game,
-  | "title"
-  | "description"
-  | "category"
-  | "version"
-  | "badge"
-  | "rating"
-  | "reviews"
-  | "imageAlt"
->;
-
-export type GameAdvancedDraftInput = Pick<
-  Game,
-  | "shortTitle"
-  | "highlightedTitle"
-  | "developer"
-  | "publisher"
-  | "releaseDate"
-  | "genres"
-  | "tags"
-  | "platforms"
->;
-
 export type GameDownloadDraftInput = Pick<
   NonNullable<Game["download"]>,
   | "sizeGb"
@@ -139,11 +114,6 @@ export type GameDownloadDraftInput = Pick<
   | "sources"
 > & {
   distributionMetadata?: GameDistributionMetadata;
-};
-
-export type GameRequirementsDraftInput = {
-  minimum?: GameHardwareRequirements;
-  recommended?: GameHardwareRequirements;
 };
 
 export type GameMediaDraftInput = Pick<
@@ -184,29 +154,6 @@ export type AboutManifestoDraftInput = Pick<
   EditorialAboutConfig,
   "manifesto" | "ctaTitle"
 >;
-
-function compactHardwareRequirements(
-  input: GameHardwareRequirements | undefined
-) {
-  if (!input) return undefined;
-
-  const compact: GameHardwareRequirements = {};
-
-  for (const key of [
-    "system",
-    "processor",
-    "ram",
-    "graphics",
-    "storage",
-  ] as const) {
-    const value = input[key]?.trim();
-    if (value) compact[key] = value;
-  }
-
-  return Object.keys(compact).length > 0
-    ? compact
-    : undefined;
-}
 
 function compactDistributionMetadata(
   input: GameDistributionMetadata | undefined
@@ -485,42 +432,6 @@ async function updateEditorialDraft<
   });
 }
 
-export function saveGameCoreDraft(
-  key: string,
-  expectedRevision: number,
-  actorUserId: string,
-  input: GameCoreDraftInput
-) {
-  return updateEditorialDraft(
-    "game",
-    key,
-    expectedRevision,
-    actorUserId,
-    (current) => ({
-      ...current,
-      ...input,
-    })
-  );
-}
-
-export function saveGameAdvancedDraft(
-  key: string,
-  expectedRevision: number,
-  actorUserId: string,
-  input: GameAdvancedDraftInput
-) {
-  return updateEditorialDraft(
-    "game",
-    key,
-    expectedRevision,
-    actorUserId,
-    (current) => ({
-      ...current,
-      ...input,
-    })
-  );
-}
-
 export function saveGameDownloadDraft(
   key: string,
   expectedRevision: number,
@@ -565,42 +476,6 @@ export function saveGameDownloadDraft(
           ? nextDownload
           : undefined,
         distributionMetadata,
-      };
-    }
-  );
-}
-
-export function saveGameRequirementsDraft(
-  key: string,
-  expectedRevision: number,
-  actorUserId: string,
-  input: GameRequirementsDraftInput
-) {
-  return updateEditorialDraft(
-    "game",
-    key,
-    expectedRevision,
-    actorUserId,
-    (current) => {
-      const minimum = compactHardwareRequirements(
-        input.minimum
-      );
-      const recommended = compactHardwareRequirements(
-        input.recommended
-      );
-
-      return {
-        ...current,
-        requirements:
-          minimum || recommended
-            ? {
-                ...(minimum ?? {}),
-                ...(minimum ? { minimum } : {}),
-                ...(recommended
-                  ? { recommended }
-                  : {}),
-              }
-            : undefined,
       };
     }
   );
