@@ -28,6 +28,8 @@ const files = {
     "database/migrations/014_retire_demo_game_updates.sql",
   historicalFixture:
     "tools/admin-historical-update-visual-fixture.ts",
+  accountNotificationsRunner:
+    "tools/account-notifications-browser-e2e-runner.mjs",
   browserManifest:
     "tools/browser-page-manifest.mjs",
   sitewideSmoke:
@@ -143,8 +145,9 @@ expect(
     "DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE"
   ) &&
     entries.historicalFixture.includes(
-      'const updateId = "visual-historical-update"'
+      'const historicalUpdateId = "visual-historical-update"'
     ) &&
+    entries.historicalFixture.includes("createVisualUpdateDraft") &&
     entries.historicalFixture.includes("public_visible") &&
     entries.historicalFixture.includes("false") &&
     entries.browserManifest.includes(
@@ -156,6 +159,21 @@ expect(
     !entries.sitewideSmoke.includes("src/data/update-records.ts") &&
     !entries.sitewideSmoke.includes("fixture.updateIds"),
   "La compatibilidad histórica debe probarse con un borrador privado efímero real en editar/publicación/historial, sin depender de fixtures demo retirados."
+);
+expect(
+  entries.accountNotificationsRunner.includes(
+    "createVisualUpdateDraft"
+  ) &&
+    entries.accountNotificationsRunner.includes(
+      "/api/admin/content/updates/${encodeURIComponent(updateId)}/publish"
+    ) &&
+    entries.accountNotificationsRunner.includes(
+      "/api/admin/content/updates/${encodeURIComponent(updateId)}/hide"
+    ) &&
+    !entries.accountNotificationsRunner.includes(
+      '"/api/admin/content/updates"'
+    ),
+  "El E2E de avisos debe sembrar su borrador sólo en la DB efímera y probar publicación/ocultamiento reales sin reabrir el alta global legacy."
 );
 expect(
   entries.publicUpdates.includes("getPublicResolvedUpdates") &&
