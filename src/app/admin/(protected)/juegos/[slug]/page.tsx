@@ -57,6 +57,10 @@ type PageProps = {
   }>;
 };
 
+type PrimaryGameTaxonomyTerm = GameTaxonomyTerm & {
+  missingFromCatalog?: boolean;
+};
+
 function resolveGameSection(
   value: string | string[] | undefined
 ): GameSection {
@@ -92,6 +96,33 @@ function normalizeClassification(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("es")
     .trim();
+}
+
+function ensurePrimaryClassificationTerm(
+  terms: readonly GameTaxonomyTerm[],
+  currentValue: string
+): PrimaryGameTaxonomyTerm[] {
+  const label = currentValue.trim();
+  if (!label) return [...terms];
+
+  const currentKey = normalizeClassification(label);
+  if (
+    terms.some(
+      (term) => normalizeClassification(term.label) === currentKey
+    )
+  ) {
+    return [...terms];
+  }
+
+  return [
+    {
+      key: "legacy-missing-primary-classification",
+      label,
+      active: false,
+      missingFromCatalog: true,
+    },
+    ...terms,
+  ];
 }
 
 function fallbackTerms(
@@ -153,6 +184,11 @@ export default async function AdminGameEditorPage({
         )
     ) ?? fallbackTerms(currentClassifications);
   const tagTerms = taxonomy?.tags ?? fallbackTerms(game.tags ?? []);
+  const primaryClassificationTerms =
+    ensurePrimaryClassificationTerm(
+      classificationTerms,
+      game.category
+    );
   const coreAction =
     `/api/admin/content/games/${encodeURIComponent(slug)}`;
   const informationAction = `${coreAction}/information`;
@@ -236,6 +272,7 @@ export default async function AdminGameEditorPage({
           game={game}
           revision={item.revision}
           action={classificationAction}
+          primaryClassificationTerms={primaryClassificationTerms}
           classificationTerms={classificationTerms}
           tagTerms={tagTerms}
         />
