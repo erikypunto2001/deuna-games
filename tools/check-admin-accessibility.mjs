@@ -45,6 +45,15 @@ const [
   newGameCss,
   accountsCss,
   brandForegroundSource,
+  gameEditorContract,
+  gameEditorPage,
+  gameHealthOverview,
+  publicPagesIndex,
+  securityPage,
+  securityOverview,
+  homeContentEditor,
+  homeContentEditorCss,
+  taxonomyEditor,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -74,6 +83,15 @@ const [
   source("src/components/admin/NewGameForm.module.css"),
   source("src/app/admin/(protected)/cuentas/accounts.module.css"),
   source("src/lib/site/brand-foreground.ts"),
+  source("src/lib/admin/game-editor-sections.ts"),
+  source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
+  source("src/components/admin/GameEditorHealthOverview.tsx"),
+  source("src/app/admin/(protected)/paginas/page.tsx"),
+  source("src/app/admin/(protected)/seguridad/page.tsx"),
+  source("src/lib/admin/security-overview.ts"),
+  source("src/components/admin/HomeContentEditor.tsx"),
+  source("src/components/admin/HomeContentEditor.module.css"),
+  source("src/components/admin/GameTaxonomyEditor.tsx"),
 ]);
 
 assert(
@@ -310,6 +328,79 @@ assert(
     dashboard.includes("publication.pendingItems") &&
     dashboard.includes("attentionPath"),
   "El Resumen debe ofrecer una cola operativa de contenido que requiere atención."
+);
+
+assert(
+  gameEditorContract.includes('"valoracion"') &&
+    gameEditorContract.includes('label: "Valoración"') &&
+    gameEditorPage.includes("resolveGameEditorSection") &&
+    contextBar.includes('directGameSection("valoracion", Star)') &&
+    gameHealthOverview.includes("getGameEditorSection") &&
+    !gameHealthOverview.includes('<nav className={styles.sections}'),
+  "El editor de juego debe compartir un contrato canónico, incluir Valoración en la navegación y evitar una segunda navegación completa en el overview."
+);
+
+assert(
+  gamesCatalog.includes("MOBILE_GAMES_PER_PAGE = 8") &&
+    gamesCatalog.includes('data-admin-games-mobile-list="true"') &&
+    gamesCatalog.includes('data-admin-games-mobile-card="true"') &&
+    gamesCatalog.includes('data-admin-games-mobile-pagination="true"') &&
+    gamesCatalog.includes('data-admin-games-table="true"') &&
+    gamesCatalog.includes('data-mobile-actions={mobile ? "true" : undefined}') &&
+    catalogCss.includes(".mobileList") &&
+    catalogCss.includes(".mobilePagination") &&
+    catalogCss.includes(".tableViewport") &&
+    catalogCss.includes("display: none;"),
+  "Juegos debe ofrecer una presentación móvil paginada con acciones visibles, no depender de desplazar una tabla de 980px ni renderizar el catálogo completo en una sola columna."
+);
+
+assert(
+  publicPagesIndex.includes("pending: boolean | null") &&
+    publicPagesIndex.includes("pending === null") &&
+    publicPagesIndex.includes("Estado no disponible") &&
+    adminBaseCss.includes(".statusUnknown"),
+  "Páginas públicas debe distinguir publicación confirmada, cambios pendientes y estado desconocido."
+);
+
+assert(
+  !dashboard.includes("games.length") &&
+    !dashboard.includes("gameUpdates.length") &&
+    dashboard.includes('publicGames ?? "—"') &&
+    dashboard.includes('pending ?? "—"') &&
+    dashboard.includes("Estado de publicación no disponible"),
+  "Resumen no debe sustituir métricas de publicación desconocidas por conteos de datos fuente."
+);
+
+assert(
+  securityOverview.includes("WHERE user_id = $1") &&
+    securityPage.includes("Tus sesiones activas") &&
+    securityPage.includes("Tu actividad de acceso") &&
+    dashboard.includes("Tus sesiones administrativas activas"),
+  "Las superficies de seguridad deben describir correctamente el alcance por usuario de las consultas actuales."
+);
+
+assert(
+  homeContentEditor.includes('type HomeContentStep = "structure" | "curation" | "cards"') &&
+    homeContentEditor.includes("activeStep") &&
+    homeContentEditor.includes('hidden={activeStep !== "structure"}') &&
+    homeContentEditor.includes('hidden={activeStep !== "curation"}') &&
+    homeContentEditor.includes('hidden={activeStep !== "cards"}') &&
+    homeContentEditor.includes("curationJson") &&
+    homeContentEditor.includes("presentationJson") &&
+    homeContentEditorCss.includes(".step[hidden]") &&
+    homeContentEditorCss.includes("display: none;"),
+  "Resto de Inicio debe mostrar un paso a la vez, respetar hidden incluso con CSS autor y no perder el guardado coordinado de la revisión completa."
+);
+
+assert(
+  taxonomyEditor.includes("DEFAULT_TERMS_PER_PAGE = 12") &&
+    taxonomyEditor.includes("VISUAL_TERMS_PER_PAGE = 6") &&
+    taxonomyEditor.includes("termsPerPage") &&
+    taxonomyEditor.includes("matchingTerms") &&
+    taxonomyEditor.includes("visibleTerms") &&
+    taxonomyEditor.includes("data-taxonomy-term-row") &&
+    taxonomyEditor.includes("moveTerm(currentSection.kind, index"),
+  "Catálogos debe limitar Clasificaciones ricas a 6 filas, mantener Etiquetas compactas en 12 y conservar el índice absoluto al reordenar términos filtrados o paginados."
 );
 
 assert(

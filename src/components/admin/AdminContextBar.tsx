@@ -15,11 +15,15 @@ import {
   RefreshCcw,
   Rocket,
   SquarePen,
+  Star,
   Tags,
   UserRound,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import {
+  getGameEditorSection,
+} from "@/lib/admin/game-editor-sections";
 import {
   homeAdminSections as homeAdminSectionContract,
   resolveHomeAdminSection,
@@ -245,21 +249,26 @@ export default function AdminContextBar() {
     const selected = routeSection
       ? routeSection
       : searchParams.get("seccion") ?? "ficha";
+    const directGameSection = (
+      id: "ficha" | "datos" | "multimedia" | "valoracion" | "historial",
+      icon: ContextIcon
+    ): ContextItem => {
+      const definition = getGameEditorSection(id);
+
+      return {
+        key: id,
+        label: definition.label,
+        href: `${gamePath}?seccion=${id}`,
+        active: selected === id,
+        icon,
+      };
+    };
+    const requirements = getGameEditorSection("requisitos");
+    const performance = getGameEditorSection("rendimiento");
+    const distribution = getGameEditorSection("descargas");
     const gameItems: ContextItem[] = [
-      {
-        key: "informacion",
-        label: "Información",
-        href: `${gamePath}?seccion=ficha`,
-        active: selected === "ficha",
-        icon: PanelTop,
-      },
-      {
-        key: "clasificacion",
-        label: "Clasificación",
-        href: `${gamePath}?seccion=datos`,
-        active: selected === "datos",
-        icon: Tags,
-      },
+      directGameSection("ficha", PanelTop),
+      directGameSection("datos", Tags),
       {
         key: "compatibilidad",
         label: "Compatibilidad",
@@ -268,40 +277,35 @@ export default function AdminContextBar() {
         icon: MonitorCog,
         children: [
           {
-            key: "requisitos",
-            label: "Requisitos",
-            href: `${gamePath}?seccion=requisitos`,
-            active: selected === "requisitos",
+            key: requirements.id,
+            label: requirements.label,
+            href: `${gamePath}?seccion=${requirements.id}`,
+            active: selected === requirements.id,
             icon: MonitorCog,
           },
           {
-            key: "rendimiento",
-            label: "Rendimiento",
-            href: `${gamePath}?seccion=rendimiento`,
-            active: selected === "rendimiento",
+            key: performance.id,
+            label: performance.label,
+            href: `${gamePath}?seccion=${performance.id}`,
+            active: selected === performance.id,
             icon: Gauge,
           },
         ],
       },
-      {
-        key: "multimedia",
-        label: "Multimedia",
-        href: `${gamePath}?seccion=multimedia`,
-        active: selected === "multimedia",
-        icon: ImageIcon,
-      },
+      directGameSection("multimedia", ImageIcon),
+      directGameSection("valoracion", Star),
       {
         key: "distribucion",
-        label: "Distribución",
-        href: `${gamePath}?seccion=descargas`,
-        active: selected === "descargas" || selected === "actualizacion",
+        label: distribution.label,
+        href: `${gamePath}?seccion=${distribution.id}`,
+        active: selected === distribution.id || selected === "actualizacion",
         icon: Download,
         children: [
           {
-            key: "descargas",
+            key: distribution.id,
             label: "Descargas y mirrors",
-            href: `${gamePath}?seccion=descargas`,
-            active: selected === "descargas",
+            href: `${gamePath}?seccion=${distribution.id}`,
+            active: selected === distribution.id,
             icon: Download,
           },
           {
@@ -320,13 +324,7 @@ export default function AdminContextBar() {
         active: selected === "publicacion",
         icon: Rocket,
       },
-      {
-        key: "historial",
-        label: "Historial",
-        href: `${gamePath}?seccion=historial`,
-        active: selected === "historial",
-        icon: FileClock,
-      },
+      directGameSection("historial", FileClock),
     ];
 
     return (

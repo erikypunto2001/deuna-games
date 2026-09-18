@@ -423,7 +423,7 @@ aside nav a[aria-current="page"] svg {
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 340px) {
   .admin-professional:has(.admin-form-actions__buttons) {
     padding-bottom: 132px;
   }

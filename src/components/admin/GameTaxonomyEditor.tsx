@@ -3,8 +3,11 @@
 import {
   ArrowDown,
   ArrowUp,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -51,6 +54,8 @@ type IconUploadResponse = {
 
 const customIconPattern =
   /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/;
+const DEFAULT_TERMS_PER_PAGE = 12;
+const VISUAL_TERMS_PER_PAGE = 6;
 
 const sections: Section[] = [
   {
@@ -143,6 +148,8 @@ export default function GameTaxonomyEditor({
   });
   const [feedback, setFeedback] = useState("");
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
 
   const serialized = useMemo(
     () => JSON.stringify(taxonomy),
@@ -153,6 +160,25 @@ export default function GameTaxonomyEditor({
   const terms = taxonomy[currentSection.kind];
   const active = terms.filter((term) => term.active).length;
   const hasVisuals = currentSection.kind === "classifications";
+  const termsPerPage = hasVisuals
+    ? VISUAL_TERMS_PER_PAGE
+    : DEFAULT_TERMS_PER_PAGE;
+  const normalizedQuery = normalize(query);
+  const matchingTerms = terms
+    .map((term, index) => ({ term, index }))
+    .filter(({ term }) =>
+      !normalizedQuery ||
+      normalize(`${term.label} ${term.key}`).includes(normalizedQuery)
+    );
+  const pageCount = Math.max(
+    1,
+    Math.ceil(matchingTerms.length / termsPerPage)
+  );
+  const currentPage = Math.min(page, pageCount - 1);
+  const visibleTerms = matchingTerms.slice(
+    currentPage * termsPerPage,
+    (currentPage + 1) * termsPerPage
+  );
   const returnSection = hasVisuals ? "clasificaciones" : "etiquetas";
 
   function updateTerms(
@@ -203,6 +229,8 @@ export default function GameTaxonomyEditor({
       ...current,
       term,
     ]);
+    setQuery("");
+    setPage(Math.floor(currentTerms.length / termsPerPage));
     setDraftLabels((current) => ({
       ...current,
       [sectionDefinition.kind]: "",
@@ -459,9 +487,58 @@ export default function GameTaxonomyEditor({
           </button>
         </div>
 
+        {terms.length > 0 && (
+          <div className={styles.termToolbar}>
+            <label className={styles.termSearch}>
+              <Search size={16} aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(0);
+                }}
+                placeholder={`Buscar ${currentSection.title.toLocaleLowerCase("es")}…`}
+                aria-label={`Buscar en ${currentSection.title.toLocaleLowerCase("es")}`}
+              />
+            </label>
+
+            <div className={styles.pagination} aria-label="Paginación del catálogo">
+              <span>
+                {matchingTerms.length === terms.length
+                  ? `${terms.length} términos`
+                  : `${matchingTerms.length} de ${terms.length}`}
+              </span>
+              <button
+                type="button"
+                aria-label="Página anterior"
+                disabled={currentPage === 0}
+                onClick={() => setPage((value) => Math.max(0, value - 1))}
+              >
+                <ChevronLeft size={16} aria-hidden="true" />
+              </button>
+              <b>{currentPage + 1}/{pageCount}</b>
+              <button
+                type="button"
+                aria-label="Página siguiente"
+                disabled={currentPage >= pageCount - 1}
+                onClick={() =>
+                  setPage((value) => Math.min(pageCount - 1, value + 1))
+                }
+              >
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {terms.length === 0 ? (
           <p className={styles.empty}>
             Todavía no hay términos en este catálogo.
+          </p>
+        ) : matchingTerms.length === 0 ? (
+          <p className={styles.empty} role="status">
+            No hay términos que coincidan con la búsqueda actual.
           </p>
         ) : (
           <>
@@ -480,7 +557,7 @@ export default function GameTaxonomyEditor({
             </div>
 
             <div className={styles.termList}>
-              {terms.map((term, index) => {
+              {visibleTerms.map(({ term, index }) => {
                 const used = usage[currentSection.kind][term.key] ?? 0;
                 const tone = taxonomyToneOptions.find(
                   (option) => option.key === term.tone
@@ -490,6 +567,7 @@ export default function GameTaxonomyEditor({
                 return (
                   <div
                     key={term.key}
+                    data-taxonomy-term-row="true"
                     className={`${styles.termRow} ${
                       hasVisuals ? "" : styles.termRowSimple
                     }`}
@@ -646,7 +724,12 @@ export default function GameTaxonomyEditor({
                     <div className={styles.orderButtons}>
                       <button
                         type="button"
-                        disabled={index === 0}
+                        disabled={Boolean(normalizedQuery) || index === 0}
+                        title={
+                          normalizedQuery
+                            ? "Limpia la búsqueda para reordenar el catálogo completo."
+                            : undefined
+                        }
                         aria-label={`Subir ${term.label}`}
                         onClick={() =>
                           moveTerm(currentSection.kind, index, -1)
@@ -656,7 +739,15 @@ export default function GameTaxonomyEditor({
                       </button>
                       <button
                         type="button"
-                        disabled={index === terms.length - 1}
+                        disabled={
+                          Boolean(normalizedQuery) ||
+                          index === terms.length - 1
+                        }
+                        title={
+                          normalizedQuery
+                            ? "Limpia la búsqueda para reordenar el catálogo completo."
+                            : undefined
+                        }
                         aria-label={`Bajar ${term.label}`}
                         onClick={() =>
                           moveTerm(currentSection.kind, index, 1)

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleSlash2,
   Eye,
   FileClock,
@@ -37,6 +39,8 @@ export type AdminGameCatalogItem = {
 
 type SortMode = "title" | "status" | "revision";
 
+const MOBILE_GAMES_PER_PAGE = 8;
+
 const statusLabels = {
   all: "Todos los estados",
   published: "Publicados",
@@ -61,6 +65,109 @@ function publicationActionLabel(
   return "Publicación";
 }
 
+function GameStatus({
+  status,
+}: {
+  status: AdminGameCatalogItem["status"];
+}) {
+  if (status === "published") {
+    return (
+      <span className={styles.statusOk}>
+        <CheckCircle2 size={15} aria-hidden="true" />
+        Publicado
+      </span>
+    );
+  }
+
+  return (
+    <span className={styles.statusPending}>
+      <CircleSlash2 size={15} aria-hidden="true" />
+      {status === "hidden"
+        ? "Oculto"
+        : status === "unpublished"
+          ? "Sin publicar"
+          : "Cambios pendientes"}
+    </span>
+  );
+}
+
+function GameActions({
+  item,
+  gamePath,
+  mobile = false,
+}: {
+  item: AdminGameCatalogItem;
+  gamePath: string;
+  mobile?: boolean;
+}) {
+  const published = item.status === "published";
+
+  return (
+    <div
+      className={`${ia.rowActions} ${mobile ? styles.mobileActions : ""}`}
+      data-mobile-actions={mobile ? "true" : undefined}
+    >
+      <Link
+        href={gamePath}
+        title={`Editar ${item.title}`}
+      >
+        <Pencil size={14} aria-hidden="true" />
+        Editar
+      </Link>
+
+      {published ? (
+        <Link
+          href={`${gamePath}/actualizacion`}
+          title={`Publicar una nueva versión de ${item.title}`}
+        >
+          <RefreshCcw size={14} aria-hidden="true" />
+          Nueva versión
+        </Link>
+      ) : (
+        <Link
+          href={`${gamePath}/publicacion`}
+          title={`Revisar publicación de ${item.title}`}
+        >
+          <Rocket size={14} aria-hidden="true" />
+          {publicationActionLabel(item.status)}
+        </Link>
+      )}
+
+      <details className={ia.rowMenu}>
+        <summary aria-label={`Más acciones para ${item.title}`}>
+          <MoreHorizontal size={16} aria-hidden="true" />
+          <span className={ia.srOnly}>Más acciones</span>
+        </summary>
+        <div className={ia.rowMenuPanel}>
+          <Link
+            href={`${gamePath}/vista-previa`}
+            title={`Ver borrador de ${item.title}`}
+          >
+            <Eye size={14} aria-hidden="true" />
+            Vista previa
+          </Link>
+          {published && (
+            <Link
+              href={`${gamePath}/publicacion`}
+              title={`Revisar publicación de ${item.title}`}
+            >
+              <Rocket size={14} aria-hidden="true" />
+              Publicación
+            </Link>
+          )}
+          <Link
+            href={`${gamePath}?seccion=historial`}
+            title={`Revisar historial de ${item.title}`}
+          >
+            <FileClock size={14} aria-hidden="true" />
+            Historial
+          </Link>
+        </div>
+      </details>
+    </div>
+  );
+}
+
 export default function AdminGamesCatalog({
   items,
 }: {
@@ -70,6 +177,7 @@ export default function AdminGamesCatalog({
   const [status, setStatus] = useState("all");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState<SortMode>("title");
+  const [mobilePage, setMobilePage] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const deferredQuery = useDeferredValue(query);
 
@@ -118,6 +226,7 @@ export default function AdminGamesCatalog({
 
       if (event.key === "Escape" && document.activeElement === searchRef.current) {
         setQuery("");
+        setMobilePage(0);
         searchRef.current?.blur();
       }
     }
@@ -125,6 +234,19 @@ export default function AdminGamesCatalog({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  const mobilePageCount = Math.max(
+    1,
+    Math.ceil(filtered.length / MOBILE_GAMES_PER_PAGE)
+  );
+  const currentMobilePage = Math.min(
+    mobilePage,
+    mobilePageCount - 1
+  );
+  const mobileItems = filtered.slice(
+    currentMobilePage * MOBILE_GAMES_PER_PAGE,
+    (currentMobilePage + 1) * MOBILE_GAMES_PER_PAGE
+  );
 
   const hasFilters =
     query !== "" || status !== "all" || category !== "all" || sort !== "title";
@@ -146,7 +268,10 @@ export default function AdminGamesCatalog({
             ref={searchRef}
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setMobilePage(0);
+            }}
             placeholder="Buscar juego, slug, versión, etiqueta..."
             aria-label="Buscar juegos"
           />
@@ -154,7 +279,10 @@ export default function AdminGamesCatalog({
           {query && (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setMobilePage(0);
+              }}
               aria-label="Limpiar búsqueda"
             >
               <X size={16} aria-hidden="true" />
@@ -165,7 +293,10 @@ export default function AdminGamesCatalog({
         <div className={styles.filters}>
           <select
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setMobilePage(0);
+            }}
             aria-label="Filtrar por estado"
           >
             {Object.entries(statusLabels).map(([value, label]) => (
@@ -177,7 +308,10 @@ export default function AdminGamesCatalog({
 
           <select
             value={category}
-            onChange={(event) => setCategory(event.target.value)}
+            onChange={(event) => {
+              setCategory(event.target.value);
+              setMobilePage(0);
+            }}
             aria-label="Filtrar por clasificación"
           >
             <option value="all">Todas las clasificaciones</option>
@@ -190,7 +324,10 @@ export default function AdminGamesCatalog({
 
           <select
             value={sort}
-            onChange={(event) => setSort(event.target.value as SortMode)}
+            onChange={(event) => {
+              setSort(event.target.value as SortMode);
+              setMobilePage(0);
+            }}
             aria-label="Ordenar juegos"
           >
             <option value="title">Orden: nombre</option>
@@ -207,6 +344,7 @@ export default function AdminGamesCatalog({
                 setStatus("all");
                 setCategory("all");
                 setSort("title");
+                setMobilePage(0);
               }}
             >
               Limpiar filtros
@@ -230,7 +368,8 @@ export default function AdminGamesCatalog({
           No hay juegos que coincidan con los filtros actuales.
         </div>
       ) : (
-        <div className={styles.tableViewport}>
+        <>
+        <div className={styles.tableViewport} data-admin-games-table="true">
           <table className={styles.table}>
             <caption className={styles.srOnly}>
               Juegos editoriales, clasificación, estado de publicación, revisión y acciones
@@ -248,8 +387,6 @@ export default function AdminGamesCatalog({
             <tbody>
               {filtered.map((item) => {
                 const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
-                const published = item.status === "published";
-
                 return (
                   <tr key={item.key}>
                     <th scope="row">
@@ -263,21 +400,7 @@ export default function AdminGamesCatalog({
                     </th>
                     <td>{item.category}</td>
                     <td>
-                      {published ? (
-                        <span className={styles.statusOk}>
-                          <CheckCircle2 size={15} aria-hidden="true" />
-                          Publicado
-                        </span>
-                      ) : (
-                        <span className={styles.statusPending}>
-                          <CircleSlash2 size={15} aria-hidden="true" />
-                          {item.status === "hidden"
-                            ? "Oculto"
-                            : item.status === "unpublished"
-                              ? "Sin publicar"
-                              : "Cambios pendientes"}
-                        </span>
-                      )}
+                      <GameStatus status={item.status} />
                     </td>
                     <td>
                       {item.publicationNumber
@@ -286,65 +409,7 @@ export default function AdminGamesCatalog({
                     </td>
                     <td>{item.revision}</td>
                     <td>
-                      <div className={ia.rowActions}>
-                        <Link
-                          href={gamePath}
-                          title={`Editar ${item.title}`}
-                        >
-                          <Pencil size={14} aria-hidden="true" />
-                          Editar
-                        </Link>
-
-                        {published ? (
-                          <Link
-                            href={`${gamePath}/actualizacion`}
-                            title={`Publicar una nueva versión de ${item.title}`}
-                          >
-                            <RefreshCcw size={14} aria-hidden="true" />
-                            Nueva versión
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`${gamePath}/publicacion`}
-                            title={`Revisar publicación de ${item.title}`}
-                          >
-                            <Rocket size={14} aria-hidden="true" />
-                            {publicationActionLabel(item.status)}
-                          </Link>
-                        )}
-
-                        <details className={ia.rowMenu}>
-                          <summary aria-label={`Más acciones para ${item.title}`}>
-                            <MoreHorizontal size={16} aria-hidden="true" />
-                            <span className={ia.srOnly}>Más acciones</span>
-                          </summary>
-                          <div className={ia.rowMenuPanel}>
-                            <Link
-                              href={`${gamePath}/vista-previa`}
-                              title={`Ver borrador de ${item.title}`}
-                            >
-                              <Eye size={14} aria-hidden="true" />
-                              Vista previa
-                            </Link>
-                            {published && (
-                              <Link
-                                href={`${gamePath}/publicacion`}
-                                title={`Revisar publicación de ${item.title}`}
-                              >
-                                <Rocket size={14} aria-hidden="true" />
-                                Publicación
-                              </Link>
-                            )}
-                            <Link
-                              href={`${gamePath}?seccion=historial`}
-                              title={`Revisar historial de ${item.title}`}
-                            >
-                              <FileClock size={14} aria-hidden="true" />
-                              Historial
-                            </Link>
-                          </div>
-                        </details>
-                      </div>
+                      <GameActions item={item} gamePath={gamePath} />
                     </td>
                   </tr>
                 );
@@ -352,6 +417,87 @@ export default function AdminGamesCatalog({
             </tbody>
           </table>
         </div>
+
+        <div
+          className={styles.mobileList}
+          aria-label="Juegos editoriales"
+          data-admin-games-mobile-list="true"
+        >
+          {mobileItems.map((item) => {
+            const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
+
+            return (
+              <article
+                className={styles.mobileCard}
+                key={item.key}
+                data-admin-games-mobile-card="true"
+              >
+                <div className={styles.mobileCardHeading}>
+                  <Link href={gamePath} title={`Editar ${item.title}`}>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.key}
+                      {item.version ? ` · ${item.version}` : ""}
+                    </span>
+                  </Link>
+                  <GameStatus status={item.status} />
+                </div>
+
+                <dl className={styles.mobileMeta}>
+                  <div>
+                    <dt>Clasificación</dt>
+                    <dd>{item.category}</dd>
+                  </div>
+                  <div>
+                    <dt>Publicación</dt>
+                    <dd>{item.publicationNumber ? `#${item.publicationNumber}` : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Revisión</dt>
+                    <dd>{item.revision}</dd>
+                  </div>
+                </dl>
+
+                <GameActions item={item} gamePath={gamePath} mobile />
+              </article>
+            );
+          })}
+        </div>
+
+        {mobilePageCount > 1 && (
+          <nav
+            className={styles.mobilePagination}
+            aria-label="Paginación de juegos en móvil"
+            data-admin-games-mobile-pagination="true"
+          >
+            <button
+              type="button"
+              aria-label="Página anterior de juegos"
+              disabled={currentMobilePage === 0}
+              onClick={() =>
+                setMobilePage((value) => Math.max(0, value - 1))
+              }
+            >
+              <ChevronLeft size={17} aria-hidden="true" />
+            </button>
+            <span>
+              Página <strong>{currentMobilePage + 1}</strong> de {mobilePageCount}
+            </span>
+            <button
+              type="button"
+              aria-label="Página siguiente de juegos"
+              disabled={currentMobilePage >= mobilePageCount - 1}
+              onClick={() =>
+                setMobilePage((value) =>
+                  Math.min(mobilePageCount - 1, value + 1)
+                )
+              }
+            >
+              <ChevronRight size={17} aria-hidden="true" />
+            </button>
+          </nav>
+        )}
+        </>
       )}
     </section>
   );

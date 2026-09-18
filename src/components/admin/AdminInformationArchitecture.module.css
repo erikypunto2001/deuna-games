@@ -54,11 +54,6 @@
   background: color-mix(in srgb, var(--background) 6%, #0a1018);
 }
 
-.navUtility svg:last-child {
-  margin-left: auto;
-  opacity: 0.72;
-}
-
 .mobileNav {
   display: none;
 }

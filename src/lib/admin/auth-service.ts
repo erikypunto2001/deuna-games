@@ -12,7 +12,7 @@ import {
 import type { AdminRole } from "./roles";
 import {
   createAdminSession,
-} from "./session";
+} from "./session-store";
 import {
   normalizeAdminUsername,
 } from "./validation";

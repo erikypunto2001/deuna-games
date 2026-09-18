@@ -152,7 +152,6 @@ export default function AdminNavigation({
         >
           <ExternalLink size={16} aria-hidden="true" />
           <span>Ver sitio público</span>
-          <ExternalLink size={13} aria-hidden="true" />
         </Link>
       </nav>
 

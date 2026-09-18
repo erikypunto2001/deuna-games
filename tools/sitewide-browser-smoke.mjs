@@ -302,6 +302,7 @@ async function auditPage(cdp, page, viewport) {
   return cdp.evaluate(`
     (() => {
       const expectedText = ${JSON.stringify(page.expectedText ?? null)};
+      const pageId = ${JSON.stringify(page.id)};
       const minimum = ${minimumTouchTarget};
       const tolerance = ${touchTolerance};
       const mobile = ${viewport.mobile};
@@ -477,6 +478,61 @@ async function auditPage(cdp, page, viewport) {
       const badTextTokens = ["undefined", "[object Object]", "NaN"]
         .filter((token) => text.includes(token));
       const visibleH1 = Array.from(document.querySelectorAll("h1")).filter(visible);
+      const adminGamesMobileReady =
+        pageId !== "admin-games" || !mobile || (() => {
+          const mobileList = document.querySelector('[data-admin-games-mobile-list="true"]');
+          const desktopTable = document.querySelector('[data-admin-games-table="true"]');
+          const mobileActions = mobileList?.querySelector('[data-mobile-actions="true"]');
+          return mobileList instanceof HTMLElement &&
+            visible(mobileList) &&
+            (!desktopTable || !visible(desktopTable)) &&
+            mobileActions instanceof HTMLElement &&
+            visible(mobileActions);
+        })();
+      const adminGamesMobileCardCount =
+        pageId === "admin-games" && mobile
+          ? Array.from(document.querySelectorAll('[data-admin-games-mobile-card="true"]'))
+              .filter((element) => element instanceof HTMLElement && visible(element))
+              .length
+          : null;
+      const adminGamesMobilePaginationReady =
+        pageId !== "admin-games" || !mobile || (() => {
+          const pagination = document.querySelector(
+            '[data-admin-games-mobile-pagination="true"]'
+          );
+          return pagination instanceof HTMLElement && visible(pagination);
+        })();
+      const homeContentSingleStep =
+        pageId !== "admin-home-content" || (() => {
+          const steps = [
+            "home-content-structure",
+            "home-content-curation",
+            "home-content-cards",
+          ]
+            .map((id) => document.getElementById(id))
+            .filter((element) => element instanceof HTMLElement);
+          return steps.length === 3 &&
+            steps.filter((element) => visible(element)).length === 1;
+        })();
+      const taxonomyVisibleRows =
+        pageId === "admin-catalog-classifications" ||
+        pageId === "admin-catalog-tags"
+          ? Array.from(document.querySelectorAll('[data-taxonomy-term-row="true"]'))
+              .filter((element) => element instanceof HTMLElement && visible(element))
+              .length
+          : null;
+      const gameValuationNavigationReady =
+        pageId === "admin-game-preview" ||
+        !pageId.startsWith("admin-game-") ||
+        Boolean(document.querySelector('a[href*="?seccion=valoracion"]'));
+      const gameEditorSaveBarHeight =
+        mobile && pageId.startsWith("admin-game-")
+          ? (() => {
+              const actions = document.querySelector(".admin-form-actions");
+              if (!(actions instanceof HTMLElement) || !visible(actions)) return null;
+              return Number(actions.getBoundingClientRect().height.toFixed(2));
+            })()
+          : null;
 
       return {
         url: location.href,
@@ -495,6 +551,13 @@ async function auditPage(cdp, page, viewport) {
         duplicateIds,
         brokenImages,
         badTextTokens,
+        adminGamesMobileReady,
+        adminGamesMobileCardCount,
+        adminGamesMobilePaginationReady,
+        homeContentSingleStep,
+        taxonomyVisibleRows,
+        gameValuationNavigationReady,
+        gameEditorSaveBarHeight,
       };
     })()
   `);
@@ -647,6 +710,49 @@ function validateAudit(result, failures) {
   }
   if (audit.badTextTokens.length) {
     failures.push(`${prefix}: tokens de render inválidos: ${audit.badTextTokens.join(", ")}.`);
+  }
+  if (!audit.adminGamesMobileReady) {
+    failures.push(`${prefix}: Juegos móvil no expone su lista y acciones canónicas sin tabla horizontal.`);
+  }
+  if (
+    audit.adminGamesMobileCardCount !== null &&
+    audit.adminGamesMobileCardCount > 8
+  ) {
+    failures.push(
+      `${prefix}: Juegos móvil muestra ${audit.adminGamesMobileCardCount} cards; el máximo operativo es 8.`
+    );
+  }
+  if (!audit.adminGamesMobilePaginationReady) {
+    failures.push(`${prefix}: Juegos móvil perdió la paginación operativa.`);
+  }
+  if (!audit.homeContentSingleStep) {
+    failures.push(`${prefix}: Resto de Inicio debe mostrar un único paso de edición a la vez.`);
+  }
+  const taxonomyMaxRows =
+    result.page === "admin-catalog-classifications"
+      ? 6
+      : result.page === "admin-catalog-tags"
+        ? 12
+        : null;
+  if (
+    taxonomyMaxRows !== null &&
+    audit.taxonomyVisibleRows !== null &&
+    audit.taxonomyVisibleRows > taxonomyMaxRows
+  ) {
+    failures.push(
+      `${prefix}: Catálogos muestra ${audit.taxonomyVisibleRows} filas; el máximo operativo es ${taxonomyMaxRows}.`
+    );
+  }
+  if (!audit.gameValuationNavigationReady) {
+    failures.push(`${prefix}: el editor de juego perdió el acceso canónico a Valoración.`);
+  }
+  if (
+    audit.gameEditorSaveBarHeight !== null &&
+    audit.gameEditorSaveBarHeight > 80
+  ) {
+    failures.push(
+      `${prefix}: la barra fija de guardado mide ${audit.gameEditorSaveBarHeight}px y tapa demasiado contenido móvil.`
+    );
   }
   if (result.runtimeIssues.length) {
     failures.push(`${prefix}: runtime/red: ${result.runtimeIssues.join(" | ")}.`);
