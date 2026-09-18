@@ -158,17 +158,50 @@ assert(
   "La purga de basura transitoria debe conservar modos lectura/aplicar explícitos."
 );
 
+assert(
+  scripts["admin:update-local"] ===
+    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
+  "La actualización local debe purgar basura transitoria antes del preflight."
+);
+
+const localSetupForPurge = await read("tools/setup-local-server.sh");
+assert(
+  localSetupForPurge.includes("npm run admin:purge-junk"),
+  "El setup local debe ejecutar la purga transitoria automáticamente."
+);
+
+const localBackup = await read("tools/admin/backup-local.ts");
+assert(
+  localBackup.includes("const MAX_LOCAL_BACKUPS = 3;") &&
+    localBackup.includes("LOCAL_BACKUP_PATTERN") &&
+    localBackup.includes("backups.slice(MAX_LOCAL_BACKUPS)") &&
+    localBackup.includes("pruneOldLocalBackups(backupDirectory)"),
+  "El backup pre-migración debe conservar sólo las 3 copias locales propias más recientes."
+);
+
 const purgeJunk = await read("tools/admin/purge-junk.ts");
 for (const allowedDelete of [
   "DELETE FROM deuna_admin.admin_sessions",
   "DELETE FROM deuna_accounts.sessions",
   "DELETE FROM deuna_accounts.recovery_codes",
+  "DELETE FROM deuna_admin.admin_events",
 ]) {
   assert(
     purgeJunk.includes(allowedDelete),
     `La purga transitoria debe conservar ${allowedDelete}.`
   );
 }
+assert(
+  purgeJunk.includes("occurred_at < now() - interval '90 days'"),
+  "Los eventos operativos de autenticación sólo deben purgarse después de 90 días."
+);
+
+const ciWorkflow = await read(".github/workflows/ci.yml");
+assert(
+  ciWorkflow.includes("retention-days: 1"),
+  "La evidencia visual de CI debe expirar después de 1 día para no acumular artifacts."
+);
+
 for (const forbiddenDeleteTarget of [
   "editorial_items",
   "editorial_revisions",

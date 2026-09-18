@@ -491,4 +491,4 @@ jobs:
             ${{ runner.temp }}/deuna-visual-standalone.log
             ${{ runner.temp }}/deuna-visual-proxy.log
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 1
