@@ -62,8 +62,10 @@ assert(
     themeContract.includes("left: 248px") &&
     themeContract.includes("left: 220px") &&
     themeContract.includes("left: 0") &&
-    themeContract.includes("env(safe-area-inset-bottom)"),
-  "El panel debe conservar una barra de guardado fija, adaptable al sidebar, móvil y safe-area."
+    themeContract.includes("env(safe-area-inset-bottom)") &&
+    themeContract.includes("grid-template-columns: repeat(2, minmax(0, 1fr))") &&
+    themeContract.includes("@media (max-width: 340px)"),
+  "El panel debe conservar una barra de guardado fija y safe-area: compacta en dos columnas en móvil estándar y apilada sólo en viewports extremadamente angostos."
 );
 
 for (const excludedAction of [
