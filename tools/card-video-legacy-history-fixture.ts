@@ -55,8 +55,12 @@ async function main() {
   try {
     await client.query("BEGIN");
 
-    const itemResult = await client.query<{ id: string }>(
-      `SELECT id::text
+    const itemResult = await client.query<{
+      id: string;
+      publication_number: number;
+      public_visible: boolean;
+    }>(
+      `SELECT id::text, publication_number, public_visible
        FROM deuna_admin.editorial_items
        WHERE item_type = 'game'
          AND item_key = $1
@@ -64,10 +68,19 @@ async function main() {
        FOR UPDATE`,
       [fixture.itemKey]
     );
-    const itemId = itemResult.rows[0]?.id;
-    if (!itemId) {
+    const item = itemResult.rows[0];
+    if (!item) {
       throw new Error("No se encontró el juego del fixture Card video.");
     }
+    if (
+      item.publication_number !== fixture.publicationNumber ||
+      !item.public_visible
+    ) {
+      throw new Error(
+        "El fixture Card video no coincide con el snapshot público actual."
+      );
+    }
+    const itemId = item.id;
 
     const legacyResult = await client.query<{
       id: string;
@@ -102,10 +115,38 @@ async function main() {
       ]
     );
 
+    const currentPublication = await client.query<{ id: string }>(
+      `SELECT id::text
+       FROM deuna_admin.editorial_publications
+       WHERE item_id = $1
+         AND publication_number = $2
+       LIMIT 1
+       FOR UPDATE`,
+      [itemId, fixture.publicationNumber]
+    );
+    const currentPublicationId = currentPublication.rows[0]?.id;
+    if (!currentPublicationId) {
+      throw new Error(
+        "No se encontró la fila histórica de la publicación actual del fixture."
+      );
+    }
+
+    /*
+     * Simulamos un gap legacy: editorial_items conserva el snapshot público
+     * canónico y su publication_number, pero la tabla histórica perdió la fila
+     * equivalente. El serving debe seguir autorizando el WebM actual sin abrir
+     * borradores privados.
+     */
+    await client.query(
+      `DELETE FROM deuna_admin.editorial_publications
+       WHERE id = $1`,
+      [currentPublicationId]
+    );
+
     await client.query("COMMIT");
 
     console.log(
-      `Card media legacy history fixture: OK (${fixture.itemKey}, publicación legacy #${legacy.publication_number} inválida; publicación actual #${fixture.publicationNumber} preservada).`
+      `Card media legacy history fixture: OK (${fixture.itemKey}, publicación legacy #${legacy.publication_number} inválida; fila histórica actual #${fixture.publicationNumber} ausente; snapshot público preservado).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

@@ -24,6 +24,7 @@ const [
   publishRoute,
   restoreRoute,
   lifecycleSmoke,
+  cardVideoLegacyHistoryFixture,
 ] = await Promise.all([
   source("package.json"),
   source("src/lib/media/editorial-media-serving.ts"),
@@ -34,6 +35,7 @@ const [
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
   source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("tools/editorial-media-serving-lifecycle-smoke.mjs"),
+  source("tools/card-video-legacy-history-fixture.ts"),
 ]);
 
 assert(
@@ -44,6 +46,8 @@ assert(
     '"site_config"',
     "editorial_publications",
     "publication_number",
+    "published_payload",
+    "public_visible",
     "parseEditorialPayload",
     "listGameImageReferences",
     "listGameVideoReferences",
@@ -52,6 +56,23 @@ assert(
     "site.logoAsset"
   ),
   "La decisión pública debe derivarse de snapshots publicados reales para juegos, taxonomía y logo, sin leer borradores."
+);
+
+assert(
+  has(
+    serving,
+    "if (item.public_visible)",
+    "safePublicationReferences(",
+    "item.published_payload",
+    "references.add(reference)"
+  ) &&
+    has(
+      cardVideoLegacyHistoryFixture,
+      "DELETE FROM deuna_admin.editorial_publications",
+      "publication_number = $2",
+      "snapshot público preservado"
+    ),
+  "El snapshot público actual debe autorizar sus propios recursos aunque falte su fila histórica, y el smoke visual debe reproducir exactamente ese gap legacy."
 );
 
 assert(
@@ -206,5 +227,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Frontera de serving multimedia editorial: OK (historial público compartido; ownership por slug; cache incremental; fixture publication-ready; draft/biblioteca privados; cleanup oculto)."
+  "Frontera de serving multimedia editorial: OK (snapshot público actual autoritativo; historial público compartido; ownership por slug; cache incremental; fixture publication-ready; draft/biblioteca privados; cleanup oculto)."
 );
