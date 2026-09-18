@@ -249,9 +249,21 @@ assert(
       "expectedRevisionSchema"
     ) &&
     uploadRoute.includes(
+      'kind !== "library"'
+    ) &&
+    uploadRoute.includes(
+      "storeEditorialWebp"
+    ) &&
+    uploadRoute.includes(
+      "clearEditorialImageDeletionMarker"
+    ) &&
+    !uploadRoute.includes(
       "saveGameMediaDraft"
+    ) &&
+    !uploadRoute.includes(
+      "reconcileGameImageMedia"
     ),
-  "La carga debe validar campos exactos, concurrencia y guardar sólo en borrador."
+  "La carga debe validar campos/revisión y crear sólo un master de Biblioteca, sin asignar destinos ni mutar el borrador."
 );
 assert(
   uploadForm.includes('"use client"') &&
@@ -262,12 +274,13 @@ assert(
     uploadForm.includes('value="manual"') &&
     uploadForm.includes("media-source") &&
     uploadForm.includes("application/x-www-form-urlencoded") &&
-    uploadForm.includes("const expectedState = libraryOnly") &&
-    uploadForm.includes('"recurso-subido"') &&
-    uploadForm.includes('"imagen-subida"') &&
-    uploadForm.includes("resultState !== expectedState") &&
-    uploadForm.includes("uploadRedirectError"),
-  "El editor debe normalizar PNG/JPEG/AVIF/WebP, importar por URL, distinguir carga directa de biblioteca y conservar la pantalla si el servidor rechaza el intento."
+    uploadForm.includes('<input type="hidden" name="kind" value="library" />') &&
+    uploadForm.includes('resultState !== "recurso-subido"') &&
+    uploadForm.includes("uploadRedirectError") &&
+    !uploadForm.includes("libraryOnly") &&
+    !uploadForm.includes("screenshotCount") &&
+    !uploadForm.includes('"imagen-subida"'),
+  "El editor debe normalizar/importar la imagen y guardarla siempre como master de Biblioteca, conservando la pantalla si el servidor rechaza el intento."
 );
 assert(
   remoteRoute.includes(
