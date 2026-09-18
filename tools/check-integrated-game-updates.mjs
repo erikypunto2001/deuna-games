@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const files = {
   navigation: "src/components/admin/AdminNavigation.tsx",
@@ -27,6 +27,19 @@ const files = {
   demoRetirement:
     "database/migrations/014_retire_demo_game_updates.sql",
 };
+
+async function exists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const legacyCreateApi =
+  "src/app/api/admin/content/updates/route.ts";
+const legacyCreateApiPresent = await exists(legacyCreateApi);
 
 const entries = Object.fromEntries(
   await Promise.all(
@@ -108,8 +121,9 @@ expect(
 );
 expect(
   entries.legacyIndex.includes('redirect("/admin/juegos")') &&
-    entries.legacyCreate.includes('redirect("/admin/juegos")'),
-  "Los flujos globales antiguos deben redirigir a Juegos para evitar dos experiencias de actualización."
+    entries.legacyCreate.includes('redirect("/admin/juegos")') &&
+    !legacyCreateApiPresent,
+  "Los flujos globales antiguos deben redirigir a Juegos y el servidor no debe conservar un endpoint paralelo para crear updates fuera de Nueva versión."
 );
 expect(
   entries.legacyEditor.includes("publicationState?.publicVisible") &&
