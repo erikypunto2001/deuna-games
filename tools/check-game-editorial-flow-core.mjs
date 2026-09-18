@@ -24,6 +24,7 @@ const files = Object.fromEntries(
       publicationChanges: "src/lib/admin/game-publication-changes.ts",
       publicationReadiness: "src/lib/admin/game-publication-readiness.ts",
       editorFlow: "src/lib/admin/game-editor-flow.ts",
+      editorSections: "src/lib/admin/game-editor-sections.ts",
       mediaIntegrity: "src/lib/admin/game-media-integrity.ts",
       publicRevalidation: "src/lib/admin/game-public-revalidation.ts",
       performanceService: "src/lib/admin/game-performance-service.ts",
@@ -329,8 +330,10 @@ assert(
     files.gameEditor.includes("readiness={readiness}") &&
     files.healthOverview.includes("readiness.percentage") &&
     files.healthOverview.includes("readiness.items.filter") &&
-    files.healthOverview.includes("?seccion=${section.key}"),
-  "El tablero global debe recibir la completitud real y navegar por cada sección."
+    files.healthOverview.includes("essentialPending") &&
+    files.healthOverview.includes("?seccion=${item.section}") &&
+    !files.healthOverview.includes('aria-label="Secciones del editor del juego"'),
+  "El estado editorial debe recibir la completitud real, enlazar los bloqueos a su sección y no duplicar la navegación canónica."
 );
 assert(
   files.compatibilityEditor.includes("GamePlatformEditor") &&
@@ -367,10 +370,14 @@ assert(
   "El catálogo debe conservar acceso claro a Publicación."
 );
 assert(
-  files.contextBar.includes('key: "rendimiento"') &&
+  files.editorSections.includes('{ id: "rendimiento", label: "Rendimiento" }') &&
+    files.editorSections.includes('{ id: "valoracion", label: "Valoración" }') &&
+    files.contextBar.includes('getGameEditorSection("rendimiento")') &&
+    files.contextBar.includes('directGameSection("valoracion", Star)') &&
     files.contextBar.includes('key: "publicacion"') &&
-    files.contextBar.includes("Publicación"),
-  "El contexto del juego debe conservar Rendimiento y Publicación."
+    files.contextBar.includes('label: "Publicación"') &&
+    files.contextBar.includes('directGameSection("historial", FileClock)'),
+  "El contexto del juego debe conservar Rendimiento, Valoración, Publicación e Historial desde el contrato canónico."
 );
 assert(
   files.publicationPage.includes("getGamePublicationState") &&
