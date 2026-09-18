@@ -21,6 +21,7 @@ const [
   performanceService,
   performanceAdminRoute,
   editorFlow,
+  editorSections,
   editorPage,
   compatibilityEditor,
   contextBar,
@@ -42,6 +43,7 @@ const [
   source("src/lib/admin/game-performance-service.ts"),
   source("src/app/api/admin/content/games/[slug]/performance/route.ts"),
   source("src/lib/admin/game-editor-flow.ts"),
+  source("src/lib/admin/game-editor-sections.ts"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/components/admin/GameCompatibilityEditor.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
@@ -120,9 +122,11 @@ assert(
     compatibilityEditor.includes('continueTo="rendimiento"') &&
     compatibilityEditor.includes("Guardar y continuar a Rendimiento") &&
     contextBar.includes('key: "compatibilidad"') &&
-    contextBar.includes('key: "rendimiento"') &&
-    contextBar.includes('label: "Rendimiento"') &&
-    contextBar.includes('href: `${gamePath}?seccion=rendimiento`'),
+    editorSections.includes('{ id: "rendimiento", label: "Rendimiento" }') &&
+    contextBar.includes('const performance = getGameEditorSection("rendimiento")') &&
+    contextBar.includes("key: performance.id") &&
+    contextBar.includes("label: performance.label") &&
+    contextBar.includes('href: `${gamePath}?seccion=${performance.id}`'),
   "Rendimiento debe formar parte real del flujo Compatibilidad → Rendimiento → Multimedia y permanecer accesible dentro de Compatibilidad."
 );
 
