@@ -6,6 +6,10 @@ import GameTaxonomyMultiSelect from "./GameTaxonomyMultiSelect";
 
 import adminStyles from "../../app/admin/admin.module.css";
 
+type PrimaryGameTaxonomyTerm = GameTaxonomyTerm & {
+  missingFromCatalog?: boolean;
+};
+
 const ageRatingSystems = [
   ["ESRB", "ESRB"],
   ["PEGI", "PEGI"],
@@ -22,12 +26,14 @@ export default function GameClassificationEditor({
   game,
   revision,
   action,
+  primaryClassificationTerms,
   classificationTerms,
   tagTerms,
 }: {
   game: Game;
   revision: number;
   action: string;
+  primaryClassificationTerms: PrimaryGameTaxonomyTerm[];
   classificationTerms: GameTaxonomyTerm[];
   tagTerms: GameTaxonomyTerm[];
 }) {
@@ -49,14 +55,19 @@ export default function GameClassificationEditor({
         <label className={adminStyles.fieldWide}>
           <span>Clasificación principal</span>
           <select name="category" defaultValue={game.category} required>
-            {classificationTerms.map((term) => (
+            {primaryClassificationTerms.map((term) => (
               <option key={term.key} value={term.label}>
-                {term.label}{term.active ? "" : " · Inactiva"}
+                {term.label}
+                {term.missingFromCatalog
+                  ? " · Fuera de Catálogos"
+                  : term.active
+                    ? ""
+                    : " · Inactiva"}
               </option>
             ))}
           </select>
           <small>
-            Define la clasificación primaria mostrada y utilizada por filtros. No se duplica dentro de las adicionales.
+            Define la clasificación primaria mostrada y utilizada por filtros. Si el valor guardado ya no existe en Catálogos, se conserva visible hasta que elijas otra clasificación.
           </small>
         </label>
 
@@ -127,7 +138,7 @@ export default function GameClassificationEditor({
         </label>
 
         <GameEditorFormActions
-          note="Los términos inactivos ya utilizados se conservan por compatibilidad. La clasificación etaria forma parte del mismo snapshot y sólo cambia la web al publicar."
+          note="Los términos inactivos o ausentes de Catálogos ya utilizados se conservan por compatibilidad hasta que decidas retirarlos o reemplazarlos. La clasificación etaria forma parte del mismo snapshot y sólo cambia la web al publicar."
           action={action}
           continueTo="requisitos"
           saveLabel="Guardar clasificación"
