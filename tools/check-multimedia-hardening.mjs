@@ -22,6 +22,10 @@ const [
   assignmentsWorkspace,
   galleryManager,
   utilityRail,
+  contentService,
+  mediaLibraryRoute,
+  backgroundRoute,
+  galleryRoute,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/editorial-video.ts"),
@@ -34,6 +38,10 @@ const [
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
   source("src/components/admin/GameMultimediaUtilityRail.tsx"),
+  source("src/lib/admin/content-service.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/background-media/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/gallery-media/route.ts"),
 ]);
 
 assert(
@@ -172,6 +180,45 @@ assert(
     "Eliminar master sin uso"
   ),
   "El borrado destructivo debe permanecer en Biblioteca y sólo exponerse a masters realmente huérfanos."
+);
+
+const mediaDraftContract = contentService.match(
+  /export type GameMediaDraftInput = Pick<[\s\S]*?>;/
+)?.[0] ?? "";
+
+assert(
+  has(
+    mediaDraftContract,
+    '"coverArtworkSource"',
+    '"coverImage"',
+    '"heroImage"',
+    '"cardImage"',
+    '"detailImage"',
+    '"backgroundImage"',
+    '"screenshots"',
+    '"galleryMedia"',
+    '"imageMedia"',
+    '"mediaModes"',
+    '"videoMedia"',
+    '"previewClip"'
+  ) &&
+    !mediaDraftContract.includes('"previewMode"') &&
+    !mediaDraftContract.includes('"youtubePreview"') &&
+    !mediaDraftContract.includes('"directPreview"') &&
+    has(
+      mediaLibraryRoute,
+      "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];"
+    ) &&
+    has(
+      backgroundRoute,
+      "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];"
+    ) &&
+    has(
+      galleryRoute,
+      "} satisfies Parameters<typeof saveGameMediaDraft>[3];",
+      "let update: Parameters<typeof saveGameMediaDraft>[3] | null = null;"
+    ),
+  "Las mutaciones multimedia deben depender del único contrato GameMediaDraftInput actual; previews externos legacy quedan sólo para lectura compatible."
 );
 
 assert(
