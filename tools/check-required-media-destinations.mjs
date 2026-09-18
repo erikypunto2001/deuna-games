@@ -16,6 +16,7 @@ const [
   imageViewportPolicy,
   previewPolicy,
   modePolicy,
+  utilityRail,
   gameVideoMedia,
   assignmentsWorkspace,
   galleryManager,
@@ -44,6 +45,7 @@ const [
   source("src/lib/media/image-viewport.ts"),
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/game-media-mode-policy.ts"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/lib/media/game-video-media.ts"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
@@ -165,6 +167,22 @@ assert(
       'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
     ),
   "La política compartida debe reservar Imagen + hover exclusivamente para Hero y degradar snapshots legacy de Card/Contenedor/Fondo a Imagen."
+);
+
+assert(
+  has(
+    utilityRail,
+    "GAME_MEDIA_MODES_BY_TARGET",
+    "function modeOptionsLabel(target: GameMediaModeTarget)",
+    'return GAME_MEDIA_MODES_BY_TARGET[target].map(mediaModeLabel).join(" / ");',
+    'modeOptionsLabel("hero")',
+    'modeOptionsLabel("card")',
+    'modeOptionsLabel("detail")',
+    'modeOptionsLabel("background")'
+  ) &&
+    !utilityRail.includes("Video e Imagen + hover agregan") &&
+    !utilityRail.includes("Puede usar Imagen, Video o Imagen + hover"),
+  "La ayuda del rail multimedia debe derivar los modos permitidos del contrato compartido y no reintroducir hover en Card/Contenedor/Fondo."
 );
 
 assert(
