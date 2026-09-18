@@ -208,8 +208,13 @@ assert(
     "posterSource === \"custom\"",
     "Comparte el master, no el recorte",
     "Card conserva siempre una imagen base 3:2",
-    "Video principal + imagen de respaldo obligatoria."
+    "Video principal + imagen de respaldo obligatoria.",
+    "assignments.resolvedCardVideo?.src",
+    "assignments.resolvedCardVideo?.viewport"
   ) &&
+    !workspace.includes("function cardVideoClip(") &&
+    !workspace.includes("function cardVideoViewport(") &&
+    !workspace.includes("assignments.legacyPreviewClip") &&
     !workspace.includes("Imagen es el estado inicial. El video entra al hover o foco") &&
     !workspace.includes('target="cover-video"') &&
     !workspace.includes('target="cover-mode"') &&
@@ -224,6 +229,7 @@ assert(
     "<strong>Portada · 4:5</strong><small>Imagen</small>",
     "<strong>Hero · 3:1</strong>",
     "<strong>Card · 3:2</strong>",
+    "assignments?.resolvedCardVideo?.src",
     "Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5."
   ) &&
     !utilityRail.includes("assignments?.coverMode") &&
@@ -241,8 +247,10 @@ assert(
     'aspect: "4:5"',
     'aspect: "3:1"',
     'aspect: "3:2"',
-    "heroVideo: GameHeroVideo | null"
+    "heroVideo: GameHeroVideo | null",
+    "resolvedCardVideo: ResolvedGameVideo | null"
   ) &&
+    !libraryTypes.includes("legacyPreviewClip") &&
     !libraryTypes.includes("GameCoverVideo") &&
     !libraryTypes.includes("coverMode:") &&
     !libraryTypes.includes("coverVideo:"),
@@ -258,8 +266,11 @@ assert(
     "coverArtworkSource: resolveGameCoverArtworkSource(game)",
     "coverImage: resolveGameCoverImage(game) ?? null",
     "cardImage: resolveGameCardBaseImage(game) ?? null",
-    'heroMode: resolveGameDestinationMediaMode(game, "hero")'
+    'heroMode: resolveGameDestinationMediaMode(game, "hero")',
+    "resolveGameCardVideo",
+    "resolvedCardVideo: resolveGameCardVideo(game) ?? null"
   ) &&
+    !mediaWorkspace.includes("legacyPreviewClip") &&
     !mediaWorkspace.includes('resolveGameDestinationMediaMode(game, "cover")') &&
     !mediaWorkspace.includes("coverMode:") &&
     !mediaWorkspace.includes("coverVideo:"),
@@ -286,6 +297,8 @@ assert(
     'playback: "always"',
     "previewClip: videoResource.src"
   ) &&
+    !libraryRoute.includes("export async function GET") &&
+    !libraryRoute.includes("NextResponse") &&
     !libraryRoute.includes('"cover-mode"') &&
     !libraryRoute.includes('"cover-video"') &&
     !libraryRoute.includes('requiredVideoViewport("cover")'),
