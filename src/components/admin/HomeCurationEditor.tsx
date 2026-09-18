@@ -16,11 +16,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useMemo, useState } from "react";
 
 import type {
   HomeCurationCollectionId,
@@ -38,10 +34,7 @@ import {
 import type { Game } from "@/types/game";
 
 import styles from "./HomeCurationEditor.module.css";
-import { useInitialSessionStorageSnapshot } from "./useInitialSessionStorageSnapshot";
 
-const CURATION_DRAFT_KEY = "deuna:home-curation-draft:latest";
-const slugPattern = /^[a-z0-9][a-z0-9._-]*$/;
 
 const collections: Array<{
   id: HomeCurationCollectionId;
@@ -127,12 +120,6 @@ type ModeState = Record<
   HomeCurationMode
 >;
 
-type CurationDraft = {
-  revision: number;
-  modes: ModeState;
-  selections: SelectionState;
-};
-
 function normalize(value: string) {
   return value
     .normalize("NFD")
@@ -184,73 +171,6 @@ function buildCurationPayload(
       slugs: selections.recommended,
     },
   });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function isMode(value: unknown): value is HomeCurationMode {
-  return value === "manual" || value === "automatic" || value === "hybrid";
-}
-
-function isSlugList(value: unknown, maximum: number): value is string[] {
-  return (
-    Array.isArray(value) &&
-    value.length <= maximum &&
-    value.every(
-      (slug) =>
-        typeof slug === "string" &&
-        slug.length > 0 &&
-        slug.length <= 160 &&
-        slugPattern.test(slug)
-    ) &&
-    new Set(value).size === value.length
-  );
-}
-
-function isCurationDraft(value: unknown): value is CurationDraft {
-  if (!isRecord(value) || !isRecord(value.modes) || !isRecord(value.selections)) {
-    return false;
-  }
-
-  if (
-    typeof value.revision !== "number" ||
-    !Number.isInteger(value.revision) ||
-    value.revision < 0
-  ) {
-    return false;
-  }
-
-  const modes = value.modes;
-  const selections = value.selections;
-
-  return collections.every(({ id }) => {
-    const maximum = id === "hero" ? HOME_HERO_MAX_SLIDES : 24;
-    return (
-      isMode(modes[id]) &&
-      isSlugList(selections[id], maximum)
-    );
-  });
-}
-
-function clearRecoveryDraft() {
-  try {
-    sessionStorage.removeItem(CURATION_DRAFT_KEY);
-  } catch {
-    // El guardado del servidor sigue siendo la fuente de verdad.
-  }
-}
-
-function parseRecoveryDraft(raw: string | null): CurationDraft | null {
-  if (!raw) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return isCurationDraft(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 function GameArtwork({ game }: { game: Game }) {
@@ -308,11 +228,6 @@ export default function HomeCurationEditor({
   const [selections, setSelections] =
     useState<SelectionState>(() => structuredClone(baselineSelections));
   const [query, setQuery] = useState("");
-  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
-  const {
-    ready: recoveryReady,
-    value: storedDraft,
-  } = useInitialSessionStorageSnapshot(CURATION_DRAFT_KEY);
   const rankingNow = rankingReferenceTime;
 
   const meta = collections.find(
@@ -398,71 +313,6 @@ export default function HomeCurationEditor({
     [modes, selections]
   );
   const dirty = serialized !== baselinePayload;
-  const recovery = useMemo(() => {
-    if (!storedDraft || recoveryDismissed) return null;
-
-    const candidate = parseRecoveryDraft(storedDraft);
-    if (!candidate) return null;
-
-    const resolvedCandidate = excludeHero
-      ? {
-          ...candidate,
-          modes: {
-            ...candidate.modes,
-            hero: baselineModes.hero,
-          },
-          selections: {
-            ...candidate.selections,
-            hero: [...baselineSelections.hero],
-          },
-        }
-      : candidate;
-
-    return buildCurationPayload(
-      resolvedCandidate.modes,
-      resolvedCandidate.selections
-    ) === baselinePayload
-      ? null
-      : resolvedCandidate;
-  }, [
-    baselineModes,
-    baselinePayload,
-    baselineSelections,
-    excludeHero,
-    recoveryDismissed,
-    storedDraft,
-  ]);
-  const recoveryMatchesRevision = recovery?.revision === revision;
-  const recoveryRequiresDecision = Boolean(recovery);
-
-  useEffect(() => {
-    if (!recoveryReady || recovery) return;
-
-    try {
-      if (!dirty) {
-        clearRecoveryDraft();
-        return;
-      }
-      sessionStorage.setItem(
-        CURATION_DRAFT_KEY,
-        JSON.stringify({
-          revision,
-          modes,
-          selections,
-        } satisfies CurationDraft)
-      );
-    } catch {
-      // Storage puede estar bloqueado; el formulario sigue funcionando.
-    }
-  }, [
-    dirty,
-    modes,
-    recovery,
-    recoveryReady,
-    revision,
-    selections,
-  ]);
-
   function setMode(mode: HomeCurationMode) {
     setModes((current) => ({
       ...current,
@@ -536,47 +386,7 @@ export default function HomeCurationEditor({
         value={serialized}
       />
 
-      {recovery && (
-        <section
-          className={styles.overview}
-          role={recoveryMatchesRevision ? "status" : "alert"}
-        >
-          <div>
-            <span>RECUPERACIÓN</span>
-            <h2>Cambios locales recuperables</h2>
-            <p>
-              {recoveryMatchesRevision
-                ? "Hay una copia local de esta revisión que todavía no fue guardada. Recupérala o descártala antes de continuar editando."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior. Descarta la copia para desbloquear la edición de la revisión actual.`}
-            </p>
-          </div>
-          <div className={styles.rowActions}>
-            <button
-              type="button"
-              disabled={!recoveryMatchesRevision}
-              onClick={() => {
-                if (!recoveryMatchesRevision) return;
-                setModes(structuredClone(recovery.modes));
-                setSelections(structuredClone(recovery.selections));
-                setRecoveryDismissed(true);
-              }}
-            >
-              {recoveryMatchesRevision ? "Recuperar" : "Copia obsoleta"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearRecoveryDraft();
-                setRecoveryDismissed(true);
-              }}
-            >
-              Descartar
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section className={styles.overview} inert={recoveryRequiresDecision}>
+      <section className={styles.overview}>
         <div>
           <span>CURADURÍA INTELIGENTE</span>
           <h2>Control editorial + ranking automático</h2>
@@ -603,7 +413,7 @@ export default function HomeCurationEditor({
       <nav
         className={styles.collectionTabs}
         aria-label="Bloques de juegos de la portada"
-        inert={recoveryRequiresDecision}
+       
       >
         {visibleCollections.map((collection) => {
           const selected = collection.id === active;
@@ -627,7 +437,7 @@ export default function HomeCurationEditor({
         })}
       </nav>
 
-      <section className={styles.workspace} inert={recoveryRequiresDecision}>
+      <section className={styles.workspace}>
         <header className={styles.workspaceHeader}>
           <div>
             <span>{meta.label}</span>
@@ -958,7 +768,7 @@ export default function HomeCurationEditor({
         </div>
       </section>
 
-      <footer className={styles.actions} inert={recoveryRequiresDecision}>
+      <footer className={styles.actions}>
         <div>
           <strong>Guardar sólo actualiza el borrador</strong>
           <span>

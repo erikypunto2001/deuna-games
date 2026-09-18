@@ -29,7 +29,6 @@ const [
   staticCss,
   hoverPreview,
   hoverPreviewCss,
-  recoveryBrowserSmoke,
   workflowLayoutSmoke,
   staticDetailBrowserSmoke,
   staticDetailFixture,
@@ -51,7 +50,6 @@ const [
   source("src/components/ui/UniversalGameCardStaticDetail.module.css"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/HoverPreviewMedia.module.css"),
-  source("tools/home-live-recovery-browser-smoke.mjs"),
   source("tools/home-content-workflow-layout-browser-smoke.mjs"),
   source("tools/home-row-static-detail-browser-smoke.mjs"),
   source("tools/home-row-static-detail-visual-fixture.ts"),
@@ -166,32 +164,18 @@ assert(
 
 assert(
   has(
-    recoveryBrowserSmoke,
-    "deuna:home-row-reveal-draft:latest",
-    "testCoordinatedSave",
-    "clickCoordinatedSave",
-    "Guardar cambios",
-    "estado",
-    "guardado",
-    "initialRevision + 1",
-    "initialRevision + 2",
-    "smoke guardado coordinado",
-    "sin 403"
-  ),
-  "El smoke real de Admin debe limpiar todos los recoveries y ejercer guardar/restaurar la revisión coordinada desde el navegador autenticado."
-);
-
-assert(
-  has(
     rowEditor,
-    "deuna:home-row-reveal-draft:latest",
-    "recoveryMatchesRevision",
     'data-home-editor-dirty={dirty ? "true" : "false"}',
     'name="rowRevealJson"',
     "Detalle visible",
-    "sin ampliar, inclinar ni mover"
-  ),
-  "El editor de filas debe tener recovery por revisión, dirty tracking y explicar el contrato sin expansión."
+    "sin ampliar, inclinar ni mover",
+    'disabled={!dirty}'
+  ) &&
+    !rowEditor.includes("sessionStorage") &&
+    !rowEditor.includes("useInitialSessionStorageSnapshot") &&
+    !rowEditor.includes("deuna:home-row-reveal-draft") &&
+    !packageJson.includes("visual:home-live-recovery"),
+  "El editor de filas debe conservar dirty tracking y el contrato de visualización usando únicamente el borrador de servidor, sin recovery local paralelo."
 );
 
 assert(

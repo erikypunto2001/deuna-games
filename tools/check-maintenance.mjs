@@ -48,6 +48,76 @@ const packageManifest = JSON.parse(
 );
 const scripts = packageManifest.scripts ?? {};
 
+const trackedFilesResult = spawnSync(
+  "git",
+  ["ls-files", "-z"],
+  { encoding: "utf8" }
+);
+assert(
+  trackedFilesResult.status === 0,
+  `No se pudo enumerar el árbol versionado: ${trackedFilesResult.stderr.trim() || "git ls-files falló"}.`
+);
+const trackedFiles = trackedFilesResult.status === 0
+  ? trackedFilesResult.stdout.split("\0").filter(Boolean)
+  : [];
+
+const forbiddenTrackedPatterns = [
+  {
+    pattern: /(^|\/)(?:legacy-archive|theme-recovery-backup-[^/]*|payload|DEUNA_ANALISIS_COMPLETO)(?:\/|$)/i,
+    label: "directorio de backup/análisis temporal",
+  },
+  {
+    pattern: /\.(?:log|tmp|temp|bak|backup|dump|orig|rej|swp|zip)$/i,
+    label: "archivo temporal, backup, dump o paquete generado",
+  },
+  {
+    pattern: /(^|\/)(?:PROJECT_CONTEXT|PROJECT_REVIEW|PROJECT_AUDIT|PROJECT_COLOR_AUDIT|PROJECT_VISUAL_AUDIT|DEBUG_REPORT).*\.md$/i,
+    label: "reporte local de análisis",
+  },
+  {
+    pattern: /(^|\/)(?:APLICAR-|REPARAR-|RECUPERAR-|LIMPIEZA-SEGURA-|PREPARAR-DEUNA-|FIX-|FORZAR-|LIMPIAR-).*\.ps1$/i,
+    label: "script temporal de reparación",
+  },
+];
+
+for (const file of trackedFiles) {
+  for (const { pattern, label } of forbiddenTrackedPatterns) {
+    assert(
+      !pattern.test(file),
+      `${file} es un ${label} y no debe estar versionado.`
+    );
+  }
+}
+
+for (const removedRecoveryFile of [
+  "src/components/admin/useInitialSessionStorageSnapshot.ts",
+  "tools/check-home-recovery-gate.mjs",
+  "tools/home-live-recovery-browser-smoke.mjs",
+]) {
+  assert(
+    !trackedFiles.includes(removedRecoveryFile),
+    `${removedRecoveryFile} pertenece al recovery local retirado y no debe volver al repo.`
+  );
+}
+
+for (const [label, relativePath] of [
+  ["Curaduría de Inicio", "src/components/admin/HomeCurationEditor.tsx"],
+  ["Presentación de Inicio", "src/components/admin/HomePresentationEditor.tsx"],
+  ["Visualización de filas", "src/components/admin/HomeRowRevealEditor.tsx"],
+  ["Hero de Inicio", "src/components/admin/HomeHeroEditor.tsx"],
+  ["Guardado de Hero", "src/components/admin/HomeHeroSaveBoundary.tsx"],
+]) {
+  const content = await read(relativePath);
+  assert(
+    !content.includes("sessionStorage") &&
+      !content.includes("deuna:home-curation-draft") &&
+      !content.includes("deuna:home-presentation-draft") &&
+      !content.includes("deuna:home-row-reveal-draft") &&
+      !content.includes("deuna:hero-draft:"),
+    `${label} no debe reintroducir recovery local paralelo al borrador de servidor.`
+  );
+}
+
 for (const script of [
   "admin:test-user",
   "admin:diagnose-login",
