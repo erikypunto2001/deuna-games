@@ -174,19 +174,23 @@ assert(
 assert(
   has(
     imageUploadRoute,
-    '"library"',
+    'kind !== "library"',
     "storeEditorialWebp",
     "clearEditorialImageDeletionMarker",
-    'kind.data === "library"',
     "recurso-subido"
   ) &&
+    !imageUploadRoute.includes("saveGameMediaDraft") &&
+    !imageUploadRoute.includes("reconcileGameImageMedia") &&
     has(
       imageUploadForm,
-      "libraryOnly?: boolean",
       'name="kind" value="library"',
       "Preparar y guardar en biblioteca"
-    ),
-  "Subir una imagen a biblioteca debe guardarla una vez sin asignarla automáticamente."
+    ) &&
+    !imageUploadForm.includes("libraryOnly") &&
+    !imageUploadForm.includes("screenshotCount") &&
+    !imageUploadForm.includes('value="cover"') &&
+    !imageUploadForm.includes('value="screenshot"'),
+  "Subir una imagen debe crear únicamente un master reutilizable de Biblioteca; destinos y Galería se asignan después por sus rutas canónicas."
 );
 
 assert(
