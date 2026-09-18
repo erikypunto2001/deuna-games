@@ -279,9 +279,6 @@ export default async function AdminGameEditorPage({
         <GameMultimediaEditor
           slug={slug}
           revision={item.revision}
-          coverImage={game.coverImage}
-          heroImage={game.heroImage}
-          screenshots={game.screenshots}
         />
       )}
 
