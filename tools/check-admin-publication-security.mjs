@@ -142,9 +142,11 @@ assert(
     creationService.includes("false") &&
     creationService.includes("ON CONFLICT (item_type, item_key)") &&
     creationService.includes("content_created") &&
-    creationService.includes("game_update") &&
+    creationService.includes('Extract<EditorialItemType, "game">') &&
+    creationService.includes("createGameDraft") &&
+    !creationService.includes("game_update") &&
     !/\bDELETE\s+FROM\b/i.test(creationService),
-  "Las altas creadas desde el panel deben nacer como borradores ocultos, preservar la fuente y rechazar identidades duplicadas sin borrar contenido."
+  "Las altas directas del panel deben limitarse a juegos privados; las actualizaciones nuevas sólo pueden nacer desde Nueva versión."
 );
 
 assert(

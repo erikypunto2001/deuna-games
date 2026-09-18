@@ -42,48 +42,6 @@ const optionalLocalImage = z
   )
   .transform((value) => value || undefined);
 
-function delimitedTextList(
-  maximumItems: number,
-  maximumItemLength: number,
-  maximumInputLength: number
-) {
-  return z
-    .string()
-    .max(maximumInputLength)
-    .transform((value) =>
-      value
-        .split(/[,\r\n]+/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-    )
-    .pipe(
-      z
-        .array(
-          z.string().min(1).max(maximumItemLength)
-        )
-        .max(maximumItems)
-        .superRefine((items, context) => {
-          const seen = new Set<string>();
-
-          items.forEach((item, index) => {
-            const normalized = item.toLocaleLowerCase("es");
-
-            if (seen.has(normalized)) {
-              context.addIssue({
-                code: "custom",
-                path: [index],
-                message: "Los valores no pueden repetirse.",
-              });
-            }
-            seen.add(normalized);
-          });
-        })
-    )
-    .transform((items) =>
-      items.length > 0 ? items : undefined
-    );
-}
-
 const screenshotsTextSchema = z
   .string()
   .max(3_500)
@@ -119,50 +77,6 @@ const screenshotsTextSchema = z
   )
   .transform((value) =>
     value.length > 0 ? value : undefined
-  );
-
-const gamePlatformSchema = z.enum([
-  "PC",
-  "PlayStation",
-  "Xbox",
-  "Nintendo Switch",
-]);
-
-const platformsJsonSchema = z
-  .string()
-  .max(180)
-  .transform((value, context) => {
-    try {
-      return JSON.parse(value) as unknown;
-    } catch {
-      context.addIssue({
-        code: "custom",
-        message: "La lista de plataformas no contiene JSON válido.",
-      });
-      return z.NEVER;
-    }
-  })
-  .pipe(
-    z
-      .array(gamePlatformSchema)
-      .max(4)
-      .superRefine((platforms, context) => {
-        const seen = new Set<string>();
-
-        platforms.forEach((platform, index) => {
-          if (seen.has(platform)) {
-            context.addIssue({
-              code: "custom",
-              path: [index],
-              message: "Una plataforma no puede repetirse.",
-            });
-          }
-          seen.add(platform);
-        });
-      })
-  )
-  .transform((platforms) =>
-    platforms.length > 0 ? platforms : undefined
   );
 
 const downloadSourceStatusSchema = z.enum([
@@ -346,54 +260,6 @@ export const expectedRevisionSchema = z
   .transform(Number)
   .pipe(z.number().int().positive());
 
-export const editorialGameFormSchema = z.object({
-  expectedRevision: expectedRevisionSchema,
-  title: z.string().trim().min(1).max(140),
-  description: z.string().trim().min(1).max(2_500),
-  category: z.string().trim().min(1).max(80),
-  version: optionalText(240),
-  badge: optionalText(240),
-  rating: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        value === "" ||
-        /^\d(?:\.\d{1,2})?$/.test(value)
-    )
-    .transform((value) =>
-      value === "" ? undefined : Number(value)
-    )
-    .refine(
-      (value) =>
-        value === undefined ||
-        (value >= 0 && value <= 5)
-    ),
-  reviews: z
-    .string()
-    .trim()
-    .max(30)
-    .refine(
-      (value) =>
-        value === "" ||
-        /^\d+(?:\.\d+)?[KM]?$/i.test(value)
-    )
-    .transform((value) => value || undefined),
-  imageAlt: z.string().trim().min(1).max(240),
-});
-
-export const editorialGameAdvancedFormSchema = z.object({
-  expectedRevision: expectedRevisionSchema,
-  shortTitle: optionalText(140),
-  highlightedTitle: optionalText(140),
-  developer: optionalText(160),
-  publisher: optionalText(160),
-  releaseDate: optionalText(40),
-  genresText: delimitedTextList(20, 80, 1_800),
-  tagsText: delimitedTextList(30, 80, 2_600),
-  platformsJson: platformsJsonSchema,
-});
-
 export const editorialGameDownloadFormSchema = z.object({
   expectedRevision: expectedRevisionSchema,
   sizeGb: optionalPositiveNumber,
@@ -402,20 +268,6 @@ export const editorialGameDownloadFormSchema = z.object({
   channel: optionalDistributionChannelSchema,
   checksumSha256: optionalSha256Schema,
   sourcesJson: downloadSourcesJsonSchema,
-});
-
-export const editorialGameRequirementsFormSchema = z.object({
-  expectedRevision: expectedRevisionSchema,
-  minimumSystem: optionalText(240),
-  minimumProcessor: optionalText(240),
-  minimumRam: optionalText(240),
-  minimumGraphics: optionalText(240),
-  minimumStorage: optionalText(240),
-  recommendedSystem: optionalText(240),
-  recommendedProcessor: optionalText(240),
-  recommendedRam: optionalText(240),
-  recommendedGraphics: optionalText(240),
-  recommendedStorage: optionalText(240),
 });
 
 export const editorialGamePerformanceFormSchema = z

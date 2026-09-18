@@ -30,9 +30,11 @@ import {
   editorialUpdateSchema,
 } from "../src/lib/admin/content-validation.ts";
 import {
-  editorialGameFormSchema,
   editorialUpdateFormSchema,
 } from "../src/lib/admin/content-forms.ts";
+import {
+  gameValuationSectionSchema,
+} from "../src/lib/admin/game-editor-section-validation.ts";
 import { siteConfig } from "../src/lib/site.ts";
 
 const root = process.cwd();
@@ -120,18 +122,12 @@ assert(
   "El checksum editorial debe ser estable ante el orden de claves."
 );
 assert(
-  !editorialGameFormSchema.safeParse({
+  !gameValuationSectionSchema.safeParse({
     expectedRevision: "1",
-    title: "Juego",
-    description: "Descripción",
-    category: "Acción",
-    version: "",
-    badge: "",
     rating: "9",
-    reviews: "1K",
-    imageAlt: "Portada",
+    valuationMode: "manual",
   }).success,
-  "El editor no debe aceptar una valoración fuera de rango."
+  "Valoración no debe aceptar una puntuación editorial fuera de rango."
 );
 assert(
   !editorialUpdateFormSchema.safeParse({

@@ -292,6 +292,20 @@ async function postAdminForm(pathname, referer, cookie, fields, label) {
   return redirectLocation(response, label);
 }
 
+async function assertRetiredAdminMutation(pathname, referer, cookie, label) {
+  const response = await request(pathname, {
+    method: "POST",
+    headers: formHeaders(referer, cookie),
+    body: "",
+  });
+
+  if (response.status !== 404) {
+    throw new Error(
+      `${label} respondió ${response.status}; una mutación legacy retirada debe responder 404.`
+    );
+  }
+}
+
 async function mediaSnapshot(slug, cookie) {
   return parseJson(
     await request(
@@ -348,6 +362,29 @@ if (loginRedirect.pathname !== "/admin") {
   );
 }
 const cookie = sessionCookie(loginResponse.headers["set-cookie"]);
+
+for (const [pathname, label] of [
+  ["/api/admin/content/updates", "Alta legacy global de actualización"],
+  [
+    `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}`,
+    "Mutación legacy core del juego",
+  ],
+  [
+    `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/advanced`,
+    "Mutación legacy advanced del juego",
+  ],
+  [
+    `/api/admin/content/games/${encodeURIComponent(representativeGameSlug)}/requirements`,
+    "Mutación legacy aislada de requisitos",
+  ],
+]) {
+  await assertRetiredAdminMutation(
+    pathname,
+    "/admin/juegos",
+    cookie,
+    label
+  );
+}
 
 const newGamePage = requirePage(
   await request("/admin/juegos/nuevo", { headers: { cookie } }),
@@ -977,5 +1014,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada y ocultamiento verificados).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 4 mutaciones legacy retiradas verificados).`
 );

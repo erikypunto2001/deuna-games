@@ -9,8 +9,6 @@ import type {
 } from "pg";
 
 import type { Game } from "@/types/game";
-import type { GameUpdate } from "@/types/update";
-
 import {
   hashEditorialPayload,
   normalizeEditorialPayload,
@@ -37,17 +35,6 @@ export type CreateGameDraftInput = Pick<
   | "imageAlt"
 >;
 
-export type CreateUpdateDraftInput = Pick<
-  GameUpdate,
-  | "id"
-  | "gameSlug"
-  | "version"
-  | "publishedAt"
-  | "type"
-  | "summary"
-  | "featured"
->;
-
 export type CreateEditorialDraftResult =
   | {
       outcome: "created";
@@ -55,13 +42,6 @@ export type CreateEditorialDraftResult =
     }
   | {
       outcome: "exists";
-      key: string;
-    };
-
-export type CreateUpdateDraftResult =
-  | CreateEditorialDraftResult
-  | {
-      outcome: "game_not_found";
       key: string;
     };
 
@@ -79,7 +59,7 @@ async function assertActor(
 
 async function insertHiddenEditorialItem(
   client: PoolClient,
-  type: Extract<EditorialItemType, "game" | "game_update">,
+  type: Extract<EditorialItemType, "game">,
   key: string,
   payload: unknown,
   actorUserId: string
@@ -218,42 +198,3 @@ export async function createGameDraft(
   });
 }
 
-export async function createUpdateDraft(
-  actorUserId: string,
-  input: CreateUpdateDraftInput
-): Promise<CreateUpdateDraftResult> {
-  await assertActor(actorUserId);
-
-  return withAdminTransaction(async (client) => {
-    const game = await client.query<{
-      id: string;
-    }>(
-      `SELECT id
-       FROM deuna_admin.editorial_items
-       WHERE item_type = 'game'
-         AND item_key = $1
-       LIMIT 1`,
-      [input.gameSlug]
-    );
-
-    if (!game.rows[0]) {
-      return {
-        outcome: "game_not_found",
-        key: input.id,
-      };
-    }
-
-    const created = await insertHiddenEditorialItem(
-      client,
-      "game_update",
-      input.id,
-      input,
-      actorUserId
-    );
-
-    return {
-      outcome: created ? "created" : "exists",
-      key: input.id,
-    };
-  });
-}

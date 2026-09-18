@@ -1,5 +1,5 @@
 export const representativeGameSlug = "elden-ring";
-export const representativeUpdateId = "elden-ring-v1-10-1";
+export const representativeUpdateId = "visual-historical-update";
 const representativeGameTitle = "ELDEN RING";
 
 export const browserViewports = [
@@ -84,6 +84,12 @@ const gameEditorSections = [
   ["historial", "game-history"],
 ];
 
+const historicalUpdateSections = [
+  ["editar", "historical-update-edit"],
+  ["publicacion", "historical-update-publication"],
+  ["historial", "historical-update-history"],
+];
+
 const catalogSections = [
   ["clasificaciones", "catalog-classifications"],
   ["etiquetas", "catalog-tags"],
@@ -147,6 +153,13 @@ export const adminVisualPages = [
     pathname: `/admin/juegos/${representativeGameSlug}/actualizacion`,
     expectedText: "NUEVA VERSIÓN",
   },
+  ...historicalUpdateSections.map(([section, id]) => ({
+    id: `admin-${id}`,
+    pathname:
+      `/admin/actualizaciones/${representativeUpdateId}?seccion=${section}`,
+    expectedText:
+      "Compatibilidad editorial para un borrador antiguo",
+  })),
   ...catalogSections.map(([section, id]) => ({
     id: `admin-${id}`,
     pathname: `/admin/catalogos?seccion=${section}`,

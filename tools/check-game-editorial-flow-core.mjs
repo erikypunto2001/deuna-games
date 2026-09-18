@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -11,6 +11,15 @@ function assert(condition, message) {
 
 async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
+}
+
+async function exists(relativePath) {
+  try {
+    await access(path.join(root, relativePath));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const files = Object.fromEntries(
@@ -70,7 +79,27 @@ const files = Object.fromEntries(
   )
 );
 
+const retiredGameMutationRoutes = [
+  "src/app/api/admin/content/games/[slug]/route.ts",
+  "src/app/api/admin/content/games/[slug]/advanced/route.ts",
+  "src/app/api/admin/content/games/[slug]/requirements/route.ts",
+];
+const retiredGameMutationRoutePresence = await Promise.all(
+  retiredGameMutationRoutes.map(exists)
+);
+
 const validation = `${files.contentValidation}\n${files.contentValidationCore}`;
+
+assert(
+  retiredGameMutationRoutePresence.every((present) => !present),
+  "Las mutaciones legacy core/advanced/requirements no deben reaparecer: Información, Clasificación y Compatibilidad son las únicas rutas canónicas de esos datos."
+);
+assert(
+  files.informationRoute.includes("getGamePublicationIdentity") &&
+    files.informationRoute.includes("publicationIdentity?.everPublished") &&
+    files.informationRoute.includes("item.payload.version"),
+  "Información debe conservar la versión publicada y obligar a usar Nueva versión para cambiarla."
+);
 
 assert(
   files.creationService.includes("public_visible") &&

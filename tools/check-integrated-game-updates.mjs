@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const files = {
   navigation: "src/components/admin/AdminNavigation.tsx",
@@ -8,8 +8,8 @@ const files = {
     "src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx",
   route:
     "src/app/api/admin/content/games/[slug]/publish-update/route.ts",
-  gameCoreRoute:
-    "src/app/api/admin/content/games/[slug]/route.ts",
+  gameInformationRoute:
+    "src/app/api/admin/content/games/[slug]/information/route.ts",
   gameDownloadRoute:
     "src/app/api/admin/content/games/[slug]/download/route.ts",
   notices: "src/components/admin/EditorStateNotice.tsx",
@@ -26,7 +26,28 @@ const files = {
   sourceUpdates: "src/data/update-records.ts",
   demoRetirement:
     "database/migrations/014_retire_demo_game_updates.sql",
+  historicalFixture:
+    "tools/admin-historical-update-visual-fixture.ts",
+  accountNotificationsRunner:
+    "tools/account-notifications-browser-e2e-runner.mjs",
+  browserManifest:
+    "tools/browser-page-manifest.mjs",
+  sitewideSmoke:
+    "tools/sitewide-browser-smoke.mjs",
 };
+
+async function exists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const legacyCreateApi =
+  "src/app/api/admin/content/updates/route.ts";
+const legacyCreateApiPresent = await exists(legacyCreateApi);
 
 const entries = Object.fromEntries(
   await Promise.all(
@@ -81,9 +102,10 @@ expect(
   "La ruta unificada debe usar publicación atómica, revalidación, requisitos multimedia, integridad física/del paquete y protección exacta del formulario."
 );
 expect(
-  entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
-    entries.gameCoreRoute.includes("version-por-actualizacion"),
-  "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Nueva versión."
+  entries.gameInformationRoute.includes("getGamePublicationIdentity") &&
+    entries.gameInformationRoute.includes("publicationIdentity?.everPublished") &&
+    entries.gameInformationRoute.includes("item.payload.version"),
+  "Información debe preservar la versión de cualquier juego ya publicado para impedir cambios de versión fuera de Nueva versión."
 );
 expect(
   entries.gameDownloadRoute.includes("saveGameDownloadDraft") &&
@@ -108,14 +130,50 @@ expect(
 );
 expect(
   entries.legacyIndex.includes('redirect("/admin/juegos")') &&
-    entries.legacyCreate.includes('redirect("/admin/juegos")'),
-  "Los flujos globales antiguos deben redirigir a Juegos para evitar dos experiencias de actualización."
+    entries.legacyCreate.includes('redirect("/admin/juegos")') &&
+    !legacyCreateApiPresent,
+  "Los flujos globales antiguos deben redirigir a Juegos y el servidor no debe conservar un endpoint paralelo para crear updates fuera de Nueva versión."
 );
 expect(
   entries.legacyEditor.includes("publicationState?.publicVisible") &&
     entries.legacyEditor.includes("!publicationState.hasUnpublishedChanges") &&
     entries.legacyEditor.includes("/actualizacion"),
   "El editor antiguo sólo debe quedar como compatibilidad para borradores históricos no resueltos."
+);
+expect(
+  entries.historicalFixture.includes(
+    "DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE"
+  ) &&
+    entries.historicalFixture.includes(
+      'const historicalUpdateId = "visual-historical-update"'
+    ) &&
+    entries.historicalFixture.includes("createVisualUpdateDraft") &&
+    entries.historicalFixture.includes("public_visible") &&
+    entries.historicalFixture.includes("false") &&
+    entries.browserManifest.includes(
+      'representativeUpdateId = "visual-historical-update"'
+    ) &&
+    entries.browserManifest.includes("historical-update-edit") &&
+    entries.browserManifest.includes("historical-update-publication") &&
+    entries.browserManifest.includes("historical-update-history") &&
+    !entries.sitewideSmoke.includes("src/data/update-records.ts") &&
+    !entries.sitewideSmoke.includes("fixture.updateIds"),
+  "La compatibilidad histórica debe probarse con un borrador privado efímero real en editar/publicación/historial, sin depender de fixtures demo retirados."
+);
+expect(
+  entries.accountNotificationsRunner.includes(
+    "createVisualUpdateDraft"
+  ) &&
+    entries.accountNotificationsRunner.includes(
+      "/api/admin/content/updates/${encodeURIComponent(updateId)}/publish"
+    ) &&
+    entries.accountNotificationsRunner.includes(
+      "/api/admin/content/updates/${encodeURIComponent(updateId)}/hide"
+    ) &&
+    !entries.accountNotificationsRunner.includes(
+      '"/api/admin/content/updates"'
+    ),
+  "El E2E de avisos debe sembrar su borrador sólo en la DB efímera y probar publicación/ocultamiento reales sin reabrir el alta global legacy."
 );
 expect(
   entries.publicUpdates.includes("getPublicResolvedUpdates") &&

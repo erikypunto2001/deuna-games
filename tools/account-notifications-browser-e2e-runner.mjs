@@ -7,6 +7,9 @@ import {
 import {
   representativeGameSlug,
 } from "./browser-page-manifest.mjs";
+import {
+  createVisualUpdateDraft,
+} from "./admin-historical-update-visual-fixture.ts";
 
 const baseUrl = new URL(
   process.env.DEUNA_VISUAL_BASE_URL ??
@@ -207,7 +210,8 @@ const version = `avisos-e2e-${suffix}`.slice(0, 80);
  * mantiene este único update de CI como el más reciente sin colocarlo después
  * de markAccountUpdatesSeen(), que persiste el límite con now().
  */
-const publishedAt = new Date().toISOString().slice(0, 16);
+const publishedAt =
+  `${new Date().toISOString().slice(0, 16)}:00.000Z`;
 const summary =
   `Actualización sintética aislada para validar avisos de cuenta (${suffix}).`;
 
@@ -232,34 +236,20 @@ const cookie = sessionCookie(loginResponse.headers["set-cookie"]);
 let published = false;
 
 try {
-  const createRedirect = await postAdminForm(
-    "/api/admin/content/updates",
-    "/admin/actualizaciones/nueva",
-    cookie,
-    {
-      id: updateId,
-      gameSlug: representativeGameSlug,
-      version,
-      publishedAt,
-      type: "update",
-      summary,
-      featured: "false",
-    },
-    "La creación del update efímero de avisos"
-  );
+  await createVisualUpdateDraft({
+    updateId,
+    gameSlug: representativeGameSlug,
+    version,
+    publishedAt,
+    type: "update",
+    summary,
+    featured: false,
+    ownerUsername: adminUsername,
+    auditMarker: "account-notifications",
+  });
+
   const expectedEditorPath =
     `/admin/actualizaciones/${encodeURIComponent(updateId)}`;
-  if (createRedirect.pathname !== expectedEditorPath) {
-    throw new Error(
-      `El update efímero se creó fuera del editor esperado: ${createRedirect.href}.`
-    );
-  }
-  assertState(
-    createRedirect,
-    "actualizacion-creada",
-    "La creación del update efímero"
-  );
-
   const draft = await readUpdateState(updateId);
   if (!draft) {
     throw new Error(
@@ -305,7 +295,7 @@ try {
     Array.isArray(payload) ||
     payload.gameSlug !== representativeGameSlug ||
     payload.version !== version ||
-    payload.publishedAt !== `${publishedAt}:00.000Z`
+    payload.publishedAt !== publishedAt
   ) {
     throw new Error(
       `El snapshot público del update efímero no coincide con el fixture esperado: ${JSON.stringify(payload)}.`
