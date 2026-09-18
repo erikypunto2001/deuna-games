@@ -99,7 +99,10 @@ function GameActions({
   const published = item.status === "published";
 
   return (
-    <div className={`${ia.rowActions} ${mobile ? styles.mobileActions : ""}`}>
+    <div
+      className={`${ia.rowActions} ${mobile ? styles.mobileActions : ""}`}
+      data-mobile-actions={mobile ? "true" : undefined}
+    >
       <Link
         href={gamePath}
         title={`Editar ${item.title}`}
@@ -330,7 +333,7 @@ export default function AdminGamesCatalog({
           No hay juegos que coincidan con los filtros actuales.
         </div>
       ) : (
-        <div className={styles.tableViewport}>
+        <div className={styles.tableViewport} data-admin-games-table="true">
           <table className={styles.table}>
             <caption className={styles.srOnly}>
               Juegos editoriales, clasificación, estado de publicación, revisión y acciones
@@ -379,7 +382,11 @@ export default function AdminGamesCatalog({
           </table>
         </div>
 
-        <div className={styles.mobileList} aria-label="Juegos editoriales">
+        <div
+          className={styles.mobileList}
+          aria-label="Juegos editoriales"
+          data-admin-games-mobile-list="true"
+        >
           {filtered.map((item) => {
             const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
 
