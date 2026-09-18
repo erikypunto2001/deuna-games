@@ -1,3 +1,5 @@
+import type { ResolvedGameVideo } from "@/lib/media/game-video-media";
+
 import type {
   GameBackgroundVideo,
   GameCardVideo,
@@ -130,9 +132,9 @@ export type MultimediaLibraryState = {
     backgroundMode: GameDestinationMediaMode | null;
     heroVideo: GameHeroVideo | null;
     cardVideo: GameCardVideo | null;
+    resolvedCardVideo: ResolvedGameVideo | null;
     detailVideo: GameDetailVideo | null;
     backgroundVideo: GameBackgroundVideo | null;
-    legacyPreviewClip: string | null;
   };
 };
 
