@@ -386,10 +386,7 @@ jobs:
       - name: Create historical update visual fixture
         env:
           DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE: "1"
-        run: >-
-          node --conditions=react-server
-          --import ./tools/register-ts-paths.mjs
-          ./tools/admin-historical-update-visual-fixture.ts
+        run: npm run visual:admin-historical-update-fixture
 
       - name: Build visual runtime
         env:
