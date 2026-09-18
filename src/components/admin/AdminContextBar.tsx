@@ -22,7 +22,6 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 
 import {
-  gameEditorSections,
   getGameEditorSection,
 } from "@/lib/admin/game-editor-sections";
 import {
@@ -238,8 +237,6 @@ function simpleItems(
 export default function AdminContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  void gameEditorSections;
-
   const gameMatch =
     /^\/admin\/juegos\/([^/]+)(?:\/(publicacion|actualizacion))?$/.exec(
       pathname
