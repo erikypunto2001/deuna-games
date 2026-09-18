@@ -454,6 +454,51 @@
   justify-content: center;
 }
 
+.mobilePagination {
+  display: none;
+}
+
+.mobilePagination button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #d4dce5;
+  border: 1px solid #3d4b5a;
+  border-radius: 9px;
+  background: #0d151e;
+  cursor: pointer;
+}
+
+.mobilePagination button:hover:not(:disabled),
+.mobilePagination button:focus-visible {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 52%, #536273);
+  background: color-mix(in srgb, var(--brand) 6%, #111923);
+}
+
+.mobilePagination button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 11%, transparent);
+}
+
+.mobilePagination button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.mobilePagination span {
+  min-width: 0;
+  color: #8f9ead;
+  font-size: 12px;
+  text-align: center;
+}
+
+.mobilePagination strong {
+  color: #f0f4f8;
+}
+
 .empty {
   padding: 48px 24px;
   color: #a4b0bc;
@@ -496,6 +541,17 @@
 
   .mobileList {
     display: grid;
+  }
+
+  .mobilePagination {
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 10px 14px;
+    border-top: 1px solid #2e3a47;
+    background: #0b121a;
   }
 
   .toolbar {
@@ -557,7 +613,8 @@
   .searchBox button,
   .filters select,
   .resetButton,
-  .table tbody tr {
+  .table tbody tr,
+  .mobilePagination button {
     transition: none;
   }
 }
