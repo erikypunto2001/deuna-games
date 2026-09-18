@@ -512,10 +512,6 @@ export default function GameVideoLibraryEditor({
         "X-Deuna-Preview-Quality": quality,
         "X-Deuna-Preview-Fps": String(fps),
         "X-Deuna-Preview-Target": "library",
-        "X-Deuna-Viewport-X": String(DEFAULT_PREVIEW_VIEWPORT.x),
-        "X-Deuna-Viewport-Y": String(DEFAULT_PREVIEW_VIEWPORT.y),
-        "X-Deuna-Viewport-Zoom": String(DEFAULT_PREVIEW_VIEWPORT.zoom),
-        "X-Deuna-Viewport-Aspect": DEFAULT_PREVIEW_VIEWPORT.aspect,
       };
     } else {
       endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
@@ -526,10 +522,6 @@ export default function GameVideoLibraryEditor({
         endSeconds: String(trim.endSeconds),
         quality,
         fps: String(fps),
-        viewportX: String(DEFAULT_PREVIEW_VIEWPORT.x),
-        viewportY: String(DEFAULT_PREVIEW_VIEWPORT.y),
-        viewportZoom: String(DEFAULT_PREVIEW_VIEWPORT.zoom),
-        viewportAspect: DEFAULT_PREVIEW_VIEWPORT.aspect,
         target: "library",
       });
       headers = {
