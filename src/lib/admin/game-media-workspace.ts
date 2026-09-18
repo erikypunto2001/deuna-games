@@ -38,6 +38,7 @@ import {
   resolveGameBackgroundMediaMode,
 } from "@/lib/media/game-media-requirements";
 import {
+  resolveGameCardVideo,
   resolveGameDestinationMediaMode,
 } from "@/lib/media/game-video-media";
 
@@ -118,9 +119,9 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
       backgroundMode: resolveGameBackgroundMediaMode(game),
       heroVideo: game.videoMedia?.hero ?? null,
       cardVideo: game.videoMedia?.card ?? null,
+      resolvedCardVideo: resolveGameCardVideo(game) ?? null,
       detailVideo: game.videoMedia?.detail ?? null,
       backgroundVideo: game.videoMedia?.background ?? null,
-      legacyPreviewClip: game.previewClip ?? null,
     },
   };
 }
