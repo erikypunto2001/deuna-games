@@ -15,7 +15,7 @@ import {
 } from "../src/lib/admin/database.ts";
 import {
   resolveAdminSession,
-} from "../src/lib/admin/session.ts";
+} from "../src/lib/admin/session-store.ts";
 
 const ownerUsername =
   process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
