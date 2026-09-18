@@ -161,7 +161,6 @@ assert(
     '| "backgroundImage"',
     '| "cardImage"',
     '| "detailImage"',
-    '| "galleryMedia"',
     '| "mediaModes"',
     "protectedReferencesForGame",
     "getHistoricalGameMediaReferences"
@@ -170,7 +169,7 @@ assert(
     !mediaLibraryRoute.includes('"video-delete"') &&
     !mediaLibraryRoute.includes("withoutImageResource") &&
     !mediaLibraryRoute.includes("withoutVideoResource"),
-  "La Biblioteca compartida debe exponer Fondo para selección sin convertir el borrado de un master en una desasignación implícita; las referencias de Fondo se limpian sólo desde su flujo editorial explícito."
+  "La Biblioteca compartida debe exponer Fondo para selección sin asumir responsabilidades de Galería ni convertir el borrado de un master en una desasignación implícita."
 );
 
 assert(
