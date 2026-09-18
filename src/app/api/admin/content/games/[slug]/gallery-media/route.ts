@@ -82,8 +82,7 @@ function galleryUpdate(
     galleryMedia: items,
     screenshots: syncedScreenshots(items),
     ...(imageMedia ? { imageMedia } : {}),
-  } as Parameters<typeof saveGameMediaDraft>[3] &
-    Partial<Pick<Game, "galleryMedia">>;
+  } as Parameters<typeof saveGameMediaDraft>[3];
 }
 
 function sameGalleryOrder(
