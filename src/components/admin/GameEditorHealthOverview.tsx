@@ -1,30 +1,31 @@
 import Link from "next/link";
 import {
   CheckCircle2,
-  CircleEllipsis,
-  History,
+  ChevronRight,
   Rocket,
   TriangleAlert,
 } from "lucide-react";
 
+import {
+  getGameEditorSection,
+} from "@/lib/admin/game-editor-sections";
 import type {
   GamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
-import {
-  gameReadinessSections,
-} from "@/lib/admin/game-editor-sections";
 
 import styles from "./GameEditorHealthOverview.module.css";
 
 export default function GameEditorHealthOverview({
   slug,
-  activeSection,
   readiness,
 }: {
   slug: string;
-  activeSection: string;
   readiness: GamePublicationReadiness;
 }) {
+  const essentialPending = readiness.items.filter(
+    (item) => item.priority === "essential" && !item.complete
+  );
+
   return (
     <section className={styles.root} aria-label="Estado editorial del juego">
       <div className={styles.summary}>
@@ -52,76 +53,57 @@ export default function GameEditorHealthOverview({
         </div>
       </div>
 
-      <nav className={styles.sections} aria-label="Secciones del editor del juego">
-        {gameReadinessSections.map((section) => {
-          const items = readiness.items.filter(
-            (item) => item.section === section.key
-          );
-          const complete = items.filter((item) => item.complete).length;
-          const essentialPending = items.some(
-            (item) => item.priority === "essential" && !item.complete
-          );
-          const ready = items.length > 0 && complete === items.length;
-          const active = activeSection === section.key;
-
-          return (
-            <Link
-              key={section.key}
-              href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=${section.key}`}
-              className={styles.section}
-              data-active={active}
-              data-state={essentialPending ? "danger" : ready ? "ready" : "pending"}
-              aria-current={active ? "page" : undefined}
-            >
-              {ready ? (
-                <CheckCircle2 size={16} aria-hidden="true" />
-              ) : essentialPending ? (
-                <TriangleAlert size={16} aria-hidden="true" />
-              ) : (
-                <CircleEllipsis size={16} aria-hidden="true" />
-              )}
+      {essentialPending.length > 0 ? (
+        <div className={styles.attention}>
+          <div className={styles.attentionHeading}>
+            <TriangleAlert size={17} aria-hidden="true" />
+            <div>
+              <strong>Bloqueos antes de publicar</strong>
               <span>
-                <strong>{section.label}</strong>
-                <small>{items.length ? `${complete}/${items.length}` : "Sin controles"}</small>
+                {essentialPending.length} {essentialPending.length === 1 ? "control esencial pendiente" : "controles esenciales pendientes"}
               </span>
-            </Link>
-          );
-        })}
+            </div>
+          </div>
 
-        <Link
-          href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}
-          className={styles.section}
-          data-state={readiness.essentialsReady ? "ready" : "danger"}
-        >
-          {readiness.essentialsReady ? (
-            <Rocket size={16} aria-hidden="true" />
-          ) : (
-            <TriangleAlert size={16} aria-hidden="true" />
-          )}
-          <span>
-            <strong>Publicación</strong>
-            <small>
-              {readiness.essentialsReady
-                ? "Revisar snapshot"
-                : "Pendientes esenciales"}
+          <ul>
+            {essentialPending.slice(0, 4).map((item) => {
+              const section = getGameEditorSection(item.section);
+
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=${item.section}`}
+                  >
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small>{section.label}</small>
+                    </span>
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {essentialPending.length > 4 && (
+            <small className={styles.morePending}>
+              Hay {essentialPending.length - 4} controles esenciales adicionales. Publicación muestra el detalle completo.
             </small>
-          </span>
-        </Link>
-
-        <Link
-          href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=historial`}
-          className={styles.section}
-          data-active={activeSection === "historial"}
-          data-state="neutral"
-          aria-current={activeSection === "historial" ? "page" : undefined}
-        >
-          <History size={16} aria-hidden="true" />
-          <span>
-            <strong>Historial</strong>
-            <small>Auditoría</small>
-          </span>
-        </Link>
-      </nav>
+          )}
+        </div>
+      ) : (
+        <div className={styles.ready}>
+          <CheckCircle2 size={18} aria-hidden="true" />
+          <div>
+            <strong>Requisitos esenciales completos</strong>
+            <span>Las recomendaciones pendientes no bloquean la revisión final.</span>
+          </div>
+          <Link href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}>
+            <Rocket size={15} aria-hidden="true" />
+            Revisar publicación
+          </Link>
+        </div>
+      )}
     </section>
   );
 }
