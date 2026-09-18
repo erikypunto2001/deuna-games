@@ -333,6 +333,7 @@ export default function AdminGamesCatalog({
           No hay juegos que coincidan con los filtros actuales.
         </div>
       ) : (
+        <>
         <div className={styles.tableViewport} data-admin-games-table="true">
           <table className={styles.table}>
             <caption className={styles.srOnly}>
@@ -423,6 +424,7 @@ export default function AdminGamesCatalog({
             );
           })}
         </div>
+        </>
       )}
     </section>
   );
