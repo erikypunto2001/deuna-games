@@ -9,15 +9,11 @@ import shellStyles from "./GameMultimediaShell.module.css";
 type GameMultimediaEditorProps = {
   slug: string;
   revision: number;
-  coverImage?: string;
-  heroImage?: string;
-  screenshots?: readonly string[];
 };
 
 export default function GameMultimediaEditor({
   slug,
   revision,
-  screenshots = [],
 }: GameMultimediaEditorProps) {
   return (
     <div className={shellStyles.workspaceShell}>
@@ -45,7 +41,6 @@ export default function GameMultimediaEditor({
       <GameMultimediaUtilityRail
         slug={slug}
         revision={revision}
-        screenshotCount={screenshots.length}
       />
     </div>
   );
