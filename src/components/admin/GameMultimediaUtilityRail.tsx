@@ -22,12 +22,19 @@ import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
 import {
+  GAME_MEDIA_MODES_BY_TARGET,
+  type GameMediaModeTarget,
+} from "@/lib/media/game-media-mode-policy";
+import {
   formatMultimediaBytes,
   type MultimediaLibraryResource,
   type MultimediaLibraryState,
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
-import type { GameGalleryItem } from "@/types/game";
+import type {
+  GameDestinationMediaMode,
+  GameGalleryItem,
+} from "@/types/game";
 
 import railStyles from "./GameMultimediaUtilityRail.module.css";
 import shellStyles from "./GameMultimediaShell.module.css";
@@ -90,11 +97,18 @@ function libraryFilterMatch(
   return isProtectedResource(resource);
 }
 
-function modeLabel(mode: string | null | undefined) {
+function mediaModeLabel(mode: GameDestinationMediaMode) {
   if (mode === "hover-video") return "Imagen + hover";
   if (mode === "video") return "Video";
-  if (mode === "image") return "Imagen";
-  return "Global";
+  return "Imagen";
+}
+
+function modeLabel(mode: GameDestinationMediaMode | null | undefined) {
+  return mode ? mediaModeLabel(mode) : "Global";
+}
+
+function modeOptionsLabel(target: GameMediaModeTarget) {
+  return GAME_MEDIA_MODES_BY_TARGET[target].map(mediaModeLabel).join(" / ");
 }
 
 function firstGalleryItem(state: MultimediaLibraryState | null): GameGalleryItem | null {
@@ -550,10 +564,10 @@ export default function GameMultimediaUtilityRail({
         >
           <div className={shellStyles.helpRules}>
             <div><ImageIcon size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5.</span></p></div>
-            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 3:1</strong><span>Imagen, Video o Imagen + hover. Hover exige ambos recursos y sus recortes.</span></p></div>
-            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>La imagen base 3:2 es obligatoria en todos los modos. Video e Imagen + hover agregan un WebM con recorte 3:2 propio.</span></p></div>
-            <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover, o volver al fondo global.</span></p></div>
-            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
+            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 3:1</strong><span>Modos disponibles: {modeOptionsLabel("hero")}. Imagen + hover exige ambos recursos y sus recortes.</span></p></div>
+            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>La imagen base 3:2 es obligatoria. Modos disponibles: {modeOptionsLabel("card")}. Video agrega un WebM con recorte 3:2 propio.</span></p></div>
+            <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Modos disponibles: {modeOptionsLabel("background")}; también puede volver al fondo global.</span></p></div>
+            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero. Modos disponibles: {modeOptionsLabel("detail")}; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>
             <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin ninguna referencia de borrador, publicación actual ni historial restaurable es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
           </div>
