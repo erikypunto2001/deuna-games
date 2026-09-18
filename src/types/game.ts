@@ -375,9 +375,10 @@ export type Game = {
   videoMedia?: GameVideoMedia;
 
   /*
-   * Los orígenes pueden coexistir. previewMode decide cuál usa la card.
-   * YouTube conserva su contrato específico ya probado; las demás redes
-   * directas usan directPreview con una plataforma explícita.
+   * Compatibilidad histórica de previews. El flujo editorial activo usa
+   * videoMedia/mediaModes; previewClip se conserva como puente de Card para
+   * snapshots antiguos. previewMode/youtubePreview/directPreview sólo deben
+   * interpretarse en capas de compatibilidad y no escribirse desde el editor.
    */
   previewMode?: GamePreviewMode;
   previewClip?: string;
