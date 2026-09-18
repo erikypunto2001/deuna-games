@@ -383,6 +383,14 @@ jobs:
           export DEUNA_ADMIN_OWNER_PASSWORD="$DEUNA_VISUAL_ADMIN_PASSWORD"
           node ./tools/admin/create-owner.ts
 
+      - name: Create historical update visual fixture
+        env:
+          DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE: "1"
+        run: >-
+          node --conditions=react-server
+          --import ./tools/register-ts-paths.mjs
+          ./tools/admin-historical-update-visual-fixture.ts
+
       - name: Build visual runtime
         env:
           NODE_ENV: production
