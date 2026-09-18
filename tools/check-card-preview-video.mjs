@@ -142,16 +142,17 @@ assert(
     '"X-Deuna-Preview-Fps"',
     "DEFAULT_PREVIEW_FPS",
     "fps={fps}",
-    "onFpsChange={setFps}",
-    'viewportAspect: DEFAULT_PREVIEW_VIEWPORT.aspect'
+    "onFpsChange={setFps}"
   ) &&
+    !libraryEditor.includes('"X-Deuna-Viewport-X"') &&
+    !libraryEditor.includes("viewportX: String(DEFAULT_PREVIEW_VIEWPORT.x)") &&
     has(
       trimEditor,
       "PREVIEW_FPS_OPTIONS",
       'name="preview-fps"',
       "onFpsChange(option)"
     ),
-  "La biblioteca debe crear un master reusable sin asignarlo automáticamente a Card y delegar sólo la UI de FPS al editor técnico."
+  "La biblioteca debe crear un master reusable sin asignarlo a destinos ni enviar crops de Hero/Card durante la creación."
 );
 
 assert(
@@ -431,13 +432,15 @@ for (const route of [uploadRoute, importRoute]) {
   assert(
     has(
       route,
-      'GameVideoTarget | "library"',
-      'normalized === "card"',
-      'normalized === "library"',
+      'target !== "library"',
       "storeEditorialPreviewVideoFromPath",
-      "withSavedGameVideoClip"
-    ) && !route.includes('normalized === "cover"'),
-    "Carga/importación de video debe rechazar Portada y conservar Card/Hero/library."
+      '"hero"'
+    ) &&
+      !route.includes("saveGameMediaDraft") &&
+      !route.includes("withSavedGameVideoClip") &&
+      !route.includes('normalized === "card"') &&
+      !route.includes('normalized === "hero"'),
+    "Carga/importación debe limitarse a generar el master reusable en Biblioteca; la asignación a Hero/Card pertenece sólo a media-library."
   );
 }
 
