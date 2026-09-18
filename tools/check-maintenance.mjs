@@ -224,8 +224,6 @@ for (const requiredGuard of [
   '"closed-pr"',
   '"temporary"',
   '"contained-in-master"',
-  'SUPERSEDED_BRANCHES',
-  '"superseded"',
   'RETENTION_HOURS = 24',
   '/actions/artifacts/',
 ]) {
@@ -238,23 +236,10 @@ assert(
   !repositoryHousekeeping.includes("pull?.merged_at"),
   "El housekeeping debe retirar heads de PRs cerrados, no limitarse a los mergeados."
 );
-for (const supersededBranch of [
-  "audit-hardware-refactor-safety",
-  "docs/integral-verification-workflow",
-  "feat/card-cover-unified-v2",
-  "feature/lazy-video-preview-2",
-  "feature/multimedia-workspace-reference",
-  "feature/unified-card-cover-4x5",
-  "fix/card-cover-post-audit",
-]) {
-  assert(
-    repositoryHousekeeping.includes(`"${supersededBranch}"`),
-    `La poda final debe conservar explícitamente ${supersededBranch} hasta completar su eliminación remota.`
-  );
-}
 assert(
-  !repositoryHousekeeping.includes('"fix/game-taxonomy-ghost-selections"'),
-  "La rama reciente de integridad de Catálogos no debe tratarse como basura."
+  !repositoryHousekeeping.includes("SUPERSEDED_BRANCHES") &&
+    !repositoryHousekeeping.includes('"superseded"'),
+  "El housekeeping no debe conservar tombstones de branches históricas ya eliminadas."
 );
 assert(
   !repositoryHousekeeping.includes("force") &&
