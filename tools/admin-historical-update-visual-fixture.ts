@@ -3,6 +3,7 @@ import "server-only";
 import {
   randomUUID,
 } from "node:crypto";
+import { pathToFileURL } from "node:url";
 
 import { Client } from "pg";
 
@@ -19,18 +20,29 @@ import {
 
 const FIXTURE_FLAG =
   "DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE";
-const updateId = "visual-historical-update";
-const gameSlug = "elden-ring";
+const historicalUpdateId = "visual-historical-update";
+const historicalGameSlug = "elden-ring";
 
-function assertVisualCiOnly() {
+type VisualUpdateDraftInput = {
+  updateId: string;
+  gameSlug: string;
+  version: string;
+  publishedAt: string;
+  type: "update" | "fix" | "content" | "hotfix";
+  summary: string;
+  featured: boolean;
+  ownerUsername: string;
+  auditMarker: string;
+};
+
+function assertVisualCiDatabase() {
   if (
-    process.env[FIXTURE_FLAG] !== "1" ||
     process.env.CI !== "true" ||
     process.env.GITHUB_ACTIONS !== "true" ||
     process.env.DEUNA_VISUAL_OUTPUT_DIR === undefined
   ) {
     throw new Error(
-      "El fixture de update histórico sólo puede ejecutarse dentro del visual-smoke aislado de GitHub Actions."
+      "Los fixtures editoriales directos sólo pueden ejecutarse dentro del visual-smoke aislado de GitHub Actions."
     );
   }
 
@@ -41,32 +53,25 @@ function assertVisualCiOnly() {
     host !== "::1"
   ) {
     throw new Error(
-      "El fixture de update histórico exige una PostgreSQL local/efímera."
+      "Los fixtures editoriales directos exigen una PostgreSQL local/efímera."
     );
   }
 }
 
-async function main() {
-  assertVisualCiOnly();
-
-  const ownerUsername =
-    process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
-  if (!ownerUsername) {
-    throw new Error(
-      "Falta DEUNA_VISUAL_ADMIN_USERNAME para atribuir el fixture histórico."
-    );
-  }
+export async function createVisualUpdateDraft(
+  input: VisualUpdateDraftInput
+) {
+  assertVisualCiDatabase();
 
   const payload = normalizeEditorialPayload(
     parseEditorialPayload("game_update", {
-      id: updateId,
-      gameSlug,
-      version: "legacy-ci-draft",
-      publishedAt: "2026-01-15T12:00:00.000Z",
-      type: "fix",
-      summary:
-        "Borrador histórico sintético para validar compatibilidad editorial sin reabrir el flujo legacy de creación.",
-      featured: false,
+      id: input.updateId,
+      gameSlug: input.gameSlug,
+      version: input.version,
+      publishedAt: input.publishedAt,
+      type: input.type,
+      summary: input.summary,
+      featured: input.featured,
     })
   );
   const serialized = JSON.stringify(payload);
@@ -92,12 +97,12 @@ async function main() {
          AND role = 'owner'
          AND active = true
        LIMIT 1`,
-      [ownerUsername]
+      [input.ownerUsername]
     );
     const ownerId = ownerResult.rows[0]?.id;
     if (!ownerId) {
       throw new Error(
-        "No se encontró el Owner visual para el fixture histórico."
+        "No se encontró el Owner visual para crear el update sintético."
       );
     }
 
@@ -109,11 +114,11 @@ async function main() {
        WHERE item_type = 'game'
          AND item_key = $1
        LIMIT 1`,
-      [gameSlug]
+      [input.gameSlug]
     );
     if (!gameResult.rows[0]) {
       throw new Error(
-        `El fixture histórico requiere el juego representativo ${gameSlug}.`
+        `El fixture visual requiere el juego ${input.gameSlug}.`
       );
     }
 
@@ -125,11 +130,11 @@ async function main() {
        WHERE item_type = 'game_update'
          AND item_key = $1
        LIMIT 1`,
-      [updateId]
+      [input.updateId]
     );
     if (existing.rows[0]) {
       throw new Error(
-        `El update histórico sintético ${updateId} ya existe en la base efímera.`
+        `El update sintético ${input.updateId} ya existe en la base efímera.`
       );
     }
 
@@ -167,7 +172,7 @@ async function main() {
        )`,
       [
         itemId,
-        updateId,
+        input.updateId,
         sourceSerialized,
         sourceDigest,
         serialized,
@@ -210,21 +215,23 @@ async function main() {
        )`,
       [
         ownerId,
-        updateId,
+        input.updateId,
         JSON.stringify({
           publicVisible: false,
           revision: 1,
           publicationNumber: 1,
-          visualHistoricalFixture: true,
+          visualFixture: input.auditMarker,
         }),
       ]
     );
 
     await client.query("COMMIT");
 
-    console.log(
-      `Admin historical update fixture: OK (${updateId}, privado, revisión 1, asociado a ${gameSlug}).`
-    );
+    return {
+      revision: 1,
+      publicationNumber: 1,
+      payload,
+    };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     throw error;
@@ -233,4 +240,43 @@ async function main() {
   }
 }
 
-await main();
+async function main() {
+  if (process.env[FIXTURE_FLAG] !== "1") {
+    throw new Error(
+      "El fixture histórico exige DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE=1."
+    );
+  }
+
+  const ownerUsername =
+    process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
+  if (!ownerUsername) {
+    throw new Error(
+      "Falta DEUNA_VISUAL_ADMIN_USERNAME para atribuir el fixture histórico."
+    );
+  }
+
+  await createVisualUpdateDraft({
+    updateId: historicalUpdateId,
+    gameSlug: historicalGameSlug,
+    version: "legacy-ci-draft",
+    publishedAt: "2026-01-15T12:00:00.000Z",
+    type: "fix",
+    summary:
+      "Borrador histórico sintético para validar compatibilidad editorial sin reabrir el flujo legacy de creación.",
+    featured: false,
+    ownerUsername,
+    auditMarker: "historical-update-editor",
+  });
+
+  console.log(
+    `Admin historical update fixture: OK (${historicalUpdateId}, privado, revisión 1, asociado a ${historicalGameSlug}).`
+  );
+}
+
+const invokedPath = process.argv[1]
+  ? pathToFileURL(process.argv[1]).href
+  : null;
+
+if (invokedPath === import.meta.url) {
+  await main();
+}
