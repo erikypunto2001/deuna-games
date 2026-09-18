@@ -15,13 +15,21 @@ function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [selector, selectorCss, publicationPage, publicationNotice] =
-  await Promise.all([
-    source("src/components/admin/GameTaxonomyMultiSelect.tsx"),
-    source("src/components/admin/GameTaxonomyMultiSelect.module.css"),
-    source("src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx"),
-    source("src/components/admin/GameTaxonomyPublicationNotice.tsx"),
-  ]);
+const [
+  selector,
+  selectorCss,
+  gameEditorPage,
+  gameClassificationEditor,
+  publicationPage,
+  publicationNotice,
+] = await Promise.all([
+  source("src/components/admin/GameTaxonomyMultiSelect.tsx"),
+  source("src/components/admin/GameTaxonomyMultiSelect.module.css"),
+  source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
+  source("src/components/admin/GameClassificationEditor.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx"),
+  source("src/components/admin/GameTaxonomyPublicationNotice.tsx"),
+]);
 
 assert(
   selector.includes("termByKey") &&
@@ -39,6 +47,16 @@ assert(
     selectorCss.includes("min-height: 44px") &&
     selectorCss.includes("var(--text-on-brand)"),
   "Las selecciones de taxonomía deben tener jerarquía visual, estado faltante y targets táctiles accesibles."
+);
+
+assert(
+  gameEditorPage.includes("ensurePrimaryClassificationTerm") &&
+    gameEditorPage.includes('"legacy-missing-primary-classification"') &&
+    gameEditorPage.includes("primaryClassificationTerms={primaryClassificationTerms}") &&
+    gameClassificationEditor.includes("primaryClassificationTerms") &&
+    gameClassificationEditor.includes("Fuera de Catálogos") &&
+    gameClassificationEditor.includes("se conserva visible hasta que elijas otra clasificación"),
+  "La clasificación principal histórica debe seguir visible y claramente marcada aunque ya no exista en Catálogos."
 );
 
 assert(
@@ -65,6 +83,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Claridad de taxonomía: OK (selecciones visibles; huérfanas removibles; publicación diagnostica términos faltantes)."
+    "Claridad de taxonomía: OK (selecciones visibles; huérfanas removibles; clasificación principal histórica preservada; publicación diagnostica términos faltantes)."
   );
 }
