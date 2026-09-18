@@ -445,7 +445,7 @@
     padding: 12px 14px;
   }
 
-  .privacyNotice {
+  .sidebar.sidebar .privacyNotice {
     display: none;
   }
 
