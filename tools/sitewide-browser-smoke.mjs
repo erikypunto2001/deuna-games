@@ -509,6 +509,7 @@ async function auditPage(cdp, page, viewport) {
               .length
           : null;
       const gameValuationNavigationReady =
+        pageId === "admin-game-preview" ||
         !pageId.startsWith("admin-game-") ||
         Boolean(document.querySelector('a[href*="?seccion=valoracion"]'));
 
