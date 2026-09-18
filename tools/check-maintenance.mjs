@@ -202,6 +202,60 @@ assert(
   "La evidencia visual de CI debe expirar después de 1 día para no acumular artifacts."
 );
 
+assert(
+  scripts["repo:housekeeping"] ===
+    "node ./tools/repository-housekeeping.mjs",
+  "El housekeeping remoto debe conservar un único entrypoint canónico."
+);
+
+const repositoryHousekeeping = await read(
+  "tools/repository-housekeeping.mjs"
+);
+for (const requiredGuard of [
+  'process.env.GITHUB_ACTIONS !== "true"',
+  'pull?.merged_at',
+  'pull?.head?.repo?.full_name === repository',
+  'branch !== defaultBranch',
+  '!openHeads.has(branch)',
+  'existing.get(branch)?.protected !== true',
+  'RETENTION_HOURS = 24',
+  '/actions/artifacts/',
+]) {
+  assert(
+    repositoryHousekeeping.includes(requiredGuard),
+    `El housekeeping remoto debe conservar la guarda ${requiredGuard}.`
+  );
+}
+assert(
+  !repositoryHousekeeping.includes("force") &&
+    !repositoryHousekeeping.includes("editorial_") &&
+    !repositoryHousekeeping.includes("deuna_accounts") &&
+    !repositoryHousekeeping.includes("deuna_admin"),
+  "El housekeeping remoto sólo debe tocar refs Git y artifacts; nunca datos de producto."
+);
+
+const housekeepingWorkflow = await read(
+  ".github/workflows/repository-housekeeping.yml"
+);
+for (const requiredWorkflowContract of [
+  "branches: [master]",
+  'cron: "17 5 * * 0"',
+  "contents: write",
+  "actions: write",
+  "pull-requests: read",
+  "persist-credentials: false",
+  "npm run repo:housekeeping",
+]) {
+  assert(
+    housekeepingWorkflow.includes(requiredWorkflowContract),
+    `El workflow de housekeeping debe conservar ${requiredWorkflowContract}.`
+  );
+}
+assert(
+  !housekeepingWorkflow.includes("pull_request:"),
+  "El housekeeping con permisos de escritura nunca debe ejecutarse desde pull_request."
+);
+
 for (const forbiddenDeleteTarget of [
   "editorial_items",
   "editorial_revisions",
