@@ -532,6 +532,10 @@ export default function GameTaxonomyEditor({
           <p className={styles.empty}>
             Todavía no hay términos en este catálogo.
           </p>
+        ) : matchingTerms.length === 0 ? (
+          <p className={styles.empty} role="status">
+            No hay términos que coincidan con la búsqueda actual.
+          </p>
         ) : (
           <>
             <div
@@ -559,6 +563,7 @@ export default function GameTaxonomyEditor({
                 return (
                   <div
                     key={term.key}
+                    data-taxonomy-term-row="true"
                     className={`${styles.termRow} ${
                       hasVisuals ? "" : styles.termRowSimple
                     }`}
