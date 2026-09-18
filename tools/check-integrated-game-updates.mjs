@@ -26,6 +26,12 @@ const files = {
   sourceUpdates: "src/data/update-records.ts",
   demoRetirement:
     "database/migrations/014_retire_demo_game_updates.sql",
+  historicalFixture:
+    "tools/admin-historical-update-visual-fixture.ts",
+  browserManifest:
+    "tools/browser-page-manifest.mjs",
+  sitewideSmoke:
+    "tools/sitewide-browser-smoke.mjs",
 };
 
 async function exists(path) {
@@ -130,6 +136,25 @@ expect(
     entries.legacyEditor.includes("!publicationState.hasUnpublishedChanges") &&
     entries.legacyEditor.includes("/actualizacion"),
   "El editor antiguo sólo debe quedar como compatibilidad para borradores históricos no resueltos."
+);
+expect(
+  entries.historicalFixture.includes(
+    "DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE"
+  ) &&
+    entries.historicalFixture.includes(
+      'const updateId = "visual-historical-update"'
+    ) &&
+    entries.historicalFixture.includes("public_visible") &&
+    entries.historicalFixture.includes("false") &&
+    entries.browserManifest.includes(
+      'representativeUpdateId = "visual-historical-update"'
+    ) &&
+    entries.browserManifest.includes("historical-update-edit") &&
+    entries.browserManifest.includes("historical-update-publication") &&
+    entries.browserManifest.includes("historical-update-history") &&
+    !entries.sitewideSmoke.includes("src/data/update-records.ts") &&
+    !entries.sitewideSmoke.includes("fixture.updateIds"),
+  "La compatibilidad histórica debe probarse con un borrador privado efímero real en editar/publicación/historial, sin depender de fixtures demo retirados."
 );
 expect(
   entries.publicUpdates.includes("getPublicResolvedUpdates") &&
