@@ -6,6 +6,7 @@ const files = Object.fromEntries(
       validation: "src/lib/admin/game-editor-section-validation.ts",
       compatibilityEditor: "src/components/admin/GameCompatibilityEditor.tsx",
       healthOverview: "src/components/admin/GameEditorHealthOverview.tsx",
+      contextBar: "src/components/admin/AdminContextBar.tsx",
       valuationRoute: "src/app/api/admin/content/games/[slug]/valuation/route.ts",
       valuationEditor: "src/components/admin/GameValuationEditor.tsx",
       sectionService: "src/lib/admin/game-editor-sections-service.ts",
@@ -40,11 +41,12 @@ expect(
 expect(
   files.healthOverview.includes('href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}') &&
     files.healthOverview.includes("readiness.essentialsReady") &&
-    files.healthOverview.includes("<strong>Publicación</strong>") &&
-    files.healthOverview.includes("Pendientes esenciales") &&
-    files.healthOverview.includes("?seccion=historial") &&
-    files.healthOverview.includes("<strong>Historial</strong>"),
-  "El tablero global debe enlazar Publicación explícitamente y conservar Historial como auditoría separada."
+    files.healthOverview.includes("Bloqueos antes de publicar") &&
+    files.healthOverview.includes("Revisar publicación") &&
+    files.contextBar.includes('key: "publicacion"') &&
+    files.contextBar.includes('label: "Publicación"') &&
+    files.contextBar.includes('directGameSection("historial", FileClock)'),
+  "El estado global debe enlazar Publicación cuando corresponde y la navegación canónica debe conservar Historial como auditoría separada."
 );
 
 expect(
