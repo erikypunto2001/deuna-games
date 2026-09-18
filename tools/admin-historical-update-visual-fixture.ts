@@ -17,6 +17,9 @@ import {
 import {
   getAdminDatabaseConfig,
 } from "../src/lib/admin/database-config.ts";
+import type {
+  UpdateType,
+} from "../src/types/update.ts";
 
 const FIXTURE_FLAG =
   "DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE";
@@ -28,7 +31,7 @@ type VisualUpdateDraftInput = {
   gameSlug: string;
   version: string;
   publishedAt: string;
-  type: "update" | "fix" | "content" | "hotfix";
+  type: UpdateType;
   summary: string;
   featured: boolean;
   ownerUsername: string;
