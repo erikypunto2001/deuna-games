@@ -583,8 +583,7 @@ export default function GameMultimediaUtilityRail({
               <GameMediaUploadForm
                 slug={slug}
                 revision={currentRevision}
-                screenshotCount={screenshotCount}
-                libraryOnly
+
               />
             </div>
           ) : (
