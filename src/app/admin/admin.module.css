@@ -395,6 +395,14 @@
   font-size: 11px;
 }
 
+.metricGrid small {
+  display: block;
+  margin-top: 5px;
+  color: #6f7d8c;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .adminSection,
 .eventPanel,
 .tablePanel {
@@ -502,7 +510,8 @@
 }
 
 .statusOk,
-.statusPending {
+.statusPending,
+.statusUnknown {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -515,6 +524,10 @@
 
 .statusPending {
   color: #c99972;
+}
+
+.statusUnknown {
+  color: #9ba7b5;
 }
 
 .tableAction,
@@ -893,7 +906,22 @@
   }
 
   .metricGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .metricGrid article {
+    padding: 14px;
+  }
+
+  .metricGrid article > span {
+    width: 34px;
+    height: 34px;
+  }
+
+  .metricGrid strong {
+    margin-top: 12px;
+    font-size: 24px;
   }
 
   .adminSection,
@@ -907,6 +935,12 @@
   .historyList li {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 360px) {
+  .metricGrid {
+    grid-template-columns: 1fr;
   }
 }
 
