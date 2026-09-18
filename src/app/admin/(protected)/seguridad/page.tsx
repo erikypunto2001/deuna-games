@@ -35,7 +35,7 @@ export default async function AdminSecurityPage() {
           <span>ADMINISTRACIÓN</span>
           <h1>Acceso y seguridad</h1>
           <p>
-            Revisa sesiones y actividad administrativa desde un único lugar. Este registro no guarda IP, dispositivo, ubicación ni navegación de visitantes.
+            Revisa tus sesiones y tus eventos de autenticación desde un único lugar. Este registro no guarda IP, dispositivo, ubicación ni navegación de visitantes.
           </p>
         </div>
       </header>
@@ -45,7 +45,7 @@ export default async function AdminSecurityPage() {
           <span><KeyRound size={22} aria-hidden="true" /></span>
           <div>
             <strong>{security.activeSessions}</strong>
-            <p>Sesiones activas</p>
+            <p>Tus sesiones activas</p>
           </div>
         </article>
         <article>
@@ -67,7 +67,7 @@ export default async function AdminSecurityPage() {
         <div className={styles.sectionHeading}>
           <div>
             <span>EVENTOS RECIENTES</span>
-            <h2>Actividad administrativa</h2>
+            <h2>Tu actividad de acceso</h2>
           </div>
         </div>
 
