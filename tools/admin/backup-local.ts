@@ -1,6 +1,7 @@
 import {
   chmodSync,
   mkdirSync,
+  readdirSync,
   rmSync,
   statSync,
 } from "node:fs";
@@ -25,6 +26,28 @@ function timestamp() {
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}Z$/, "Z")
     .replace("T", "-");
+}
+
+const MAX_LOCAL_BACKUPS = 3;
+const LOCAL_BACKUP_PATTERN = /^deuna-games-pre-migration-\d{8}-\d{6}Z\.dump$/;
+
+function pruneOldLocalBackups(directory: string) {
+  const backups = readdirSync(directory, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        LOCAL_BACKUP_PATTERN.test(entry.name)
+    )
+    .map((entry) => entry.name)
+    .sort()
+    .reverse();
+
+  const stale = backups.slice(MAX_LOCAL_BACKUPS);
+  for (const file of stale) {
+    rmSync(path.join(directory, file), { force: true });
+  }
+
+  return stale.length;
 }
 
 function fail(message: string): never {
@@ -121,8 +144,13 @@ if (verify.status !== 0 || !verify.stdout?.trim()) {
   );
 }
 
+const prunedBackups = pruneOldLocalBackups(backupDirectory);
+
 console.log("Backup local PostgreSQL: OK");
 console.log(`Copia verificada: ${backupPath}`);
+console.log(
+  `Retención local: ${MAX_LOCAL_BACKUPS} backups; eliminados=${prunedBackups}.`
+);
 console.log(`Tamaño: ${size} bytes`);
 console.log(
   "La copia está fuera del repositorio y con permisos 0600. No la subas a Git ni la compartas sin cifrar."
