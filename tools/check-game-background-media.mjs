@@ -157,11 +157,7 @@ assert(
     "backgroundImage: item.payload.backgroundImage ?? null",
     "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
     "backgroundVideo: item.payload.videoMedia?.background ?? null",
-    "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3]",
-    '| "backgroundImage"',
-    '| "cardImage"',
-    '| "detailImage"',
-    '| "mediaModes"',
+    "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];",
     "protectedReferencesForGame",
     "getHistoricalGameMediaReferences"
   ) &&
