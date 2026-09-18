@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises";
 import https from "node:https";
+import path from "node:path";
 import process from "node:process";
 
 import {
@@ -40,12 +42,13 @@ function request(pathname, options = {}) {
   }
 
   const body = options.body ?? "";
+  const bodyBytes = Buffer.isBuffer(body)
+    ? body
+    : Buffer.from(body, "utf8");
   const headers = { ...(options.headers ?? {}) };
 
-  if (body) {
-    headers["content-length"] = String(
-      Buffer.byteLength(body, "utf8")
-    );
+  if (bodyBytes.length > 0) {
+    headers["content-length"] = String(bodyBytes.length);
   }
 
   return new Promise((resolve, reject) => {
@@ -85,7 +88,7 @@ function request(pathname, options = {}) {
     );
 
     req.on("error", reject);
-    if (body) req.write(body);
+    if (bodyBytes.length > 0) req.write(bodyBytes);
     req.end();
   });
 }
@@ -98,6 +101,80 @@ function formHeaders(referer, cookie) {
     "sec-fetch-site": "same-origin",
     ...(cookie ? { cookie } : {}),
   };
+}
+
+function mediaUploadHeaders(referer, cookie, boundary) {
+  return {
+    origin: baseUrl.origin,
+    referer: new URL(referer, baseUrl).href,
+    "sec-fetch-site": "same-origin",
+    "content-type": `multipart/form-data; boundary=${boundary}`,
+    ...(cookie ? { cookie } : {}),
+  };
+}
+
+function multipartImageBody({
+  boundary,
+  revision,
+  bytes,
+  fileName,
+}) {
+  const text = (value) => Buffer.from(value, "utf8");
+
+  return Buffer.concat([
+    text(
+      `--${boundary}\r\nContent-Disposition: form-data; name="expectedRevision"\r\n\r\n${revision}\r\n`
+    ),
+    text(
+      `--${boundary}\r\nContent-Disposition: form-data; name="kind"\r\n\r\nlibrary\r\n`
+    ),
+    text(
+      `--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="${fileName}"\r\nContent-Type: image/webp\r\n\r\n`
+    ),
+    bytes,
+    text(`\r\n--${boundary}--\r\n`),
+  ]);
+}
+
+async function uploadLibraryImage(
+  slug,
+  revision,
+  cookie,
+  bundledImage
+) {
+  const relativePath = bundledImage.replace(/^\/+/, "");
+  const bytes = await readFile(
+    path.join(process.cwd(), "public", relativePath)
+  );
+  const boundary =
+    `----deuna-game-lifecycle-${Date.now().toString(36)}-${process.pid.toString(36)}`;
+  const response = await request(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/media-upload`,
+    {
+      method: "POST",
+      headers: mediaUploadHeaders(
+        `/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`,
+        cookie,
+        boundary
+      ),
+      body: multipartImageBody({
+        boundary,
+        revision,
+        bytes,
+        fileName: path.basename(relativePath),
+      }),
+    }
+  );
+
+  const redirect = redirectLocation(
+    response,
+    "La carga del recurso multimedia base"
+  );
+  assertRedirectState(
+    redirect,
+    "recurso-subido",
+    "Carga multimedia base"
+  );
 }
 
 function sessionCookie(setCookie) {
@@ -417,12 +494,13 @@ const fixtureCandidates = [
 ].filter(
   (value) =>
     typeof value === "string" &&
-    value.startsWith("/images/")
+    value.startsWith("/images/") &&
+    value.toLowerCase().endsWith(".webp")
 );
 const sourceImage = [...new Set(fixtureCandidates)][0];
 if (!sourceImage) {
   throw new Error(
-    `El fixture ${representativeGameSlug} no expone una imagen bundled reutilizable para el lifecycle.`
+    `El fixture ${representativeGameSlug} no expone un WebP bundled reutilizable para el lifecycle.`
   );
 }
 
@@ -500,39 +578,54 @@ if (singleInputValue(editorHtml, "title") !== markerA) {
   );
 }
 
-const mediaBase = await postAdminForm(
-  `/api/admin/content/games/${encodeURIComponent(slug)}/media`,
-  `${editorPath}?seccion=multimedia`,
-  cookie,
-  {
-    expectedRevision: String(revision),
-    coverImage: sourceImage,
-    heroImage: sourceImage,
-    screenshotsText: sourceImage,
-  },
-  "La asignación multimedia base"
-);
-assertRedirectState(mediaBase, "guardado", "Multimedia base");
-
 let media = await mediaSnapshot(slug, cookie);
+if (media.revision !== revision) {
+  throw new Error(
+    `La Biblioteca partió de una revisión distinta (${revision} -> ${media.revision}).`
+  );
+}
+const resourcesBeforeUpload = new Set(
+  (Array.isArray(media.resources) ? media.resources : [])
+    .map((resource) => resource?.src)
+    .filter((value) => typeof value === "string")
+);
+
+await uploadLibraryImage(
+  slug,
+  revision,
+  cookie,
+  sourceImage
+);
+
+media = await mediaSnapshot(slug, cookie);
 revision = media.revision;
 if (!Number.isInteger(revision) || revision <= 0) {
   throw new Error("La biblioteca multimedia no devolvió una revisión válida.");
 }
-if (
-  !Array.isArray(media.resources) ||
-  !media.resources.some(
+const libraryImage = (Array.isArray(media.resources) ? media.resources : [])
+  .find(
     (resource) =>
       resource?.kind === "image" &&
-      resource.src === sourceImage
-  )
-) {
+      typeof resource.src === "string" &&
+      resource.src.startsWith(
+        `/media/editorial/${slug}/`
+      ) &&
+      !resourcesBeforeUpload.has(resource.src)
+  )?.src;
+
+if (!libraryImage) {
   throw new Error(
-    "La imagen asignada no apareció en la Biblioteca multimedia del borrador."
+    "La carga multimedia no apareció como un recurso nuevo de la Biblioteca del borrador."
   );
 }
 
-for (const target of ["card-image", "detail-image"]) {
+for (const target of [
+  "cover-image",
+  "hero-image",
+  "card-image",
+  "detail-image",
+  "gallery-image",
+]) {
   const assigned = await postAdminForm(
     `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
     `${editorPath}?seccion=multimedia`,
@@ -540,7 +633,7 @@ for (const target of ["card-image", "detail-image"]) {
     {
       expectedRevision: String(revision),
       target,
-      resource: sourceImage,
+      resource: libraryImage,
     },
     `La asignación ${target}`
   );
@@ -640,12 +733,12 @@ await confirmCrop("cover", "4:5");
 await confirmCrop("hero", "3:1");
 await confirmCrop("card", "3:2");
 await confirmCrop("detail", null);
-await confirmCrop("gallery", "16:9", sourceImage);
+await confirmCrop("gallery", "16:9", libraryImage);
 
 media = await mediaSnapshot(slug, cookie);
 revision = media.revision;
 if (
-  media.assignments?.coverImage !== sourceImage ||
+  media.assignments?.coverImage !== libraryImage ||
   media.requirements?.cover?.mode !== "image" ||
   media.requirements?.cover?.cropReady !== true
 ) {
