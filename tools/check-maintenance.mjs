@@ -163,12 +163,24 @@ for (const allowedDelete of [
   "DELETE FROM deuna_admin.admin_sessions",
   "DELETE FROM deuna_accounts.sessions",
   "DELETE FROM deuna_accounts.recovery_codes",
+  "DELETE FROM deuna_admin.admin_events",
 ]) {
   assert(
     purgeJunk.includes(allowedDelete),
     `La purga transitoria debe conservar ${allowedDelete}.`
   );
 }
+assert(
+  purgeJunk.includes("occurred_at < now() - interval '90 days'"),
+  "Los eventos operativos de autenticación sólo deben purgarse después de 90 días."
+);
+
+const ciWorkflow = await read(".github/workflows/ci.yml");
+assert(
+  ciWorkflow.includes("retention-days: 1"),
+  "La evidencia visual de CI debe expirar después de 1 día para no acumular artifacts."
+);
+
 for (const forbiddenDeleteTarget of [
   "editorial_items",
   "editorial_revisions",
