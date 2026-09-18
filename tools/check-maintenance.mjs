@@ -103,6 +103,7 @@ for (const removedRecoveryFile of [
 for (const [label, relativePath] of [
   ["Curaduría de Inicio", "src/components/admin/HomeCurationEditor.tsx"],
   ["Presentación de Inicio", "src/components/admin/HomePresentationEditor.tsx"],
+  ["Visualización de filas", "src/components/admin/HomeRowRevealEditor.tsx"],
   ["Hero de Inicio", "src/components/admin/HomeHeroEditor.tsx"],
   ["Guardado de Hero", "src/components/admin/HomeHeroSaveBoundary.tsx"],
 ]) {
@@ -111,6 +112,7 @@ for (const [label, relativePath] of [
     !content.includes("sessionStorage") &&
       !content.includes("deuna:home-curation-draft") &&
       !content.includes("deuna:home-presentation-draft") &&
+      !content.includes("deuna:home-row-reveal-draft") &&
       !content.includes("deuna:hero-draft:"),
     `${label} no debe reintroducir recovery local paralelo al borrador de servidor.`
   );
