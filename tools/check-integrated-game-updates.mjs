@@ -8,8 +8,8 @@ const files = {
     "src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx",
   route:
     "src/app/api/admin/content/games/[slug]/publish-update/route.ts",
-  gameCoreRoute:
-    "src/app/api/admin/content/games/[slug]/route.ts",
+  gameInformationRoute:
+    "src/app/api/admin/content/games/[slug]/information/route.ts",
   gameDownloadRoute:
     "src/app/api/admin/content/games/[slug]/download/route.ts",
   notices: "src/components/admin/EditorStateNotice.tsx",
@@ -100,9 +100,10 @@ expect(
   "La ruta unificada debe usar publicación atómica, revalidación, requisitos multimedia, integridad física/del paquete y protección exacta del formulario."
 );
 expect(
-  entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
-    entries.gameCoreRoute.includes("version-por-actualizacion"),
-  "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Nueva versión."
+  entries.gameInformationRoute.includes("getGamePublicationIdentity") &&
+    entries.gameInformationRoute.includes("publicationIdentity?.everPublished") &&
+    entries.gameInformationRoute.includes("item.payload.version"),
+  "Información debe preservar la versión de cualquier juego ya publicado para impedir cambios de versión fuera de Nueva versión."
 );
 expect(
   entries.gameDownloadRoute.includes("saveGameDownloadDraft") &&
