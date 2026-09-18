@@ -52,6 +52,7 @@ const [
   securityPage,
   securityOverview,
   homeContentEditor,
+  homeContentEditorCss,
   taxonomyEditor,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
@@ -89,6 +90,7 @@ const [
   source("src/app/admin/(protected)/seguridad/page.tsx"),
   source("src/lib/admin/security-overview.ts"),
   source("src/components/admin/HomeContentEditor.tsx"),
+  source("src/components/admin/HomeContentEditor.module.css"),
   source("src/components/admin/GameTaxonomyEditor.tsx"),
 ]);
 
@@ -380,8 +382,10 @@ assert(
     homeContentEditor.includes('hidden={activeStep !== "curation"}') &&
     homeContentEditor.includes('hidden={activeStep !== "cards"}') &&
     homeContentEditor.includes("curationJson") &&
-    homeContentEditor.includes("presentationJson"),
-  "Resto de Inicio debe mostrar un paso a la vez sin desmontar ni perder el guardado coordinado de la revisión completa."
+    homeContentEditor.includes("presentationJson") &&
+    homeContentEditorCss.includes(".step[hidden]") &&
+    homeContentEditorCss.includes("display: none;"),
+  "Resto de Inicio debe mostrar un paso a la vez, respetar hidden incluso con CSS autor y no perder el guardado coordinado de la revisión completa."
 );
 
 assert(
