@@ -219,6 +219,7 @@ for (const requiredGuard of [
   '!openHeads.has(branch.name)',
   'branch.protected !== true',
   'TEMPORARY_BRANCH_PATTERN',
+  'branch?.commit?.sha',
   'Number(result.body?.behind_by) === 0',
   '"closed-pr"',
   '"temporary"',
