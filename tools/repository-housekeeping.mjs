@@ -4,15 +4,6 @@ const API_VERSION = "2022-11-28";
 const RETENTION_HOURS = 24;
 const PAGE_SIZE = 100;
 const TEMPORARY_BRANCH_PATTERN = /^(?:tmp(?:\x2f|-|$)|noop-temp-do-not-use(?:-|$))|(?:tmp-ignore|do-not-use)/i;
-const SUPERSEDED_BRANCHES = new Set([
-  "audit-hardware-refactor-safety",
-  "docs/integral-verification-workflow",
-  "feat/card-cover-unified-v2",
-  "feature/lazy-video-preview-2",
-  "feature/multimedia-workspace-reference",
-  "feature/unified-card-cover-4x5",
-  "fix/card-cover-post-audit",
-]);
 
 function requiredEnvironment(name) {
   const value = process.env[name]?.trim();
@@ -200,11 +191,6 @@ async function deleteRedundantBranches() {
       continue;
     }
 
-    if (SUPERSEDED_BRANCHES.has(branch.name)) {
-      reasons.set(branch.name, "superseded");
-      continue;
-    }
-
     if (await branchContainedInDefault(branch)) {
       reasons.set(branch.name, "contained-in-master");
     }
@@ -217,7 +203,6 @@ async function deleteRedundantBranches() {
     "closed-pr": 0,
     temporary: 0,
     "contained-in-master": 0,
-    superseded: 0,
   };
 
   for (const branch of candidates) {
