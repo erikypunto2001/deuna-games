@@ -184,6 +184,10 @@
   scroll-margin-top: 96px;
 }
 
+.step[hidden] {
+  display: none;
+}
+
 .stepHeader {
   display: flex;
   align-items: flex-start;
