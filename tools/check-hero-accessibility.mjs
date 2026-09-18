@@ -92,7 +92,9 @@ assert.match(livePreview, /los cambios\s+editoriales que hagas aquí llegan a la
 assert.doesNotMatch(livePreview, /Home pública cambia sólo al publicar Inicio\./i);
 assert.doesNotMatch(livePreview, /useHomeHeroDraftSave|requestMotionEngineSave|motionEngine|requestSubmit\(|JSON\.parse\(/);
 assert.match(saveBoundary, /onSubmitCapture=\{saveHero\}/);
-assert.match(saveBoundary, /persistHeroRecoveryFields\(fields\);[\s\S]*?catch \(error\) \{[\s\S]*?persistHeroRecoveryFields\(fields\);/);
+assert.match(saveBoundary, /submitPreparedFields\(fields\)/);
+assert.match(saveBoundary, /catch \(error\) \{[\s\S]*?setNotice\(\{/);
+assert.doesNotMatch(saveBoundary, /sessionStorage|persistHeroRecoveryFields|clearStoredHeroDrafts|deuna:hero-draft:/);
 assert.doesNotMatch(saveBoundary, /motionEngine|fieldsWithMotionEngine|HeroDraftSaveContext/);
 assert.match(homeContentService, /export async function saveHomeHeroDraft\(/);
 assert.doesNotMatch(homeContentService, /saveHomeHeroMotionEngineDraft/);
