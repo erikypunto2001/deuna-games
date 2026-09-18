@@ -61,6 +61,106 @@ function publicationActionLabel(
   return "Publicación";
 }
 
+function GameStatus({
+  status,
+}: {
+  status: AdminGameCatalogItem["status"];
+}) {
+  if (status === "published") {
+    return (
+      <span className={styles.statusOk}>
+        <CheckCircle2 size={15} aria-hidden="true" />
+        Publicado
+      </span>
+    );
+  }
+
+  return (
+    <span className={styles.statusPending}>
+      <CircleSlash2 size={15} aria-hidden="true" />
+      {status === "hidden"
+        ? "Oculto"
+        : status === "unpublished"
+          ? "Sin publicar"
+          : "Cambios pendientes"}
+    </span>
+  );
+}
+
+function GameActions({
+  item,
+  gamePath,
+  mobile = false,
+}: {
+  item: AdminGameCatalogItem;
+  gamePath: string;
+  mobile?: boolean;
+}) {
+  const published = item.status === "published";
+
+  return (
+    <div className={`${ia.rowActions} ${mobile ? styles.mobileActions : ""}`}>
+      <Link
+        href={gamePath}
+        title={`Editar ${item.title}`}
+      >
+        <Pencil size={14} aria-hidden="true" />
+        Editar
+      </Link>
+
+      {published ? (
+        <Link
+          href={`${gamePath}/actualizacion`}
+          title={`Publicar una nueva versión de ${item.title}`}
+        >
+          <RefreshCcw size={14} aria-hidden="true" />
+          Nueva versión
+        </Link>
+      ) : (
+        <Link
+          href={`${gamePath}/publicacion`}
+          title={`Revisar publicación de ${item.title}`}
+        >
+          <Rocket size={14} aria-hidden="true" />
+          {publicationActionLabel(item.status)}
+        </Link>
+      )}
+
+      <details className={ia.rowMenu}>
+        <summary aria-label={`Más acciones para ${item.title}`}>
+          <MoreHorizontal size={16} aria-hidden="true" />
+          <span className={ia.srOnly}>Más acciones</span>
+        </summary>
+        <div className={ia.rowMenuPanel}>
+          <Link
+            href={`${gamePath}/vista-previa`}
+            title={`Ver borrador de ${item.title}`}
+          >
+            <Eye size={14} aria-hidden="true" />
+            Vista previa
+          </Link>
+          {published && (
+            <Link
+              href={`${gamePath}/publicacion`}
+              title={`Revisar publicación de ${item.title}`}
+            >
+              <Rocket size={14} aria-hidden="true" />
+              Publicación
+            </Link>
+          )}
+          <Link
+            href={`${gamePath}?seccion=historial`}
+            title={`Revisar historial de ${item.title}`}
+          >
+            <FileClock size={14} aria-hidden="true" />
+            Historial
+          </Link>
+        </div>
+      </details>
+    </div>
+  );
+}
+
 export default function AdminGamesCatalog({
   items,
 }: {
@@ -248,8 +348,6 @@ export default function AdminGamesCatalog({
             <tbody>
               {filtered.map((item) => {
                 const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
-                const published = item.status === "published";
-
                 return (
                   <tr key={item.key}>
                     <th scope="row">
@@ -263,21 +361,7 @@ export default function AdminGamesCatalog({
                     </th>
                     <td>{item.category}</td>
                     <td>
-                      {published ? (
-                        <span className={styles.statusOk}>
-                          <CheckCircle2 size={15} aria-hidden="true" />
-                          Publicado
-                        </span>
-                      ) : (
-                        <span className={styles.statusPending}>
-                          <CircleSlash2 size={15} aria-hidden="true" />
-                          {item.status === "hidden"
-                            ? "Oculto"
-                            : item.status === "unpublished"
-                              ? "Sin publicar"
-                              : "Cambios pendientes"}
-                        </span>
-                      )}
+                      <GameStatus status={item.status} />
                     </td>
                     <td>
                       {item.publicationNumber
@@ -286,63 +370,7 @@ export default function AdminGamesCatalog({
                     </td>
                     <td>{item.revision}</td>
                     <td>
-                      <div className={ia.rowActions}>
-                        <Link
-                          href={gamePath}
-                          title={`Editar ${item.title}`}
-                        >
-                          <Pencil size={14} aria-hidden="true" />
-                          Editar
-                        </Link>
-
-                        {published ? (
-                          <Link
-                            href={`${gamePath}/actualizacion`}
-                            title={`Publicar una nueva versión de ${item.title}`}
-                          >
-                            <RefreshCcw size={14} aria-hidden="true" />
-                            Nueva versión
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`${gamePath}/publicacion`}
-                            title={`Revisar publicación de ${item.title}`}
-                          >
-                            <Rocket size={14} aria-hidden="true" />
-                            {publicationActionLabel(item.status)}
-                          </Link>
-                        )}
-
-                        <details className={ia.rowMenu}>
-                          <summary aria-label={`Más acciones para ${item.title}`}>
-                            <MoreHorizontal size={16} aria-hidden="true" />
-                            <span className={ia.srOnly}>Más acciones</span>
-                          </summary>
-                          <div className={ia.rowMenuPanel}>
-                            <Link
-                              href={`${gamePath}/vista-previa`}
-                              title={`Ver borrador de ${item.title}`}
-                            >
-                              <Eye size={14} aria-hidden="true" />
-                              Vista previa
-                            </Link>
-                            {published && (
-                              <Link
-                                href={`${gamePath}/publicacion`}
-                                title={`Revisar publicación de ${item.title}`}
-                              >
-                                <Rocket size={14} aria-hidden="true" />
-                                Publicación
-                              </Link>
-                            )}
-                            <Link
-                              href={`${gamePath}?seccion=historial`}
-                              title={`Revisar historial de ${item.title}`}
-                            >
-                              <FileClock size={14} aria-hidden="true" />
-                              Historial
-                            </Link>
-                          </div>
+                      <GameActions item={item} gamePath={gamePath} />
                         </details>
                       </div>
                     </td>
@@ -351,6 +379,44 @@ export default function AdminGamesCatalog({
               })}
             </tbody>
           </table>
+        </div>
+
+        <div className={styles.mobileList} aria-label="Juegos editoriales">
+          {filtered.map((item) => {
+            const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
+
+            return (
+              <article className={styles.mobileCard} key={item.key}>
+                <div className={styles.mobileCardHeading}>
+                  <Link href={gamePath} title={`Editar ${item.title}`}>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.key}
+                      {item.version ? ` · ${item.version}` : ""}
+                    </span>
+                  </Link>
+                  <GameStatus status={item.status} />
+                </div>
+
+                <dl className={styles.mobileMeta}>
+                  <div>
+                    <dt>Clasificación</dt>
+                    <dd>{item.category}</dd>
+                  </div>
+                  <div>
+                    <dt>Publicación</dt>
+                    <dd>{item.publicationNumber ? `#${item.publicationNumber}` : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Revisión</dt>
+                    <dd>{item.revision}</dd>
+                  </div>
+                </dl>
+
+                <GameActions item={item} gamePath={gamePath} mobile />
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
