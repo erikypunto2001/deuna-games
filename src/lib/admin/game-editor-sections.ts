@@ -33,10 +33,5 @@ export function getGameEditorSection(
 }
 
 export const gameReadinessSections = gameEditorSections.filter(
-  (
-    section
-  ): section is Exclude<
-    (typeof gameEditorSections)[number],
-    { id: "historial" }
-  > => section.id !== "historial"
+  (section) => section.id !== "historial"
 );
