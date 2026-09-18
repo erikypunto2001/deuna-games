@@ -144,8 +144,8 @@ export async function POST(
       upload.publicPath
     );
 
-    // La carga sólo crea un master. Asignar Portada/Hero/Card/Detalle/Galería
-    // pertenece exclusivamente a media-library y sus editores de crop.
+    // La carga sólo crea un master. Portada/Hero/Card/Detalle se asignan
+    // desde media-library; Galería conserva su única mutación en gallery-media.
     return adminRedirect(
       authorized.adminOrigin,
       `${target}?estado=recurso-subido&seccion=multimedia`
