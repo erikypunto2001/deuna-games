@@ -78,8 +78,10 @@ assert(
     "${fps} FPS`"
   ) &&
     !videoEditor.includes("Fotogramas por segundo · máximo 60") &&
-    !videoEditor.includes("setFps(Number(event.target.value) as PreviewFps)"),
-  "GameVideoLibraryEditor debe tener una sola fuente de verdad para FPS y usarla en trim, botón y ambos payloads."
+    !videoEditor.includes("setFps(Number(event.target.value) as PreviewFps)") &&
+    !videoEditor.includes('"X-Deuna-Viewport-X"') &&
+    !videoEditor.includes("viewportX: String(DEFAULT_PREVIEW_VIEWPORT.x)"),
+  "GameVideoLibraryEditor debe tener una sola fuente de verdad para FPS y crear masters library-only sin enviar encuadres de destino."
 );
 
 const millisecondSteps = trimEditor.match(/step="0\.001"/g)?.length ?? 0;
@@ -105,9 +107,28 @@ assert(
 );
 
 assert(
-  has(uploadRoute, "parsePreviewFps", "x-deuna-preview-fps", "preview-fps-invalido") &&
-    has(importRoute, "parsePreviewFps", "targetViewportFpsFields", "preview-fps-invalido"),
-  "El servidor debe revalidar FPS en las dos rutas de creación del master."
+  has(
+    uploadRoute,
+    "parsePreviewFps",
+    "x-deuna-preview-fps",
+    'target !== "library"',
+    "legacyViewportHeadersPresent",
+    "preview-fps-invalido"
+  ) &&
+    !uploadRoute.includes("saveGameMediaDraft") &&
+    !uploadRoute.includes("withSavedGameVideoClip") &&
+    has(
+      importRoute,
+      "parsePreviewFps",
+      'target !== "library"',
+      "hasExactAdminFormFields",
+      "preview-fps-invalido"
+    ) &&
+    !importRoute.includes("saveGameMediaDraft") &&
+    !importRoute.includes("withSavedGameVideoClip") &&
+    !importRoute.includes("legacyFields") &&
+    !importRoute.includes("targetViewportFpsFields"),
+  "Crear un master debe terminar sólo en Biblioteca: upload/import no pueden asignar Hero/Card ni aceptar contratos legacy."
 );
 
 assert(
@@ -173,6 +194,13 @@ try {
 } catch {}
 
 try {
+  await access(path.join(root, "src/app/api/admin/content/games/[slug]/preview-remove/route.ts"));
+  failures.push(
+    "La desasignación preview-remove legacy volvió a aparecer: las asignaciones de video deben gestionarse sólo desde Biblioteca."
+  );
+} catch {}
+
+try {
   await access(path.join(root, "src/components/admin/GamePreviewClipUploadForm.tsx"));
   failures.push(
     "GamePreviewClipUploadForm.tsx volvió a aparecer aunque el editor ya usa GameVideoLibraryEditor directamente."
@@ -193,5 +221,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Multimedia hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · master único · Galería no destructiva · Biblioteca con borrado seguro · mutación bulk y workspace legacy retirados)."
+  "Multimedia hardening: OK (1080p50 default · 60 FPS seleccionable con estado único · precisión temporal 1 ms · masters library-only · Galería no destructiva · Biblioteca con borrado seguro · mutaciones bulk/preview-remove y workspace legacy retirados)."
 );
