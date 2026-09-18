@@ -135,6 +135,94 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
 }
 
+.termToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.termSearch {
+  min-width: 220px;
+  max-width: 420px;
+  flex: 1 1 320px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 11px;
+  border: 1px solid #405169;
+  border-radius: 9px;
+  background: #09121c;
+}
+
+.termSearch > svg {
+  flex: 0 0 auto;
+  color: #8fa0b3;
+}
+
+.termSearch input {
+  min-width: 0;
+  width: 100%;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f5f7fb;
+  font: inherit;
+  font-size: 14px;
+}
+
+.termSearch:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 70%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #91a2b5;
+  font-size: 12px;
+}
+
+.pagination span {
+  margin-right: 3px;
+  white-space: nowrap;
+}
+
+.pagination b {
+  min-width: 42px;
+  color: #dbe4ef;
+  font-size: 12px;
+  text-align: center;
+}
+
+.pagination button {
+  width: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #405169;
+  border-radius: 8px;
+  background: #0d1621;
+  color: #b7c4d2;
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled),
+.pagination button:focus-visible {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 45%, #607286);
+  background: color-mix(in srgb, var(--brand) 5%, #111d29);
+}
+
+.pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .termMain input[readonly] {
   color: #dbe4ef;
   background: #0b1520;
@@ -603,6 +691,31 @@
 
   .removeButton {
     width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .termToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .termSearch {
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .termSearch input {
+    font-size: 16px;
+  }
+
+  .pagination {
+    justify-content: space-between;
+  }
+
+  .pagination button {
+    width: 44px;
+    min-height: 44px;
   }
 }
 
