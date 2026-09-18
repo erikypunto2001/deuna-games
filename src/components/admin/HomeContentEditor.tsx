@@ -24,6 +24,8 @@ import styles from "./HomeContentEditor.module.css";
 const combinedAction = "/api/admin/content/home/content";
 const dirtySelector = 'form[data-home-editor-dirty="true"]';
 
+type HomeContentStep = "structure" | "curation" | "cards";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -99,6 +101,8 @@ export default function HomeContentEditor({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasDirtyChanges, setHasDirtyChanges] = useState(false);
+  const [activeStep, setActiveStep] =
+    useState<HomeContentStep>("structure");
   const presentationConfig: ResolvedHomeConfig = {
     ...config,
     sections: config.sections.map((section) => ({
@@ -336,15 +340,30 @@ export default function HomeContentEditor({
           className={styles.workflow}
           aria-label="Flujo de edición de Resto de Inicio"
         >
-          <a href="#home-content-structure">
+          <a
+            href="#home-content-structure"
+            data-active={activeStep === "structure" ? "true" : "false"}
+            aria-current={activeStep === "structure" ? "step" : undefined}
+            onClick={() => setActiveStep("structure")}
+          >
             <span>1</span>
             <strong>Estructura y textos</strong>
           </a>
-          <a href="#home-content-curation">
+          <a
+            href="#home-content-curation"
+            data-active={activeStep === "curation" ? "true" : "false"}
+            aria-current={activeStep === "curation" ? "step" : undefined}
+            onClick={() => setActiveStep("curation")}
+          >
             <span>2</span>
             <strong>Curaduría</strong>
           </a>
-          <a href="#home-content-cards">
+          <a
+            href="#home-content-cards"
+            data-active={activeStep === "cards" ? "true" : "false"}
+            aria-current={activeStep === "cards" ? "step" : undefined}
+            onClick={() => setActiveStep("cards")}
+          >
             <span>3</span>
             <strong>Cards</strong>
           </a>
@@ -370,6 +389,7 @@ export default function HomeContentEditor({
       <section
         id="home-content-structure"
         className={styles.step}
+        hidden={activeStep !== "structure"}
         aria-labelledby="home-content-structure-title"
       >
         <header className={styles.stepHeader}>
@@ -390,6 +410,7 @@ export default function HomeContentEditor({
       <section
         id="home-content-curation"
         className={styles.step}
+        hidden={activeStep !== "curation"}
         aria-labelledby="home-content-curation-title"
       >
         <header className={styles.stepHeader}>
@@ -414,6 +435,7 @@ export default function HomeContentEditor({
       <section
         id="home-content-cards"
         className={styles.step}
+        hidden={activeStep !== "cards"}
         aria-labelledby="home-content-cards-title"
       >
         <header className={styles.stepHeader}>
