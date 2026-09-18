@@ -54,7 +54,8 @@ type IconUploadResponse = {
 
 const customIconPattern =
   /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/;
-const TERMS_PER_PAGE = 12;
+const DEFAULT_TERMS_PER_PAGE = 12;
+const VISUAL_TERMS_PER_PAGE = 6;
 
 const sections: Section[] = [
   {
@@ -158,6 +159,10 @@ export default function GameTaxonomyEditor({
     sections.find((candidate) => candidate.kind === section) ?? sections[0];
   const terms = taxonomy[currentSection.kind];
   const active = terms.filter((term) => term.active).length;
+  const hasVisuals = currentSection.kind === "classifications";
+  const termsPerPage = hasVisuals
+    ? VISUAL_TERMS_PER_PAGE
+    : DEFAULT_TERMS_PER_PAGE;
   const normalizedQuery = normalize(query);
   const matchingTerms = terms
     .map((term, index) => ({ term, index }))
@@ -167,14 +172,13 @@ export default function GameTaxonomyEditor({
     );
   const pageCount = Math.max(
     1,
-    Math.ceil(matchingTerms.length / TERMS_PER_PAGE)
+    Math.ceil(matchingTerms.length / termsPerPage)
   );
   const currentPage = Math.min(page, pageCount - 1);
   const visibleTerms = matchingTerms.slice(
-    currentPage * TERMS_PER_PAGE,
-    (currentPage + 1) * TERMS_PER_PAGE
+    currentPage * termsPerPage,
+    (currentPage + 1) * termsPerPage
   );
-  const hasVisuals = currentSection.kind === "classifications";
   const returnSection = hasVisuals ? "clasificaciones" : "etiquetas";
 
   function updateTerms(
@@ -226,7 +230,7 @@ export default function GameTaxonomyEditor({
       term,
     ]);
     setQuery("");
-    setPage(Math.floor(currentTerms.length / TERMS_PER_PAGE));
+    setPage(Math.floor(currentTerms.length / termsPerPage));
     setDraftLabels((current) => ({
       ...current,
       [sectionDefinition.kind]: "",
