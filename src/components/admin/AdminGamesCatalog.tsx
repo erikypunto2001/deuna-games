@@ -3,6 +3,8 @@
 import Link from "next/link";
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleSlash2,
   Eye,
   FileClock,
@@ -36,6 +38,8 @@ export type AdminGameCatalogItem = {
 };
 
 type SortMode = "title" | "status" | "revision";
+
+const MOBILE_GAMES_PER_PAGE = 8;
 
 const statusLabels = {
   all: "Todos los estados",
@@ -173,6 +177,7 @@ export default function AdminGamesCatalog({
   const [status, setStatus] = useState("all");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState<SortMode>("title");
+  const [mobilePage, setMobilePage] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const deferredQuery = useDeferredValue(query);
 
@@ -221,6 +226,7 @@ export default function AdminGamesCatalog({
 
       if (event.key === "Escape" && document.activeElement === searchRef.current) {
         setQuery("");
+        setMobilePage(0);
         searchRef.current?.blur();
       }
     }
@@ -228,6 +234,19 @@ export default function AdminGamesCatalog({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  const mobilePageCount = Math.max(
+    1,
+    Math.ceil(filtered.length / MOBILE_GAMES_PER_PAGE)
+  );
+  const currentMobilePage = Math.min(
+    mobilePage,
+    mobilePageCount - 1
+  );
+  const mobileItems = filtered.slice(
+    currentMobilePage * MOBILE_GAMES_PER_PAGE,
+    (currentMobilePage + 1) * MOBILE_GAMES_PER_PAGE
+  );
 
   const hasFilters =
     query !== "" || status !== "all" || category !== "all" || sort !== "title";
@@ -249,7 +268,10 @@ export default function AdminGamesCatalog({
             ref={searchRef}
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setMobilePage(0);
+            }}
             placeholder="Buscar juego, slug, versión, etiqueta..."
             aria-label="Buscar juegos"
           />
@@ -257,7 +279,10 @@ export default function AdminGamesCatalog({
           {query && (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setMobilePage(0);
+              }}
               aria-label="Limpiar búsqueda"
             >
               <X size={16} aria-hidden="true" />
@@ -268,7 +293,10 @@ export default function AdminGamesCatalog({
         <div className={styles.filters}>
           <select
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setMobilePage(0);
+            }}
             aria-label="Filtrar por estado"
           >
             {Object.entries(statusLabels).map(([value, label]) => (
@@ -280,7 +308,10 @@ export default function AdminGamesCatalog({
 
           <select
             value={category}
-            onChange={(event) => setCategory(event.target.value)}
+            onChange={(event) => {
+              setCategory(event.target.value);
+              setMobilePage(0);
+            }}
             aria-label="Filtrar por clasificación"
           >
             <option value="all">Todas las clasificaciones</option>
@@ -293,7 +324,10 @@ export default function AdminGamesCatalog({
 
           <select
             value={sort}
-            onChange={(event) => setSort(event.target.value as SortMode)}
+            onChange={(event) => {
+              setSort(event.target.value as SortMode);
+              setMobilePage(0);
+            }}
             aria-label="Ordenar juegos"
           >
             <option value="title">Orden: nombre</option>
@@ -310,6 +344,7 @@ export default function AdminGamesCatalog({
                 setStatus("all");
                 setCategory("all");
                 setSort("title");
+                setMobilePage(0);
               }}
             >
               Limpiar filtros
@@ -388,11 +423,15 @@ export default function AdminGamesCatalog({
           aria-label="Juegos editoriales"
           data-admin-games-mobile-list="true"
         >
-          {filtered.map((item) => {
+          {mobileItems.map((item) => {
             const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
 
             return (
-              <article className={styles.mobileCard} key={item.key}>
+              <article
+                className={styles.mobileCard}
+                key={item.key}
+                data-admin-games-mobile-card="true"
+              >
                 <div className={styles.mobileCardHeading}>
                   <Link href={gamePath} title={`Editar ${item.title}`}>
                     <strong>{item.title}</strong>
@@ -424,6 +463,40 @@ export default function AdminGamesCatalog({
             );
           })}
         </div>
+
+        {mobilePageCount > 1 && (
+          <nav
+            className={styles.mobilePagination}
+            aria-label="Paginación de juegos en móvil"
+            data-admin-games-mobile-pagination="true"
+          >
+            <button
+              type="button"
+              aria-label="Página anterior de juegos"
+              disabled={currentMobilePage === 0}
+              onClick={() =>
+                setMobilePage((value) => Math.max(0, value - 1))
+              }
+            >
+              <ChevronLeft size={17} aria-hidden="true" />
+            </button>
+            <span>
+              Página <strong>{currentMobilePage + 1}</strong> de {mobilePageCount}
+            </span>
+            <button
+              type="button"
+              aria-label="Página siguiente de juegos"
+              disabled={currentMobilePage >= mobilePageCount - 1}
+              onClick={() =>
+                setMobilePage((value) =>
+                  Math.min(mobilePageCount - 1, value + 1)
+                )
+              }
+            >
+              <ChevronRight size={17} aria-hidden="true" />
+            </button>
+          </nav>
+        )}
         </>
       )}
     </section>
