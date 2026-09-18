@@ -25,7 +25,7 @@
     "admin:create-owner": "node --env-file=.env.admin-migration.local ./tools/admin/create-owner.ts",
     "admin:change-password": "node --env-file=.env.admin-migration.local ./tools/admin/change-owner-password.ts",
     "admin:setup": "npm run db:migrate && npm run admin:import-content && npm run admin:create-owner",
-    "admin:update-local": "npm run db:migrate && npm run admin:import-content && npm run admin:preflight",
+    "admin:update-local": "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
     "admin:preflight:migration": "node --env-file=.env.admin-migration.local ./tools/admin/preflight.ts --purpose=migration",
     "admin:preflight:local": "node --env-file=.env.local ./tools/admin/preflight-local.ts",
     "admin:preflight:runtime": "node ./tools/admin/preflight.ts --purpose=runtime",
