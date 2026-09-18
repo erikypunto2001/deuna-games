@@ -19,6 +19,8 @@
     "dev:webpack": "node ./tools/run-next.mjs dev --webpack --hostname 127.0.0.1 --port 3000",
     "db:migrate": "node --env-file=.env.admin-migration.local ./tools/admin/migrate.ts",
     "admin:backup-local": "node --env-file=.env.admin-migration.local ./tools/admin/backup-local.ts",
+    "admin:purge-junk:check": "node --env-file=.env.admin-migration.local ./tools/admin/purge-junk.ts",
+    "admin:purge-junk": "node --env-file=.env.admin-migration.local ./tools/admin/purge-junk.ts --apply",
     "admin:import-content": "node --env-file=.env.admin-migration.local ./tools/admin/import-content.ts",
     "admin:create-owner": "node --env-file=.env.admin-migration.local ./tools/admin/create-owner.ts",
     "admin:change-password": "node --env-file=.env.admin-migration.local ./tools/admin/change-owner-password.ts",
