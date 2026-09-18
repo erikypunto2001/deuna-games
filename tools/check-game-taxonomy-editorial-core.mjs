@@ -31,8 +31,6 @@ const [
   gameRestoreRoute,
   gamePublicationWorkspace,
   createRoute,
-  coreRoute,
-  advancedRoute,
   classificationRoute,
   newGamePage,
   newGameForm,
@@ -66,8 +64,6 @@ const [
   source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/advanced/route.ts"),
   source("src/app/api/admin/content/games/[slug]/classification/route.ts"),
   source("src/app/admin/(protected)/juegos/nuevo/page.tsx"),
   source("src/components/admin/NewGameForm.tsx"),
@@ -209,16 +205,12 @@ assert(
 assert(
   createRoute.includes("resolveGameTaxonomySelection") &&
     createRoute.includes("classification.category") &&
-    coreRoute.includes("resolveGameTaxonomySelection") &&
-    coreRoute.includes("currentGameKey: slug") &&
-    advancedRoute.includes("resolveGameTaxonomySelection") &&
-    advancedRoute.includes("genres: classification.genres") &&
-    advancedRoute.includes("tags: classification.tags") &&
     classificationRoute.includes("resolveGameTaxonomySelection") &&
+    classificationRoute.includes("currentGameKey: slug") &&
     classificationRoute.includes("saveGameClassificationSection") &&
     classificationRoute.includes("genres: classification.genres") &&
     classificationRoute.includes("tags: classification.tags"),
-  "Crear y editar juegos debe validar clasificación principal, adicionales y etiquetas en el servidor, incluida la ruta modular activa."
+  "Crear y editar juegos debe validar clasificación principal, adicionales y etiquetas únicamente mediante el alta y la ruta modular canónica."
 );
 
 assert(
