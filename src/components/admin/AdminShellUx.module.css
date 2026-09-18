@@ -69,6 +69,14 @@
   font-size: 12px;
 }
 
+.ownerBlock {
+  min-width: 0;
+}
+
+.privacyNotice {
+  min-width: 0;
+}
+
 .main.main {
   --admin-page: color-mix(in srgb, var(--background) 14%, #070b11);
   --admin-surface: linear-gradient(
@@ -434,7 +442,24 @@
   .sidebar.sidebar {
     position: relative;
     height: auto;
-    padding: 14px;
+    padding: 12px 14px;
+  }
+
+  .privacyNotice {
+    display: none;
+  }
+
+  .ownerBlock {
+    margin-top: 10px;
+    padding: 8px 10px;
+  }
+
+  .ownerBlock > div {
+    min-width: 0;
+  }
+
+  .ownerBlock form {
+    flex: 0 0 auto;
   }
 
   .brandName {
@@ -442,7 +467,7 @@
   }
 
   .main.main {
-    padding: 22px 15px 40px;
+    padding: 18px 15px 40px;
   }
 
   .contextBar {
