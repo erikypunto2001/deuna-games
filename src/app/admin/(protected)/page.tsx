@@ -12,14 +12,9 @@ import {
 } from "lucide-react";
 
 import ia from "@/components/admin/AdminInformationArchitecture.module.css";
-import { games } from "@/data/games";
-import { gameUpdates } from "@/data/updates";
 import {
   getAdminSecurityOverview,
 } from "@/lib/admin/security-overview";
-import {
-  getEditorialOverview,
-} from "@/lib/admin/content-service";
 import {
   getPublicationOverview,
   type PendingPublication,
@@ -105,21 +100,20 @@ function formatPublicationDate(value: Date) {
 
 export default async function AdminDashboardPage() {
   await verifyAdminSession();
-  const [security, editorial, publication] =
+  const [security, publication] =
     await Promise.all([
       getAdminSecurityOverview(),
-      getEditorialOverview(),
       getPublicationOverview(),
     ]);
   const publicGames = publication.available
     ? publication.games
-    : games.length;
+    : null;
   const publicUpdates = publication.available
     ? publication.updates
-    : gameUpdates.length;
+    : null;
   const pending = publication.available
     ? publication.pending
-    : editorial.modified;
+    : null;
 
   return (
     <>
@@ -251,23 +245,26 @@ export default async function AdminDashboardPage() {
       >
         <article>
           <span><Gamepad2 size={20} aria-hidden="true" /></span>
-          <strong>{publicGames}</strong>
+          <strong>{publicGames ?? "—"}</strong>
           <p>Juegos publicados</p>
+          {publicGames === null && <small>Estado de publicación no disponible</small>}
         </article>
         <article>
           <span><Database size={20} aria-hidden="true" /></span>
-          <strong>{pending}</strong>
+          <strong>{pending ?? "—"}</strong>
           <p>Cambios sin publicar</p>
+          {pending === null && <small>Estado de publicación no disponible</small>}
         </article>
         <article>
           <span><ShieldCheck size={20} aria-hidden="true" /></span>
           <strong>{security.activeSessions}</strong>
-          <p>Sesiones administrativas activas</p>
+          <p>Tus sesiones administrativas activas</p>
         </article>
         <article>
           <span><RefreshCcw size={20} aria-hidden="true" /></span>
-          <strong>{publicUpdates}</strong>
+          <strong>{publicUpdates ?? "—"}</strong>
           <p>Versiones y avisos publicados</p>
+          {publicUpdates === null && <small>Estado de publicación no disponible</small>}
         </article>
       </section>
 
