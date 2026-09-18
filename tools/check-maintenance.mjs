@@ -164,9 +164,9 @@ assert(
   "La actualización local debe purgar basura transitoria antes del preflight."
 );
 
-const localSetup = await read("tools/setup-local-server.sh");
+const localSetupForPurge = await read("tools/setup-local-server.sh");
 assert(
-  localSetup.includes("npm run admin:purge-junk"),
+  localSetupForPurge.includes("npm run admin:purge-junk"),
   "El setup local debe ejecutar la purga transitoria automáticamente."
 );
 
