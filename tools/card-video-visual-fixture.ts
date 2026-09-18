@@ -108,7 +108,7 @@ async function publishFixtureGame(
 ) {
   const current = parseEditorialPayload("game", item.published_payload);
   const fixtureMedia = mode === "video" ? await writeFixtureWebm(current.slug) : null;
-  const { card: _previousCardVideo, ...otherVideoMedia } = current.videoMedia ?? {};
+  const otherVideoMedia = { ...(current.videoMedia ?? {}) };\n  delete otherVideoMedia.card;
   const videoMedia =
     mode === "video" && fixtureMedia
       ? {
