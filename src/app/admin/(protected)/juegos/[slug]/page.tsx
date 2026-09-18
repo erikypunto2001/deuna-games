@@ -23,6 +23,9 @@ import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
 import {
+  resolveGameEditorSection,
+} from "@/lib/admin/game-editor-sections";
+import {
   getGamePublicationIdentity,
 } from "@/lib/admin/publication-overview";
 import {
@@ -36,19 +39,6 @@ import styles from "../../../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
-const gameSections = [
-  "ficha",
-  "datos",
-  "requisitos",
-  "rendimiento",
-  "multimedia",
-  "descargas",
-  "valoracion",
-  "historial",
-] as const;
-
-type GameSection = (typeof gameSections)[number];
-
 type PageProps = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{
@@ -60,16 +50,6 @@ type PageProps = {
 type PrimaryGameTaxonomyTerm = GameTaxonomyTerm & {
   missingFromCatalog?: boolean;
 };
-
-function resolveGameSection(
-  value: string | string[] | undefined
-): GameSection {
-  const candidate = Array.isArray(value) ? value[0] : value;
-
-  return gameSections.includes(candidate as GameSection)
-    ? (candidate as GameSection)
-    : "ficha";
-}
 
 function publicationLabel(
   identity: Awaited<ReturnType<typeof getGamePublicationIdentity>>,
@@ -164,7 +144,7 @@ export default async function AdminGameEditorPage({
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
-  const section = resolveGameSection(parameters.seccion);
+  const section = resolveGameEditorSection(parameters.seccion);
   const panelCreated = publicationIdentity?.panelCreated ?? false;
   const game = item.payload;
   const taxonomy = taxonomyItem?.payload;
