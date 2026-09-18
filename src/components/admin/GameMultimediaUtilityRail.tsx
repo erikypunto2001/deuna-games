@@ -35,7 +35,6 @@ import shellStyles from "./GameMultimediaShell.module.css";
 type Props = {
   slug: string;
   revision: number;
-  screenshotCount: number;
 };
 
 type AddKind = "image" | "video";
@@ -105,7 +104,6 @@ function firstGalleryItem(state: MultimediaLibraryState | null): GameGalleryItem
 export default function GameMultimediaUtilityRail({
   slug,
   revision,
-  screenshotCount,
 }: Props) {
   const [state, setState] = useState<MultimediaLibraryState | null>(null);
   const [loading, setLoading] = useState(true);
