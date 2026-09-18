@@ -158,6 +158,15 @@ assert(
   "La purga de basura transitoria debe conservar modos lectura/aplicar explícitos."
 );
 
+const localBackup = await read("tools/admin/backup-local.ts");
+assert(
+  localBackup.includes("const MAX_LOCAL_BACKUPS = 3;") &&
+    localBackup.includes("LOCAL_BACKUP_PATTERN") &&
+    localBackup.includes("backups.slice(MAX_LOCAL_BACKUPS)") &&
+    localBackup.includes("pruneOldLocalBackups(backupDirectory)"),
+  "El backup pre-migración debe conservar sólo las 3 copias locales propias más recientes."
+);
+
 const purgeJunk = await read("tools/admin/purge-junk.ts");
 for (const allowedDelete of [
   "DELETE FROM deuna_admin.admin_sessions",
