@@ -35,8 +35,16 @@ type PageProps = {
 function PublicationStatus({
   pending,
 }: {
-  pending: boolean | undefined;
+  pending: boolean | null;
 }) {
+  if (pending === null) {
+    return (
+      <span className={styles.statusUnknown}>
+        Estado no disponible
+      </span>
+    );
+  }
+
   return pending ? (
     <span className={styles.statusPending}>
       <CircleSlash2 size={14} aria-hidden="true" />
@@ -63,7 +71,7 @@ function PageCard({
   route: string;
   editHref: string;
   publicHref: string;
-  pending: boolean | undefined;
+  pending: boolean | null;
   publicationNumber: number | null;
   revision: number;
 }) {
@@ -170,7 +178,7 @@ export default async function AdminPagesPage({
                   route="/juegos"
                   editHref="/admin/paginas/presentacion?seccion=juegos"
                   publicHref="/juegos"
-                  pending={publicPublication?.hasUnpublishedChanges}
+                  pending={publicPublication?.hasUnpublishedChanges ?? null}
                   publicationNumber={publicPublication?.publicationNumber ?? null}
                   revision={publicItem.revision}
                 />
@@ -179,7 +187,7 @@ export default async function AdminPagesPage({
                   route="/actualizaciones"
                   editHref="/admin/paginas/presentacion?seccion=actualizaciones"
                   publicHref="/actualizaciones"
-                  pending={publicPublication?.hasUnpublishedChanges}
+                  pending={publicPublication?.hasUnpublishedChanges ?? null}
                   publicationNumber={publicPublication?.publicationNumber ?? null}
                   revision={publicItem.revision}
                 />
@@ -188,7 +196,7 @@ export default async function AdminPagesPage({
                   route="/requisitos"
                   editHref="/admin/paginas/presentacion?seccion=compatibilidad"
                   publicHref="/requisitos"
-                  pending={publicPublication?.hasUnpublishedChanges}
+                  pending={publicPublication?.hasUnpublishedChanges ?? null}
                   publicationNumber={publicPublication?.publicationNumber ?? null}
                   revision={publicItem.revision}
                 />
@@ -201,7 +209,7 @@ export default async function AdminPagesPage({
                 route="/quienes-somos"
                 editHref="/admin/paginas/quienes-somos"
                 publicHref="/quienes-somos"
-                pending={aboutPublication?.hasUnpublishedChanges}
+                pending={aboutPublication?.hasUnpublishedChanges ?? null}
                 publicationNumber={aboutPublication?.publicationNumber ?? null}
                 revision={aboutItem.revision}
               />
