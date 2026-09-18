@@ -118,6 +118,7 @@ function multipartImageBody({
   revision,
   bytes,
   fileName,
+  kind,
 }) {
   const text = (value) => Buffer.from(value, "utf8");
 
@@ -126,7 +127,7 @@ function multipartImageBody({
       `--${boundary}\r\nContent-Disposition: form-data; name="expectedRevision"\r\n\r\n${revision}\r\n`
     ),
     text(
-      `--${boundary}\r\nContent-Disposition: form-data; name="kind"\r\n\r\nlibrary\r\n`
+      `--${boundary}\r\nContent-Disposition: form-data; name="kind"\r\n\r\n${kind}\r\n`
     ),
     text(
       `--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="${fileName}"\r\nContent-Type: image/webp\r\n\r\n`
@@ -136,11 +137,13 @@ function multipartImageBody({
   ]);
 }
 
-async function uploadLibraryImage(
+async function postImageUpload(
   slug,
   revision,
   cookie,
-  bundledImage
+  bundledImage,
+  kind,
+  label
 ) {
   const relativePath = bundledImage.replace(/^\/+/, "");
   const bytes = await readFile(
@@ -162,12 +165,26 @@ async function uploadLibraryImage(
         revision,
         bytes,
         fileName: path.basename(relativePath),
+        kind,
       }),
     }
   );
 
-  const redirect = redirectLocation(
-    response,
+  return redirectLocation(response, label);
+}
+
+async function uploadLibraryImage(
+  slug,
+  revision,
+  cookie,
+  bundledImage
+) {
+  const redirect = await postImageUpload(
+    slug,
+    revision,
+    cookie,
+    bundledImage,
+    "library",
     "La carga del recurso multimedia base"
   );
   assertRedirectState(
@@ -620,6 +637,54 @@ if (media.revision !== revision) {
     `La Biblioteca partió de una revisión distinta (${revision} -> ${media.revision}).`
   );
 }
+
+const resourcesBeforeRejectedImageUpload = (
+  Array.isArray(media.resources) ? media.resources : []
+)
+  .map((resource) => resource?.src)
+  .filter((value) => typeof value === "string")
+  .sort();
+
+const rejectedDirectImageUpload = await postImageUpload(
+  slug,
+  revision,
+  cookie,
+  sourceImage,
+  "cover",
+  "La asignación directa legacy de imagen"
+);
+assertRedirectState(
+  rejectedDirectImageUpload,
+  "solicitud",
+  "Rechazo de asignación directa de imagen"
+);
+
+const mediaAfterRejectedImageUpload =
+  await mediaSnapshot(slug, cookie);
+const resourcesAfterRejectedImageUpload = (
+  Array.isArray(mediaAfterRejectedImageUpload.resources)
+    ? mediaAfterRejectedImageUpload.resources
+    : []
+)
+  .map((resource) => resource?.src)
+  .filter((value) => typeof value === "string")
+  .sort();
+
+if (mediaAfterRejectedImageUpload.revision !== revision) {
+  throw new Error(
+    `Rechazar la asignación directa de imagen avanzó la revisión (${revision} -> ${mediaAfterRejectedImageUpload.revision}).`
+  );
+}
+if (
+  JSON.stringify(resourcesAfterRejectedImageUpload) !==
+  JSON.stringify(resourcesBeforeRejectedImageUpload)
+) {
+  throw new Error(
+    "Rechazar la asignación directa de imagen modificó la Biblioteca."
+  );
+}
+
+media = mediaAfterRejectedImageUpload;
 const resourcesBeforeUpload = new Set(
   (Array.isArray(media.resources) ? media.resources : [])
     .map((resource) => resource?.src)
@@ -1147,5 +1212,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignación directa de video bloqueada verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );

@@ -433,8 +433,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
             <GameMediaUploadForm
               slug={slug}
               revision={currentRevision}
-              screenshotCount={requirements?.gallery.imageCount ?? 0}
-              libraryOnly
+
             />
           ) : (
             <GameVideoLibraryEditor
