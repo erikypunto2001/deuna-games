@@ -158,6 +158,18 @@ assert(
   "La purga de basura transitoria debe conservar modos lectura/aplicar explícitos."
 );
 
+assert(
+  scripts["admin:update-local"] ===
+    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
+  "La actualización local debe purgar basura transitoria antes del preflight."
+);
+
+const localSetup = await read("tools/setup-local-server.sh");
+assert(
+  localSetup.includes("npm run admin:purge-junk"),
+  "El setup local debe ejecutar la purga transitoria automáticamente."
+);
+
 const localBackup = await read("tools/admin/backup-local.ts");
 assert(
   localBackup.includes("const MAX_LOCAL_BACKUPS = 3;") &&
