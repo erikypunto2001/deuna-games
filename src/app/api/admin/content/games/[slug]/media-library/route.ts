@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import {
@@ -24,7 +24,6 @@ import {
   getPublishedGameVideoReferences,
 } from "@/lib/admin/published-game-video-references";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
-import { verifyAdminSession } from "@/lib/admin/session";
 import {
   findEditorialMediaResource,
   listAssignedBundledImageResources,
@@ -42,10 +41,8 @@ import {
   STANDARD_GAME_MEDIA_MODES,
 } from "@/lib/media/game-media-mode-policy";
 import {
-  evaluateGameMediaRequirements,
   GAME_DETAIL_VIEWPORT_ASPECT,
   REQUIRED_DESTINATION_ASPECTS,
-  resolveGameBackgroundMediaMode,
 } from "@/lib/media/game-media-requirements";
 import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
@@ -249,57 +246,6 @@ function coverSourceUpdate(
       ...game.imageMedia,
       cover: undefined,
     }
-  );
-}
-
-export async function GET(
-  _request: NextRequest,
-  context: { params: Promise<{ slug: string }> }
-) {
-  await verifyAdminSession();
-  const { slug } = await context.params;
-  const item = await getEditorialItem("game", slug);
-
-  if (!item) {
-    return NextResponse.json(
-      { error: "Juego no encontrado." },
-      { status: 404, headers: { "Cache-Control": "no-store" } }
-    );
-  }
-
-  const protectedReferences = await protectedReferencesForGame(slug);
-  const resources = await resourcesForGame(
-    slug,
-    item.payload,
-    protectedReferences
-  );
-
-  return NextResponse.json(
-    {
-      revision: item.revision,
-      resources,
-      requirements: evaluateGameMediaRequirements(item.payload),
-      assignments: {
-        coverArtworkSource: resolveGameCoverArtworkSource(item.payload),
-        coverImage: resolveGameCoverImage(item.payload) ?? null,
-        heroImage: item.payload.heroImage ?? null,
-        cardImage: resolveGameCardBaseImage(item.payload) ?? null,
-        detailImage: item.payload.detailImage ?? null,
-        backgroundImage: item.payload.backgroundImage ?? null,
-        screenshots: item.payload.screenshots ?? [],
-        imageMedia: item.payload.imageMedia ?? null,
-        heroMode: resolveGameDestinationMediaMode(item.payload, "hero"),
-        cardMode: resolveGameDestinationMediaMode(item.payload, "card"),
-        detailMode: resolveGameDestinationMediaMode(item.payload, "detail"),
-        backgroundMode: resolveGameBackgroundMediaMode(item.payload),
-        heroVideo: item.payload.videoMedia?.hero ?? null,
-        cardVideo: item.payload.videoMedia?.card ?? null,
-        detailVideo: item.payload.videoMedia?.detail ?? null,
-        backgroundVideo: item.payload.videoMedia?.background ?? null,
-        legacyPreviewClip: item.payload.previewClip ?? null,
-      },
-    },
-    { headers: { "Cache-Control": "no-store" } }
   );
 }
 
