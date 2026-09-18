@@ -82,7 +82,8 @@
     "images:strip-metadata": "node ./tools/strip-webp-metadata.mjs",
     "build:secure": "node ./tools/build-secure-deploy.mjs",
     "repo:housekeeping": "node ./tools/repository-housekeeping.mjs",
-    "visual:admin-accounts-lifecycle": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-accounts-lifecycle-smoke.ts"
+    "visual:admin-accounts-lifecycle": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-accounts-lifecycle-smoke.ts",
+    "visual:admin-historical-update-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-historical-update-visual-fixture.ts"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
