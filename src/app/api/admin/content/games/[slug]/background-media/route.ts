@@ -67,8 +67,7 @@ const layoutFields = [
   "viewportZoom",
 ] as const;
 
-type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<Pick<Game, "backgroundImage" | "mediaModes">>;
+type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json(
