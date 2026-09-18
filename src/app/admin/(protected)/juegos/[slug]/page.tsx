@@ -234,7 +234,6 @@ export default async function AdminGameEditorPage({
 
       <GameEditorHealthOverview
         slug={slug}
-        activeSection={section}
         readiness={readiness}
       />
 
