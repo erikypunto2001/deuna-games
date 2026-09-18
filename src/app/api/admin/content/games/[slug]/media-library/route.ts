@@ -150,17 +150,7 @@ async function resourcesForGame(
   return mergeEditorialMediaResources(editorial, bundled);
 }
 
-type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<
-    Pick<
-      Game,
-      | "backgroundImage"
-      | "cardImage"
-      | "coverArtworkSource"
-      | "detailImage"
-      | "mediaModes"
-    >
-  >;
+type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];
 
 function mediaUpdate(
   update: MediaDraftUpdate,
