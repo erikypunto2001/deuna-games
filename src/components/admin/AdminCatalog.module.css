@@ -347,6 +347,113 @@
   text-align: right !important;
 }
 
+.mobileList {
+  display: none;
+}
+
+.mobileCard {
+  display: grid;
+  gap: 15px;
+  padding: 16px;
+  border-bottom: 1px solid #2e3a47;
+  background: #0a1118;
+}
+
+.mobileCard:nth-child(even) {
+  background: #0c141d;
+}
+
+.mobileCard:last-child {
+  border-bottom: 0;
+}
+
+.mobileCard:focus-within {
+  background: #111c27;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 72%, #ffffff);
+}
+
+.mobileCardHeading {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.mobileCardHeading > a {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mobileCardHeading > a strong {
+  overflow-wrap: anywhere;
+  color: #f2f5f8;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.mobileCardHeading > a span {
+  overflow-wrap: anywhere;
+  color: #91a0af;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.mobileMeta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(2, auto);
+  gap: 10px;
+  margin: 0;
+}
+
+.mobileMeta > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #2f3d4b;
+  border-radius: 8px;
+  background: #0b121a;
+}
+
+.mobileMeta dt {
+  color: #778696;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mobileMeta dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #d8e0e8;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.mobileActions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  justify-content: stretch;
+  gap: 8px;
+}
+
+.mobileActions > a {
+  min-height: 44px;
+  justify-content: center;
+  text-align: center;
+}
+
+.mobileActions > details > summary {
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+}
+
 .empty {
   padding: 48px 24px;
   color: #a4b0bc;
@@ -383,6 +490,14 @@
 }
 
 @media (max-width: 720px) {
+  .tableViewport {
+    display: none;
+  }
+
+  .mobileList {
+    display: grid;
+  }
+
   .toolbar {
     padding: 12px;
   }
@@ -415,6 +530,24 @@
   .resultBar {
     min-height: 44px;
     font-size: 13px;
+  }
+
+  .mobileMeta {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .mobileMeta {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mobileMeta > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .mobileActions {
+    grid-template-columns: 1fr 1fr 44px;
   }
 }
 
