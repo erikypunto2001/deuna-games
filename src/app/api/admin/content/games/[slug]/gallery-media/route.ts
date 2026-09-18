@@ -82,8 +82,7 @@ function galleryUpdate(
     galleryMedia: items,
     screenshots: syncedScreenshots(items),
     ...(imageMedia ? { imageMedia } : {}),
-  } as Parameters<typeof saveGameMediaDraft>[3] &
-    Partial<Pick<Game, "galleryMedia">>;
+  } satisfies Parameters<typeof saveGameMediaDraft>[3];
 }
 
 function sameGalleryOrder(
@@ -183,9 +182,7 @@ export async function POST(
 
   const current = item.payload;
   const currentGallery = resolveGameGalleryItems(current);
-  let update:
-    | (Parameters<typeof saveGameMediaDraft>[3] & Partial<Pick<Game, "galleryMedia">>)
-    | null = null;
+  let update: Parameters<typeof saveGameMediaDraft>[3] | null = null;
 
   if (operation.data === "gallery-add") {
     const resources = await libraryResources(slug, current);
