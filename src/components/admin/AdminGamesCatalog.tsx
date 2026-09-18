@@ -371,8 +371,6 @@ export default function AdminGamesCatalog({
                     <td>{item.revision}</td>
                     <td>
                       <GameActions item={item} gamePath={gamePath} />
-                        </details>
-                      </div>
                     </td>
                   </tr>
                 );
