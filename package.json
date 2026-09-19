@@ -25,7 +25,7 @@
     "admin:create-owner": "node --env-file=.env.admin-migration.local ./tools/admin/create-owner.ts",
     "admin:change-password": "node --env-file=.env.admin-migration.local ./tools/admin/change-owner-password.ts",
     "admin:setup": "npm run db:migrate && npm run admin:import-content && npm run admin:create-owner",
-    "admin:update-local": "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
+    "admin:update-local": "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:purge-media-junk && npm run admin:preflight",
     "admin:preflight:migration": "node --env-file=.env.admin-migration.local ./tools/admin/preflight.ts --purpose=migration",
     "admin:preflight:local": "node --env-file=.env.local ./tools/admin/preflight-local.ts",
     "admin:preflight:runtime": "node ./tools/admin/preflight.ts --purpose=runtime",
@@ -83,7 +83,9 @@
     "build:secure": "node ./tools/build-secure-deploy.mjs",
     "repo:housekeeping": "node ./tools/repository-housekeeping.mjs",
     "visual:admin-accounts-lifecycle": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-accounts-lifecycle-smoke.ts",
-    "visual:admin-historical-update-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-historical-update-visual-fixture.ts"
+    "visual:admin-historical-update-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-historical-update-visual-fixture.ts",
+    "admin:purge-media-junk:check": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts",
+    "admin:purge-media-junk": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
