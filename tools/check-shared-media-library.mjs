@@ -33,6 +33,7 @@ const [
   videoViewportEditor,
   imageViewportEditor,
   mediaIntegrity,
+  publicationLifecycle,
 ] = await Promise.all([
   source("package.json"),
   source("src/lib/media/editorial-media-library.ts"),
@@ -56,6 +57,7 @@ const [
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
+  source("tools/game-publication-lifecycle-smoke.mjs"),
 ]);
 
 assert(
@@ -148,6 +150,16 @@ assert(
       '"gallery-move"'
     ),
   "Galería debe tener una única superficie de escritura en gallery-media; media-library sólo asigna destinos fijos."
+);
+
+const lifecycleMediaSnapshot = publicationLifecycle.match(
+  /async function mediaSnapshot\([\s\S]*?\n\}/
+)?.[0] ?? "";
+
+assert(
+  lifecycleMediaSnapshot.includes("/media-workspace") &&
+    !lifecycleMediaSnapshot.includes("/media-library"),
+  "El lifecycle E2E debe leer el snapshot multimedia únicamente desde media-workspace; media-library queda reservado a mutaciones POST."
 );
 
 assert(
