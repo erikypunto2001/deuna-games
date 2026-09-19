@@ -29,6 +29,7 @@ const [
   imageEditor,
   videoEditor,
   publicPage,
+  adminPreview,
   publicRuntime,
   publicRuntimeCss,
 ] = await Promise.all([
@@ -50,6 +51,7 @@ const [
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/app/juegos/[slug]/page.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/components/games/GameDetailContainerMedia.tsx"),
   source("src/components/games/GameDetailContainerMedia.module.css"),
 ]);
@@ -275,6 +277,20 @@ assert(
   ) &&
     !publicPage.includes('src={game.heroImage ?? game.coverImage}\n              alt=""\n              sizes="100vw"\n              priority'),
   "La ficha pública debe dejar de renderizar Hero directamente como fondo interno y consumir el destino detail."
+);
+
+assert(
+  has(
+    adminPreview,
+    'import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia"',
+    'resolveGameDestinationImage(game, "detail")',
+    'resolveGameDestinationMediaMode(game, "detail")',
+    "game.imageMedia?.detail",
+    "<GameDetailContainerMedia",
+    "video={game.videoMedia?.detail}"
+  ) &&
+    !adminPreview.includes("src={game.heroImage ?? game.coverImage}"),
+  "La Vista previa editorial debe consumir el mismo destino Contenedor y el mismo renderer multimedia que la ficha pública."
 );
 
 assert(
