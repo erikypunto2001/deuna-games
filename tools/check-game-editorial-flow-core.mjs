@@ -364,9 +364,13 @@ assert(
     files.healthOverview.includes("readiness.percentage") &&
     files.healthOverview.includes("readiness.items.filter") &&
     files.healthOverview.includes("essentialPending") &&
-    files.healthOverview.includes("?seccion=${item.section}") &&
+    files.healthOverview.includes("gameEditorReadinessTarget") &&
+    files.healthOverview.includes(
+      "gameEditorReadinessTarget(slug, item.section, item.id)"
+    ) &&
+    !files.healthOverview.includes("?seccion=${item.section}") &&
     !files.healthOverview.includes('aria-label="Secciones del editor del juego"'),
-  "El estado editorial debe recibir la completitud real, enlazar los bloqueos a su sección y no duplicar la navegación canónica."
+  "El estado editorial debe recibir la completitud real, enlazar bloqueos mediante el destino canónico de readiness y no duplicar la navegación."
 );
 assert(
   files.compatibilityEditor.includes("GamePlatformEditor") &&
