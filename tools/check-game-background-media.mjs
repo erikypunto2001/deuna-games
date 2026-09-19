@@ -19,6 +19,7 @@ const [
   readiness,
   api,
   mediaLibraryRoute,
+  mediaWorkspace,
   admin,
   viewport,
   publicBackground,
@@ -37,6 +38,7 @@ const [
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/app/api/admin/content/games/[slug]/background-media/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/lib/admin/game-media-workspace.ts"),
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
@@ -152,20 +154,24 @@ assert(
 
 assert(
   has(
-    mediaLibraryRoute,
+    mediaWorkspace,
     "resolveGameBackgroundMediaMode",
-    "backgroundImage: item.payload.backgroundImage ?? null",
-    "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
-    "backgroundVideo: item.payload.videoMedia?.background ?? null",
-    "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];",
-    "protectedReferencesForGame",
-    "getHistoricalGameMediaReferences"
+    "backgroundImage: game.backgroundImage ?? null",
+    "backgroundMode: resolveGameBackgroundMediaMode(game)",
+    "backgroundVideo: game.videoMedia?.background ?? null"
   ) &&
+    has(
+      mediaLibraryRoute,
+      "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];",
+      "protectedReferencesForGame",
+      "getHistoricalGameMediaReferences"
+    ) &&
+    !mediaLibraryRoute.includes("export async function GET") &&
     !mediaLibraryRoute.includes('"image-delete"') &&
     !mediaLibraryRoute.includes('"video-delete"') &&
     !mediaLibraryRoute.includes("withoutImageResource") &&
     !mediaLibraryRoute.includes("withoutVideoResource"),
-  "La Biblioteca compartida debe exponer Fondo para selección sin asumir responsabilidades de Galería ni convertir el borrado de un master en una desasignación implícita."
+  "media-workspace debe exponer Fondo para selección; media-library debe quedar sólo como mutación protegida y sin desasignaciones implícitas."
 );
 
 assert(
