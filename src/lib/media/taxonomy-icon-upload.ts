@@ -4,6 +4,7 @@ import {
   lstat,
   mkdir,
   readFile,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 
@@ -202,6 +203,8 @@ async function writeHashedIcon(
       );
     }
 
+    const now = new Date();
+    await utimes(filePath, now, now);
     reused = true;
   }
 
