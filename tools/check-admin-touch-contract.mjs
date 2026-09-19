@@ -13,11 +13,12 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
   source("src/app/admin/admin-touch-contract.css"),
+  source("src/components/admin/GamePublicationWorkspace.module.css"),
 ]);
 
 assert(
@@ -35,6 +36,13 @@ assert(
     shellUx.includes("min-height: 44px") &&
     !shellUx.includes(".main form button"),
   "El baseline de botones del shell debe ser 44px y de baja especificidad para no reducir controles mayores de cada editor.",
+);
+
+assert(
+  publicationCss.includes(".historyAction button") &&
+    /\.historyAction button\s*\{[^}]*min-height:\s*44px;/s.test(publicationCss) &&
+    !/\.historyAction button\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(publicationCss),
+  "Restaurar y publicar en el historial debe conservar un target táctil mínimo de 44px también en desktop.",
 );
 
 assert(
