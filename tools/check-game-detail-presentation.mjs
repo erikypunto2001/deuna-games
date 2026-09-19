@@ -84,10 +84,10 @@ assert(
   previewPage.includes(
     '<dl\n        className={styles.factGrid}'
   ) &&
-    factBlock.includes("<dt>Género</dt>") &&
-    factBlock.includes("<dt>Plataforma</dt>") &&
-    factBlock.includes("<dt>Versión</dt>") &&
-    factBlock.includes("<dt>Almacenamiento</dt>") &&
+    factBlock.includes("<span>Género</span>") &&
+    factBlock.includes("<span>Plataforma</span>") &&
+    factBlock.includes("<span>Versión</span>") &&
+    factBlock.includes("<span>Almacenamiento</span>") &&
     !factBlock.includes("Fuentes visibles") &&
     !factBlock.includes("<dt>Canal</dt>") &&
     previewPage.includes(
@@ -99,6 +99,7 @@ assert(
 assert(
   previewCss.includes(".factGrid > div") &&
     previewCss.includes(".factGrid dt") &&
+    previewCss.includes(".factGrid dt span") &&
     previewCss.includes(".factGrid dd") &&
     !previewCss.includes(".factGrid article"),
   "El resumen de Vista previa debe conservar semántica dl/dt/dd sin estilos heredados de tarjetas article."
