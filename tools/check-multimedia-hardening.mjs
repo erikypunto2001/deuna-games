@@ -22,6 +22,7 @@ const [
   assignmentsWorkspace,
   galleryManager,
   utilityRail,
+  multimediaShellCss,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/editorial-video.ts"),
@@ -34,6 +35,7 @@ const [
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
   source("src/components/admin/GameMultimediaUtilityRail.tsx"),
+  source("src/components/admin/GameMultimediaShell.module.css"),
 ]);
 
 assert(
@@ -160,6 +162,27 @@ assert(
     !galleryManager.includes('value="image-delete"') &&
     !galleryManager.includes('value="video-delete"'),
   "Galería debe limitarse a agregar/reordenar/quitar asignaciones y editar crops, sin borrado físico."
+);
+
+assert(
+  multimediaEditor.includes("shellStyles.assignmentHost") &&
+    !multimediaEditor.includes("GameMultimediaLayoutRefinements.module.css") &&
+    !multimediaEditor.includes("legacyWorkspaceHost") &&
+    multimediaShellCss.includes(".assignmentHost") &&
+    !multimediaShellCss.includes("legacyWorkspaceHost") &&
+    !multimediaShellCss.includes("shared-library-heading") &&
+    !multimediaShellCss.includes('class*="summaryGrid"') &&
+    !multimediaShellCss.includes('class*="mainGrid"'),
+  "El shell Multimedia no debe depender de ocultación o layout legacy por substrings de CSS Modules."
+);
+
+assert(
+  multimediaShellCss.includes("min-height: 44px") &&
+    /\.libraryDeleteButton\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(multimediaShellCss) &&
+    /\.galleryIconButton\s*\{[^}]*width:\s*44px;[^}]*min-height:\s*44px;/s.test(multimediaShellCss) &&
+    /\.galleryDangerButton\s*\{[^}]*min-height:\s*44px;/s.test(multimediaShellCss) &&
+    /\.galleryEditButton\s*\{[^}]*min-height:\s*44px;/s.test(multimediaShellCss),
+  "Biblioteca, Galería y tabs de Multimedia deben conservar targets interactivos reales de al menos 44px."
 );
 
 assert(
