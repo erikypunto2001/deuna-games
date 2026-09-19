@@ -66,8 +66,8 @@
 
 .closeButton {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   place-items: center;
   color: #aebbc7;
@@ -89,56 +89,6 @@
   overscroll-behavior: contain;
 }
 
-.actions {
-  position: sticky;
-  bottom: -18px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 9px;
-  margin: 18px -18px -18px;
-  padding: 12px 18px;
-  border-top: 1px solid #1e2b36;
-  background: rgba(8, 14, 21, 0.96);
-  backdrop-filter: blur(10px);
-}
-
-.secondary,
-.primary {
-  min-height: 40px;
-  padding: 0 15px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.secondary {
-  color: #d5dee6;
-  border: 1px solid #2a3947;
-  background: #0d151e;
-}
-
-.secondary:hover:not(:disabled) {
-  border-color: var(--admin-brand-border, var(--brand));
-}
-
-.primary {
-  color: var(--text-on-brand, #fff);
-  border: 1px solid var(--admin-brand-border, var(--brand));
-  background: var(--brand);
-  box-shadow: 0 9px 25px color-mix(in srgb, var(--brand) 14%, transparent);
-}
-
-.primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.secondary:disabled,
-.primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 @media (max-width: 720px) {
   .backdrop {
     padding: 8px;
@@ -156,17 +106,10 @@
     padding-right: 13px;
   }
 
-  .actions {
-    margin-right: -13px;
-    margin-left: -13px;
-    padding-right: 13px;
-    padding-left: 13px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .backdrop,
-  .actions {
+  .backdrop {
     backdrop-filter: none;
   }
 }
