@@ -4,9 +4,13 @@ import {
   lstat,
   mkdir,
   readFile,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 
+import {
+  TAXONOMY_ICON_SLUG,
+} from "@/lib/media/taxonomy-icon-policy";
 import {
   SITE_BRAND_LOGO_SLUG,
 } from "@/lib/site/logo";
@@ -33,7 +37,6 @@ import {
   sanitizeEditorialWebp,
 } from "./safe-webp";
 
-const TAXONOMY_ICON_SLUG = "taxonomy-icons";
 const MAX_TAXONOMY_WEBP_DIMENSION = 2_048;
 
 type IconStorageSlug =
@@ -202,6 +205,8 @@ async function writeHashedIcon(
       );
     }
 
+    const now = new Date();
+    await utimes(filePath, now, now);
     reused = true;
   }
 

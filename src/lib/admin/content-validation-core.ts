@@ -6,6 +6,9 @@ import {
   isHomeGameRowSectionId,
 } from "../home/card-row-reveal.ts";
 import {
+  taxonomyIconAssetPattern,
+} from "../media/taxonomy-icon-policy.ts";
+import {
   siteBrandLogoAssetPattern,
   siteLogoColorModes,
 } from "../site/logo.ts";
@@ -98,9 +101,7 @@ const editorialPreviewPattern =
 const taxonomyIconAssetSchema = z
   .string()
   .max(400)
-  .regex(
-    /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/
-  );
+  .regex(taxonomyIconAssetPattern);
 
 function isSafeLocalImagePath(value: string) {
   if (editorialMediaPattern.test(value)) {

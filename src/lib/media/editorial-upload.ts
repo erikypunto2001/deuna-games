@@ -4,9 +4,14 @@ import {
   lstat,
   mkdir,
   readFile,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+
+import {
+  SITE_BACKGROUND_MEDIA_SLUG,
+} from "@/lib/site/backgrounds";
 
 import {
   buildEditorialMediaPublicPath,
@@ -140,6 +145,11 @@ export async function storeEditorialWebp(
       throw new Error(
         "El archivo multimedia existente no coincide con su hash."
       );
+    }
+
+    if (slug === SITE_BACKGROUND_MEDIA_SLUG) {
+      const now = new Date();
+      await utimes(filePath, now, now);
     }
 
     reused = true;

@@ -159,9 +159,17 @@ assert(
 );
 
 assert(
+  scripts["admin:purge-media-junk:check"] ===
+    "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts" &&
+    scripts["admin:purge-media-junk"] ===
+      "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply",
+  "La higiene de assets editoriales debe usar el rol runtime de sólo lectura y conservar modos lectura/aplicar explícitos."
+);
+
+assert(
   scripts["admin:update-local"] ===
-    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
-  "La actualización local debe purgar basura transitoria antes del preflight."
+    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:purge-media-junk && npm run admin:preflight",
+  "La actualización local debe purgar transitorios y assets físicos huérfanos antes del preflight."
 );
 
 const localSetupForPurge = await read("tools/setup-local-server.sh");
@@ -177,6 +185,83 @@ assert(
     localBackup.includes("backups.slice(MAX_LOCAL_BACKUPS)") &&
     localBackup.includes("pruneOldLocalBackups(backupDirectory)"),
   "El backup pre-migración debe conservar sólo las 3 copias locales propias más recientes."
+);
+
+const purgeMediaJunk = await read(
+  "tools/admin/purge-orphan-editorial-media.ts"
+);
+const taxonomyIconStorage = await read(
+  "src/lib/media/taxonomy-icon-upload.ts"
+);
+const taxonomyIconPolicy = await read(
+  "src/lib/media/taxonomy-icon-policy.ts"
+);
+const editorialUpload = await read(
+  "src/lib/media/editorial-upload.ts"
+);
+const backgroundPolicy = await read(
+  "src/lib/site/backgrounds.ts"
+);
+const backgroundUploadRoute = await read(
+  "src/app/api/admin/content/configuration/background-upload/route.ts"
+);
+const contentValidationCore = await read(
+  "src/lib/admin/content-validation-core.ts"
+);
+assert(
+  taxonomyIconStorage.includes("utimes") &&
+    taxonomyIconStorage.includes("await utimes(filePath, now, now)") &&
+    taxonomyIconStorage.includes("reused = true") &&
+    editorialUpload.includes("slug === SITE_BACKGROUND_MEDIA_SLUG") &&
+    editorialUpload.includes("await utimes(filePath, now, now)"),
+  "Reutilizar un asset purgable de logo, taxonomía o fondo debe renovar su gracia antes de que pueda ser considerado huérfano."
+);
+
+assert(
+  taxonomyIconPolicy.includes('TAXONOMY_ICON_SLUG = "taxonomy-icons"') &&
+    taxonomyIconPolicy.includes("taxonomyIconAssetPattern") &&
+    taxonomyIconStorage.includes("TAXONOMY_ICON_SLUG") &&
+    contentValidationCore.includes("taxonomyIconAssetPattern") &&
+    backgroundPolicy.includes('SITE_BACKGROUND_MEDIA_SLUG = "site-backgrounds"') &&
+    backgroundPolicy.includes("siteBackgroundAssetPattern") &&
+    backgroundUploadRoute.includes("SITE_BACKGROUND_MEDIA_SLUG") &&
+    editorialUpload.includes("SITE_BACKGROUND_MEDIA_SLUG") &&
+    purgeMediaJunk.includes("taxonomyIconAssetPattern") &&
+    purgeMediaJunk.includes("siteBackgroundAssetPattern"),
+  "Upload, validación y purga deben compartir las mismas policies de rutas hash para taxonomía y Fondos."
+);
+
+for (const requiredGuard of [
+  'getAdminDatabaseConfig("runtime")',
+  "getEditorialMediaRoot",
+  "MIN_ORPHAN_AGE_MS = 24 * 60 * 60 * 1_000",
+  "item.source_payload",
+  "item.draft_payload",
+  "item.published_payload",
+  "editorial_revisions",
+  "editorial_publications",
+  "siteBrandLogoAssetPattern",
+  "taxonomyIconAssetPattern",
+  "siteBackgroundAssetPattern",
+  "SITE_BACKGROUND_MEDIA_SLUG",
+  "const currentReferences =",
+  "await loadProtectedReferences(pool)",
+  "stats.isSymbolicLink()",
+]) {
+  assert(
+    purgeMediaJunk.includes(requiredGuard),
+    `La purga multimedia debe conservar la guarda ${requiredGuard}.`
+  );
+}
+assert(
+  purgeMediaJunk.includes("unlink(candidate.filePath)") &&
+    !purgeMediaJunk.includes("DELETE FROM"),
+  "La purga multimedia sólo debe eliminar archivos físicos huérfanos y nunca mutar PostgreSQL."
+);
+assert(
+  purgeMediaJunk.includes("if (unexpected.length > 0)") &&
+    purgeMediaJunk.includes("process.exitCode = 1;\n      return;"),
+  "La purga multimedia debe abortar toda eliminación cuando detecta entradas inesperadas o symlinks."
 );
 
 const purgeJunk = await read("tools/admin/purge-junk.ts");

@@ -1,3 +1,12 @@
+export const SITE_BACKGROUND_MEDIA_SLUG = "site-backgrounds";
+
+export const siteBackgroundAssetPattern =
+  /^\/media\/editorial\/site-backgrounds\/[a-f0-9]{64}\.webp$/;
+
+export function isSiteBackgroundAsset(value: string) {
+  return siteBackgroundAssetPattern.test(value);
+}
+
 export const siteBackgroundPages = [
   "home",
   "games",
