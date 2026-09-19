@@ -69,7 +69,7 @@ export default function GameCompatibilityEditor({
         <input type="hidden" name="expectedRevision" value={revision} />
 
         <div className={adminStyles.fieldWide}>
-          <GamePlatformEditor initialPlatforms={game.platforms ?? []} />
+          <GamePlatformEditor id="platforms" initialPlatforms={game.platforms ?? []} />
         </div>
 
         {legacyMismatch && (
@@ -79,7 +79,7 @@ export default function GameCompatibilityEditor({
           </div>
         )}
 
-        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+        <div id="minimum-requirements" className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Requisitos mínimos · PC</strong>
           <span>
             Equipo base para ejecutar el juego. Cualquier requisito de hardware exige que PC esté seleccionado entre las plataformas.
@@ -112,7 +112,7 @@ export default function GameCompatibilityEditor({
           <input name="minimumStorage" defaultValue={minimum?.storage ?? ""} maxLength={240} placeholder="60 GB" />
         </label>
 
-        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+        <div id="recommended-requirements" className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Requisitos recomendados · PC</strong>
           <span>Configuración sugerida para una experiencia mejor. También requiere PC declarado.</span>
         </div>
@@ -138,7 +138,7 @@ export default function GameCompatibilityEditor({
           <input name="recommendedStorage" defaultValue={recommended?.storage ?? ""} maxLength={240} />
         </label>
 
-        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+        <div id="compatibility-verification" className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Estado de verificación</strong>
           <span>
             Documenta si los datos fueron sólo declarados, revisados editorialmente o probados. No modifica la estimación de FPS.
