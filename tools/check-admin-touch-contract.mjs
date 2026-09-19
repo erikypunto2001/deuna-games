@@ -48,6 +48,12 @@ assert(
 );
 
 assert(
+  /\.restoreButton\s*\{[^}]*min-height:\s*44px;/s.test(publicationPanelCss) &&
+    !/\.restoreButton\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(publicationPanelCss),
+  "El botón Restaurar del panel genérico de Publicación debe conservar un target táctil mínimo de 44px también en desktop.",
+);
+
+assert(
   /\.contextSecondary a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
     /\.dashboardHeaderActions a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
     /\.publicPageActions a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
