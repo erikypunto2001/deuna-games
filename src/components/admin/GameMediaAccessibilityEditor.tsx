@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -10,6 +9,7 @@ import adminStyles from "../../app/admin/admin.module.css";
 import GameEditorFormActions from "./GameEditorFormActions";
 import {
   multimediaShortName,
+  type MultimediaLibraryState,
 } from "./game-multimedia-library-types";
 import {
   useGameMultimediaWorkspace,
@@ -27,13 +27,30 @@ function galleryKey(kind: "image" | "video", src: string) {
   return `${kind}:${src}`;
 }
 
-function emptyLabels(): AccessibilityLabels {
+function labelsFromWorkspace(
+  workspace: MultimediaLibraryState | null
+): AccessibilityLabels {
+  if (!workspace) {
+    return {
+      cover: "",
+      hero: "",
+      card: "",
+      detail: "",
+      gallery: {},
+    };
+  }
+
+  const gallery: Record<string, string> = {};
+  for (const item of workspace.accessibility?.gallery ?? []) {
+    gallery[galleryKey(item.kind, item.src)] = item.label;
+  }
+
   return {
-    cover: "",
-    hero: "",
-    card: "",
-    detail: "",
-    gallery: {},
+    cover: workspace.accessibility?.cover ?? "",
+    hero: workspace.accessibility?.hero ?? "",
+    card: workspace.accessibility?.card ?? "",
+    detail: workspace.accessibility?.detail ?? "",
+    gallery,
   };
 }
 
@@ -48,26 +65,9 @@ export default function GameMediaAccessibilityEditor({
     error,
     stale,
   } = useGameMultimediaWorkspace();
-  const [labels, setLabels] = useState<AccessibilityLabels>(emptyLabels);
-  const [labelsRevision, setLabelsRevision] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!workspace) return;
-
-    const galleryLabels: Record<string, string> = {};
-    for (const item of workspace.accessibility?.gallery ?? []) {
-      galleryLabels[galleryKey(item.kind, item.src)] = item.label;
-    }
-
-    setLabels({
-      cover: workspace.accessibility?.cover ?? "",
-      hero: workspace.accessibility?.hero ?? "",
-      card: workspace.accessibility?.card ?? "",
-      detail: workspace.accessibility?.detail ?? "",
-      gallery: galleryLabels,
-    });
-    setLabelsRevision(workspace.revision);
-  }, [workspace]);
+  const [labelsOverride, setLabelsOverride] =
+    useState<AccessibilityLabels | null>(null);
+  const labels = labelsOverride ?? labelsFromWorkspace(workspace);
 
   const accessibilityJson = useMemo(() => {
     const compact = {
@@ -102,8 +102,8 @@ export default function GameMediaAccessibilityEditor({
     destination: "cover" | "hero" | "card" | "detail",
     value: string
   ) {
-    setLabels((current) => ({
-      ...current,
+    setLabelsOverride((current) => ({
+      ...(current ?? labelsFromWorkspace(workspace)),
       [destination]: value,
     }));
   }
@@ -114,8 +114,8 @@ export default function GameMediaAccessibilityEditor({
     value: string
   ) {
     const key = galleryKey(kind, src);
-    setLabels((current) => ({
-      ...current,
+    setLabelsOverride((current) => ({
+      ...(current ?? labelsFromWorkspace(workspace)),
       gallery: {
         ...current.gallery,
         [key]: value,
@@ -123,10 +123,7 @@ export default function GameMediaAccessibilityEditor({
     }));
   }
 
-  if (
-    loading ||
-    (workspace !== null && labelsRevision !== workspace.revision)
-  ) {
+  if (loading) {
     return (
       <section className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>
