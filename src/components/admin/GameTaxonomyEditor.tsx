@@ -488,6 +488,7 @@ export default function GameTaxonomyEditor({
         <div className={styles.addRow}>
           <input
             value={draftLabels[currentSection.kind]}
+            disabled={uploadBusy}
             onChange={(event) =>
               setDraftLabels((current) => ({
                 ...current,
@@ -507,6 +508,7 @@ export default function GameTaxonomyEditor({
           <button
             type="button"
             data-brand-action="true"
+            disabled={uploadBusy}
             onClick={() => addTerm(currentSection)}
           >
             <Plus size={15} aria-hidden="true" />
@@ -602,6 +604,7 @@ export default function GameTaxonomyEditor({
                     <div className={styles.termMain}>
                       <input
                         value={term.label}
+                        disabled={uploadBusy}
                         readOnly={used > 0}
                         onChange={(event) =>
                           renameTerm(
@@ -639,6 +642,7 @@ export default function GameTaxonomyEditor({
                               <span>Icono de biblioteca</span>
                               <select
                                 value={term.icon}
+                                disabled={uploadBusy}
                                 onChange={(event) =>
                                   setVisual(
                                     currentSection.kind,
@@ -660,6 +664,7 @@ export default function GameTaxonomyEditor({
                               <span>Color</span>
                               <select
                                 value={term.tone}
+                                disabled={uploadBusy}
                                 onChange={(event) =>
                                   setVisual(
                                     currentSection.kind,
@@ -752,7 +757,7 @@ export default function GameTaxonomyEditor({
                     <div className={styles.orderButtons}>
                       <button
                         type="button"
-                        disabled={Boolean(normalizedQuery) || index === 0}
+                        disabled={uploadBusy || Boolean(normalizedQuery) || index === 0}
                         title={
                           normalizedQuery
                             ? "Limpia la búsqueda para reordenar el catálogo completo."
@@ -768,6 +773,7 @@ export default function GameTaxonomyEditor({
                       <button
                         type="button"
                         disabled={
+                          uploadBusy ||
                           Boolean(normalizedQuery) ||
                           index === terms.length - 1
                         }
@@ -787,6 +793,7 @@ export default function GameTaxonomyEditor({
 
                     <button
                       type="button"
+                      disabled={uploadBusy}
                       className={
                         term.active
                           ? styles.activeButton
@@ -802,7 +809,7 @@ export default function GameTaxonomyEditor({
                     <button
                       type="button"
                       className={styles.removeButton}
-                      disabled={used > 0}
+                      disabled={uploadBusy || used > 0}
                       title={
                         used > 0
                           ? "Un término usado por juegos se conserva; puedes desactivarlo."
