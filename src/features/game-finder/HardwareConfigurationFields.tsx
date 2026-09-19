@@ -105,6 +105,7 @@ function SearchableManualSelect({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchFocusFrameRef = useRef<number | null>(null);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? null,
@@ -121,7 +122,8 @@ function SearchableManualSelect({
   useEffect(() => {
     if (!open) return;
 
-    const frame = window.requestAnimationFrame(() => {
+    searchFocusFrameRef.current = window.requestAnimationFrame(() => {
+      searchFocusFrameRef.current = null;
       searchInputRef.current?.focus();
     });
 
@@ -135,16 +137,25 @@ function SearchableManualSelect({
 
     window.addEventListener("pointerdown", handleOutsidePointer);
     return () => {
-      window.cancelAnimationFrame(frame);
+      if (searchFocusFrameRef.current !== null) {
+        window.cancelAnimationFrame(searchFocusFrameRef.current);
+        searchFocusFrameRef.current = null;
+      }
       window.removeEventListener("pointerdown", handleOutsidePointer);
     };
   }, [open]);
 
   function closePicker(returnFocus = false) {
+    if (searchFocusFrameRef.current !== null) {
+      window.cancelAnimationFrame(searchFocusFrameRef.current);
+      searchFocusFrameRef.current = null;
+    }
+
     setOpen(false);
     setSearchValue("");
+
     if (returnFocus) {
-      window.requestAnimationFrame(() => triggerRef.current?.focus());
+      triggerRef.current?.focus();
     }
   }
 
