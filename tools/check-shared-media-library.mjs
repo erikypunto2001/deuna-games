@@ -226,8 +226,16 @@ assert(
       "useGameMultimediaWorkspace",
       "/media-workspace",
       "currentRevision",
-      "stale"
+      "stale",
+      "openLibrary",
+      "closeLibrary"
     ) &&
+    assignmentsWorkspace.includes("onAddResource={openLibrary}") &&
+    utilityRail.includes("libraryOpen") &&
+    utilityRail.includes("openLibrary") &&
+    utilityRail.includes("closeLibrary") &&
+    !assignmentsWorkspace.includes("document.querySelector") &&
+    !assignmentsWorkspace.includes("data-multimedia-library-open") &&
     !assignmentsWorkspace.includes("/media-workspace") &&
     !galleryManager.includes("/media-workspace") &&
     !accessibilityEditor.includes("/media-workspace") &&
