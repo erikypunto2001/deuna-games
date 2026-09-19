@@ -109,7 +109,7 @@
 
 .errorState button {
   display: inline-flex;
-  min-height: 24px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 4px;
