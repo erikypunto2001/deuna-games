@@ -221,10 +221,11 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 18px;
+  margin: 18px 0 0;
+  padding: 0;
 }
 
-.factGrid article {
+.factGrid > div {
   min-width: 0;
   padding: 16px;
   border: 1px solid #344150;
@@ -236,12 +237,12 @@
   color: var(--brand);
 }
 
-.factGrid span,
-.factGrid strong {
+.factGrid dt,
+.factGrid dd {
   display: block;
 }
 
-.factGrid span {
+.factGrid dt {
   margin-top: 13px;
   color: #8997a6;
   font-size: 11px;
@@ -250,11 +251,12 @@
   letter-spacing: 0.05em;
 }
 
-.factGrid strong {
-  margin-top: 5px;
+.factGrid dd {
+  margin: 5px 0 0;
   overflow: hidden;
   color: #e2e8ef;
   font-size: 13px;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
