@@ -346,7 +346,7 @@ export default function SiteAppearanceWorkspace({
       >
         <SiteBackgroundManager
           revision={revision}
-          brandColor={initialBrandColor}
+          brandColor={brandColor}
           customAssets={customAssets}
           pageBackgrounds={pageBackgrounds}
         />
