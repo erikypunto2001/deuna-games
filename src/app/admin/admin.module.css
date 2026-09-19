@@ -290,7 +290,7 @@
 }
 
 .ownerBlock button {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -540,7 +540,7 @@
 }
 
 .tableAction {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 11px;
   border: 1px solid color-mix(in srgb, var(--brand) 25%, #263341);
   border-radius: 8px;
@@ -721,7 +721,7 @@
 }
 
 .historyList button {
-  min-height: 38px;
+  min-height: 44px;
   color: color-mix(in srgb, var(--brand) 38%, #ffffff);
   border: 1px solid color-mix(in srgb, var(--brand) 24%, #354252);
   background: color-mix(in srgb, var(--brand) 5%, #0a1119);
