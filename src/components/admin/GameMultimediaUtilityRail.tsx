@@ -126,8 +126,10 @@ export default function GameMultimediaUtilityRail({
     error,
     currentRevision,
     stale,
+    libraryOpen,
+    openLibrary,
+    closeLibrary,
   } = useGameMultimediaWorkspace();
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
@@ -402,7 +404,7 @@ export default function GameMultimediaUtilityRail({
         )}
 
         <div className={shellStyles.utilityActions}>
-          <button type="button" className={shellStyles.brandAction} onClick={() => setLibraryOpen(true)} disabled={loading || Boolean(error)}>
+          <button type="button" className={shellStyles.brandAction} onClick={() => openLibrary()} disabled={loading || Boolean(error)}>
             <FolderOpen size={16} aria-hidden="true" />
             Abrir biblioteca
           </button>
@@ -492,7 +494,7 @@ export default function GameMultimediaUtilityRail({
           eyebrow="BIBLIOTECA MULTIMEDIA"
           title="Biblioteca multimedia compartida"
           description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos."
-          onClose={() => setLibraryOpen(false)}
+          onClose={() => closeLibrary()}
         >
           <div className={shellStyles.libraryDialogTopbar}>
             <div>
