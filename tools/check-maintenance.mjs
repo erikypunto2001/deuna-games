@@ -190,6 +190,15 @@ assert(
 const purgeMediaJunk = await read(
   "tools/admin/purge-orphan-editorial-media.ts"
 );
+const taxonomyIconStorage = await read(
+  "src/lib/media/taxonomy-icon-upload.ts"
+);
+assert(
+  taxonomyIconStorage.includes("utimes") &&
+    taxonomyIconStorage.includes("await utimes(filePath, now, now)") &&
+    taxonomyIconStorage.includes("reused = true"),
+  "Reutilizar un asset de logo/taxonomía debe renovar su gracia antes de que pueda ser considerado huérfano."
+);
 for (const requiredGuard of [
   'getAdminDatabaseConfig("runtime")',
   "getEditorialMediaRoot",
