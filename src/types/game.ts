@@ -120,35 +120,6 @@ export type GameDistributionMetadata = {
   checksumSha256?: string;
 };
 
-export type GameDirectPreviewPlatform =
-  | "facebook"
-  | "instagram"
-  | "tiktok"
-  | "vimeo"
-  | "x"
-  | "twitch"
-  | "dailymotion"
-  | "streamable"
-  | "kick";
-
-export type GamePreviewMode =
-  | "webm"
-  | "youtube"
-  | GameDirectPreviewPlatform;
-
-export type GameYouTubePreview = {
-  videoId: string;
-  startSeconds: number;
-  endSeconds: number;
-};
-
-export type GameDirectPreview = {
-  platform: GameDirectPreviewPlatform;
-  url: string;
-  startSeconds: number;
-  endSeconds: number;
-};
-
 export type GameCoverArtworkSource = "card" | "custom";
 
 export type GameImageViewportAspect =
@@ -375,14 +346,11 @@ export type Game = {
   videoMedia?: GameVideoMedia;
 
   /*
-   * Los orígenes pueden coexistir. previewMode decide cuál usa la card.
-   * YouTube conserva su contrato específico ya probado; las demás redes
-   * directas usan directPreview con una plataforma explícita.
+   * Puente de compatibilidad para Card: conserva el WebM independiente usado
+   * por snapshots/runtimes anteriores a videoMedia.card. Los writers actuales
+   * lo mantienen sincronizado, pero no selecciona proveedor ni modo.
    */
-  previewMode?: GamePreviewMode;
   previewClip?: string;
-  youtubePreview?: GameYouTubePreview;
-  directPreview?: GameDirectPreview;
 
   imageAlt: string;
 
