@@ -14,10 +14,12 @@ const platformOptions: GamePlatform[] = [
 ];
 
 type GamePlatformEditorProps = {
+  id?: string;
   initialPlatforms: GamePlatform[];
 };
 
 export default function GamePlatformEditor({
+  id,
   initialPlatforms,
 }: GamePlatformEditorProps) {
   const [platforms, setPlatforms] = useState<GamePlatform[]>(
@@ -44,7 +46,7 @@ export default function GamePlatformEditor({
   }
 
   return (
-    <fieldset className={styles.root}>
+    <fieldset id={id} className={styles.root}>
       <legend>Plataformas confirmadas</legend>
       <input
         type="hidden"
