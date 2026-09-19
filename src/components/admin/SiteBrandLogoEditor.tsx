@@ -48,6 +48,7 @@ export default function SiteBrandLogoEditor({
 }: SiteBrandLogoEditorProps) {
   const editorRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadLock = useRef(false);
   const [scale, setScale] = useState(initialScale);
   const [asset, setAsset] = useState(initialAsset ?? "");
   const [colorMode, setColorMode] =
@@ -75,42 +76,26 @@ export default function SiteBrandLogoEditor({
   });
 
   useEffect(() => {
-    if (!uploading) return;
-
     const form = editorRef.current?.closest("form");
     if (!form) return;
 
-    const submitControls = Array.from(
-      form.querySelectorAll<
-        HTMLButtonElement | HTMLInputElement
-      >('button[type="submit"], input[type="submit"]')
-    );
-    const disabledBeforeUpload = submitControls.map(
-      (control) => control.disabled
-    );
     const blockSubmit = (event: SubmitEvent) => {
+      if (!uploadLock.current) return;
+
       event.preventDefault();
       setMessage(
         "Espera a que termine la validación del logo antes de guardar el borrador."
       );
     };
 
-    submitControls.forEach((control) => {
-      control.disabled = true;
-    });
     form.addEventListener("submit", blockSubmit);
-
-    return () => {
-      form.removeEventListener("submit", blockSubmit);
-      submitControls.forEach((control, index) => {
-        control.disabled = disabledBeforeUpload[index] ?? false;
-      });
-    };
-  }, [uploading]);
+    return () => form.removeEventListener("submit", blockSubmit);
+  }, []);
 
   async function uploadLogo(file: File) {
-    if (uploading) return;
+    if (uploadLock.current) return;
 
+    uploadLock.current = true;
     setUploading(true);
     setMessage(null);
 
@@ -151,6 +136,7 @@ export default function SiteBrandLogoEditor({
         "No se pudo conectar con el servicio de multimedia."
       );
     } finally {
+      uploadLock.current = false;
       setUploading(false);
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -217,6 +203,7 @@ export default function SiteBrandLogoEditor({
             className={styles.fileInput}
             type="file"
             hidden
+            disabled={uploading}
             accept=".svg,.png,.jpg,.jpeg,.webp,.gif,image/svg+xml,image/png,image/jpeg,image/webp,image/gif"
             aria-label="Archivo de imagen del logo"
             onChange={(event) => {

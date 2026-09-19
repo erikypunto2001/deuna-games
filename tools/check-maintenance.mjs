@@ -205,6 +205,9 @@ const backgroundPolicy = await read(
 const backgroundUploadRoute = await read(
   "src/app/api/admin/content/configuration/background-upload/route.ts"
 );
+const siteBackgroundManager = await read(
+  "src/components/admin/SiteBackgroundManager.tsx"
+);
 const contentValidationCore = await read(
   "src/lib/admin/content-validation-core.ts"
 );
@@ -229,6 +232,17 @@ assert(
     purgeMediaJunk.includes("taxonomyIconAssetPattern") &&
     purgeMediaJunk.includes("siteBackgroundAssetPattern"),
   "Upload, validación y purga deben compartir las mismas policies de rutas hash para taxonomía y Fondos."
+);
+
+const backgroundBusyGuards =
+  siteBackgroundManager.match(/disabled={uploadBusy}/g) ?? [];
+assert(
+  siteBackgroundManager.includes("const uploadLock = useRef(false)") &&
+    siteBackgroundManager.includes("if (uploadLock.current) return") &&
+    siteBackgroundManager.includes("uploadLock.current = true") &&
+    siteBackgroundManager.includes("uploadLock.current = false") &&
+    backgroundBusyGuards.length >= 3,
+  "Fondos debe serializar uploads y bloquear nombre, archivo y guardado del fondo mientras la carga está en curso."
 );
 
 for (const requiredGuard of [
