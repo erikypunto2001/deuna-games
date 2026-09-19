@@ -92,10 +92,10 @@ assert(
   /\.videoControls button\s*\{[^}]*min-height:\s*44px;/s.test(mediaPreviewCss) &&
     /\.errorState button\s*\{[^}]*min-height:\s*44px;/s.test(mediaThumbnailCss) &&
     /\.closeButton\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(contextualDialogCss) &&
-    !/\.(?:actions|primary|secondary)\b/.test(contextualDialogCss) &&
+    /\.secondary,\s*\n\.primary\s*\{[^}]*min-height:\s*44px;/s.test(contextualDialogCss) &&
     /\.libraryLink,\s*\n\.globalButton\s*\{[^}]*min-height:\s*44px;/s.test(backgroundMediaCss) &&
     /\.libraryFilters button\s*\{[^}]*min-height:\s*44px;/s.test(multimediaRailCss),
-  "Los controles multimedia compartidos deben conservar targets táctiles de 44px y el diálogo no debe reintroducir acciones legacy sin consumidor.",
+  "Los controles multimedia compartidos y las acciones de viewport deben conservar targets táctiles de 44px.",
 );
 
 assert(
