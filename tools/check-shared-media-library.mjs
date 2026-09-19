@@ -203,6 +203,18 @@ assert(
 
 assert(
   has(
+    imageUploadForm,
+    "const submitLock = useRef(false)",
+    "if (submitLock.current) return",
+    "submitLock.current = true",
+    "submitLock.current = false"
+  ) &&
+    !imageUploadForm.includes("if (busy) return"),
+  "La carga de imágenes de Biblioteca debe serializarse con un lock síncrono; busy queda sólo como estado visual."
+);
+
+assert(
+  has(
     imageUploadRoute,
     'kind !== "library"',
     "storeEditorialWebp",
