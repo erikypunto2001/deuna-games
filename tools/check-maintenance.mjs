@@ -210,7 +210,8 @@ for (const requiredGuard of [
   "editorial_publications",
   "siteBrandLogoAssetPattern",
   "taxonomyIconAssetPattern",
-  "refreshedReferences",
+  "const currentReferences =",
+  "await loadProtectedReferences(pool)",
   "stats.isSymbolicLink()",
 ]) {
   assert(
