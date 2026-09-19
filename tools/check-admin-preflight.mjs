@@ -28,7 +28,7 @@ const scripts = packageJson.scripts ?? {};
 
 assert(
   scripts["admin:update-local"] ===
-    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
+    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:purge-media-junk && npm run admin:preflight",
   "admin:update-local debe aplicar migraciones, importar contenido, purgar sólo transitorios y terminar con el preflight completo, sin recrear propietario ni contraseña."
 );
 assert(
