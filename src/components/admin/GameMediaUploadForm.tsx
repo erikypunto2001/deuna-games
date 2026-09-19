@@ -296,7 +296,7 @@ export default function GameMediaUploadForm({
 
   function handleFileDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (submitLock.current) return;
     const file = event.dataTransfer.files?.[0] ?? null;
     setLocalFile(file);
   }
