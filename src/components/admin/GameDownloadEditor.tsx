@@ -18,6 +18,7 @@ import type {
 import styles from "./GameDownloadEditor.module.css";
 
 type GameDownloadEditorProps = {
+  id?: string;
   initialSources: GameDownloadSource[];
 };
 
@@ -81,6 +82,7 @@ function emptySource(
 }
 
 export default function GameDownloadEditor({
+  id,
   initialSources,
 }: GameDownloadEditorProps) {
   const [sources, setSources] = useState<
@@ -159,7 +161,7 @@ export default function GameDownloadEditor({
   }
 
   return (
-    <div className={styles.root}>
+    <div id={id} className={styles.root}>
       <input
         type="hidden"
         name="sourcesJson"
