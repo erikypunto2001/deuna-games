@@ -13,12 +13,13 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, informationArchitectureCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
   source("src/app/admin/admin-touch-contract.css"),
   source("src/components/admin/GamePublicationWorkspace.module.css"),
+  source("src/components/admin/AdminInformationArchitecture.module.css"),
 ]);
 
 assert(
@@ -43,6 +44,16 @@ assert(
     /\.historyAction button\s*\{[^}]*min-height:\s*44px;/s.test(publicationCss) &&
     !/\.historyAction button\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(publicationCss),
   "Restaurar y publicar en el historial debe conservar un target táctil mínimo de 44px también en desktop.",
+);
+
+assert(
+  /\.contextSecondary a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
+    /\.dashboardHeaderActions a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
+    /\.publicPageActions a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
+    /\.rowActions > a,[\s\S]*?min-height:\s*44px;/s.test(informationArchitectureCss) &&
+    /\.mobileNavPanel a,[\s\S]*?min-height:\s*44px;/s.test(informationArchitectureCss) &&
+    !/min-height:\s*(?:3[0-9]|4[0-3])px;/.test(informationArchitectureCss),
+  "Dashboard, navegación contextual y acciones de filas/páginas deben conservar targets táctiles de al menos 44px también fuera del override móvil.",
 );
 
 assert(
