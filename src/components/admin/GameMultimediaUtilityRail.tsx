@@ -404,7 +404,7 @@ export default function GameMultimediaUtilityRail({
         )}
 
         <div className={shellStyles.utilityActions}>
-          <button type="button" className={shellStyles.brandAction} onClick={() => openLibrary()} disabled={loading || Boolean(error)}>
+          <button type="button" className={shellStyles.brandAction} data-open-media-library="true" onClick={() => openLibrary()} disabled={loading || Boolean(error)}>
             <FolderOpen size={16} aria-hidden="true" />
             Abrir biblioteca
           </button>
