@@ -227,6 +227,7 @@ assert(
   has(
     multimediaEditor,
     "GameMultimediaWorkspaceProvider",
+    'key={`${slug}:${revision}`}',
     "GameMediaAssignmentsWorkspace",
     "GameGalleryMediaManager",
     "GameMediaAccessibilityEditor",
