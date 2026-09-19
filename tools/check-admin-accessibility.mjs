@@ -422,13 +422,16 @@ assert(
 assert(
   backgroundManager.includes('role="tablist"') &&
     backgroundManager.includes('role="tab"') &&
+    backgroundManager.includes('aria-controls="background-page-panel"') &&
+    backgroundManager.includes('role="tabpanel"') &&
+    backgroundManager.includes('aria-labelledby={`background-page-tab-${page}`}') &&
     backgroundManager.includes("tabIndex={selected ? 0 : -1}") &&
     backgroundManager.includes('event.key === "ArrowRight"') &&
     backgroundManager.includes('event.key === "ArrowLeft"') &&
     backgroundManager.includes('event.key === "Home"') &&
     backgroundManager.includes('event.key === "End"') &&
     backgroundManager.includes("pageTabRefs.current[nextIndex]?.focus()"),
-  "Fondos debe aplicar el mismo patrón de teclado a la selección de página y evitar múltiples tabs en el orden normal de foco."
+  "Fondos debe aplicar el patrón completo de tabs: teclado, foco roving y relación tab/tabpanel para la página seleccionada."
 );
 
 assert(
