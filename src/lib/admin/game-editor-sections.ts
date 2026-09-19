@@ -35,3 +35,10 @@ export function getGameEditorSection(
 export const gameReadinessSections = gameEditorSections.filter(
   (section) => section.id !== "historial"
 );
+
+export function gameReadinessHref(
+  slug: string,
+  item: { id: string; section: GameEditorSection }
+) {
+  return `/admin/juegos/${encodeURIComponent(slug)}?seccion=${item.section}#${encodeURIComponent(item.id)}`;
+}
