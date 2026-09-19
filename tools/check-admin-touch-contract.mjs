@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -25,6 +25,11 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/app/admin/admin-professional.css"),
   source("src/app/admin/admin-professional-details.css"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
+  source("src/components/admin/AdminMediaLibraryPreview.module.css"),
+  source("src/components/admin/AdminMediaThumbnail.module.css"),
+  source("src/components/admin/ContextualMediaDialog.module.css"),
+  source("src/components/admin/GameBackgroundMediaEditor.module.css"),
+  source("src/components/admin/GameMultimediaUtilityRail.module.css"),
 ]);
 
 assert(
@@ -81,6 +86,16 @@ assert(
   /\.backLink,\s*\n\.publicLink\s*\{[^}]*min-height:\s*44px;/s.test(gamePreviewCss) &&
     !gamePreviewCss.includes(".publishGate button"),
   "Vista previa debe conservar navegación de 44px y no CSS legacy para un botón de Publicación que ya no se renderiza.",
+);
+
+assert(
+  /\.videoControls button\s*\{[^}]*min-height:\s*44px;/s.test(mediaPreviewCss) &&
+    /\.errorState button\s*\{[^}]*min-height:\s*44px;/s.test(mediaThumbnailCss) &&
+    /\.closeButton\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(contextualDialogCss) &&
+    !/\.(?:actions|primary|secondary)\b/.test(contextualDialogCss) &&
+    /\.libraryLink,\s*\n\.globalButton\s*\{[^}]*min-height:\s*44px;/s.test(backgroundMediaCss) &&
+    /\.libraryFilters button\s*\{[^}]*min-height:\s*44px;/s.test(multimediaRailCss),
+  "Los controles multimedia compartidos deben conservar targets táctiles de 44px y el diálogo no debe reintroducir acciones legacy sin consumidor.",
 );
 
 assert(
