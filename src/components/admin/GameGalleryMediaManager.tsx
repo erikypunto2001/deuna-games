@@ -13,7 +13,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
@@ -26,6 +26,9 @@ import {
   type MultimediaLibraryState,
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
+import {
+  useGameMultimediaWorkspace,
+} from "@/components/admin/GameMultimediaWorkspaceProvider";
 import {
   MAX_GAME_GALLERY_ITEMS,
 } from "@/lib/media/game-gallery-media";
@@ -43,7 +46,6 @@ import shellStyles from "./GameMultimediaShell.module.css";
 
 type Props = {
   slug: string;
-  revision: number;
 };
 
 type PickerKind = "image" | "video";
@@ -88,60 +90,24 @@ function ResourceIcon({ kind }: { kind: PickerKind }) {
     : <Clapperboard size={16} aria-hidden="true" />;
 }
 
-export default function GameGalleryMediaManager({ slug, revision }: Props) {
-  const [workspace, setWorkspace] = useState<MultimediaLibraryState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function GameGalleryMediaManager({ slug }: Props) {
+  const {
+    workspace,
+    loading,
+    error,
+    currentRevision,
+    stale,
+  } = useGameMultimediaWorkspace();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerKind, setPickerKind] = useState<PickerKind>("image");
   const [addResourceKind, setAddResourceKind] = useState<PickerKind | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [editingVideo, setEditingVideo] = useState<Extract<GameGalleryItem, { kind: "video" }> | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch(
-          `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("No se pudo cargar el estado multimedia de Galería.");
-        }
-
-        const payload = await response.json() as MultimediaLibraryState;
-        if (!controller.signal.aborted) setWorkspace(payload);
-      } catch (loadError) {
-        if (controller.signal.aborted) return;
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "No se pudo cargar Galería."
-        );
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => controller.abort();
-  }, [slug]);
-
   const gallery = workspace?.gallery ?? EMPTY_GALLERY;
   const resources = workspace?.resources ?? EMPTY_RESOURCES;
   const imageMedia = workspace?.assignments.imageMedia ?? null;
   const requirements = workspace?.requirements;
-  const currentRevision = workspace?.revision ?? revision;
-  const stale = workspace !== null && workspace.revision !== revision;
   const assignedKeys = useMemo(
     () => new Set(gallery.map((item) => `${item.kind}:${item.src}`)),
     [gallery]

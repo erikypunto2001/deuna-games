@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -10,10 +9,11 @@ import adminStyles from "../../app/admin/admin.module.css";
 import GameEditorFormActions from "./GameEditorFormActions";
 import {
   multimediaShortName,
+  type MultimediaLibraryState,
 } from "./game-multimedia-library-types";
-import type {
-  MultimediaLibraryState,
-} from "./game-multimedia-library-types";
+import {
+  useGameMultimediaWorkspace,
+} from "./GameMultimediaWorkspaceProvider";
 
 type AccessibilityLabels = {
   cover: string;
@@ -27,79 +27,47 @@ function galleryKey(kind: "image" | "video", src: string) {
   return `${kind}:${src}`;
 }
 
-function emptyLabels(): AccessibilityLabels {
+function labelsFromWorkspace(
+  workspace: MultimediaLibraryState | null
+): AccessibilityLabels {
+  if (!workspace) {
+    return {
+      cover: "",
+      hero: "",
+      card: "",
+      detail: "",
+      gallery: {},
+    };
+  }
+
+  const gallery: Record<string, string> = {};
+  for (const item of workspace.accessibility?.gallery ?? []) {
+    gallery[galleryKey(item.kind, item.src)] = item.label;
+  }
+
   return {
-    cover: "",
-    hero: "",
-    card: "",
-    detail: "",
-    gallery: {},
+    cover: workspace.accessibility?.cover ?? "",
+    hero: workspace.accessibility?.hero ?? "",
+    card: workspace.accessibility?.card ?? "",
+    detail: workspace.accessibility?.detail ?? "",
+    gallery,
   };
 }
 
 export default function GameMediaAccessibilityEditor({
   slug,
-  revision,
 }: {
   slug: string;
-  revision: number;
 }) {
-  const [workspace, setWorkspace] =
-    useState<MultimediaLibraryState | null>(null);
-  const [labels, setLabels] = useState<AccessibilityLabels>(emptyLabels);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch(
-      `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
-      {
-        cache: "no-store",
-        credentials: "same-origin",
-        signal: controller.signal,
-      }
-    )
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("workspace unavailable");
-        }
-        return response.json() as Promise<MultimediaLibraryState>;
-      })
-      .then((payload) => {
-        const galleryLabels: Record<string, string> = {};
-        for (const item of payload.accessibility?.gallery ?? []) {
-          galleryLabels[galleryKey(item.kind, item.src)] = item.label;
-        }
-
-        setWorkspace(payload);
-        setLabels({
-          cover: payload.accessibility?.cover ?? "",
-          hero: payload.accessibility?.hero ?? "",
-          card: payload.accessibility?.card ?? "",
-          detail: payload.accessibility?.detail ?? "",
-          gallery: galleryLabels,
-        });
-        setError(false);
-      })
-      .catch((requestError: unknown) => {
-        if (
-          requestError instanceof DOMException &&
-          requestError.name === "AbortError"
-        ) {
-          return;
-        }
-        setError(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [slug]);
+  const {
+    workspace,
+    loading,
+    error,
+    stale,
+  } = useGameMultimediaWorkspace();
+  const [labelsOverride, setLabelsOverride] =
+    useState<AccessibilityLabels | null>(null);
+  const labels = labelsOverride ?? labelsFromWorkspace(workspace);
 
   const accessibilityJson = useMemo(() => {
     const compact = {
@@ -134,8 +102,8 @@ export default function GameMediaAccessibilityEditor({
     destination: "cover" | "hero" | "card" | "detail",
     value: string
   ) {
-    setLabels((current) => ({
-      ...current,
+    setLabelsOverride((current) => ({
+      ...(current ?? labelsFromWorkspace(workspace)),
       [destination]: value,
     }));
   }
@@ -146,13 +114,16 @@ export default function GameMediaAccessibilityEditor({
     value: string
   ) {
     const key = galleryKey(kind, src);
-    setLabels((current) => ({
-      ...current,
-      gallery: {
-        ...current.gallery,
-        [key]: value,
-      },
-    }));
+    setLabelsOverride((current) => {
+      const base = current ?? labelsFromWorkspace(workspace);
+      return {
+        ...base,
+        gallery: {
+          ...base.gallery,
+          [key]: value,
+        },
+      };
+    });
   }
 
   if (loading) {
@@ -187,7 +158,7 @@ export default function GameMediaAccessibilityEditor({
     );
   }
 
-  if (workspace.revision !== revision) {
+  if (stale) {
     return (
       <section className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>

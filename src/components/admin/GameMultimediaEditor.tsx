@@ -2,6 +2,7 @@ import GameGalleryMediaManager from "@/components/admin/GameGalleryMediaManager"
 import GameMediaAccessibilityEditor from "@/components/admin/GameMediaAccessibilityEditor";
 import GameMediaAssignmentsWorkspace from "@/components/admin/GameMediaAssignmentsWorkspace";
 import GameMultimediaUtilityRail from "@/components/admin/GameMultimediaUtilityRail";
+import { GameMultimediaWorkspaceProvider } from "@/components/admin/GameMultimediaWorkspaceProvider";
 
 import refinementStyles from "./GameMultimediaLayoutRefinements.module.css";
 import shellStyles from "./GameMultimediaShell.module.css";
@@ -16,32 +17,22 @@ export default function GameMultimediaEditor({
   revision,
 }: GameMultimediaEditorProps) {
   return (
-    <div className={shellStyles.workspaceShell}>
-      <div className={shellStyles.mainColumn}>
-        <div
-          className={`${shellStyles.legacyWorkspaceHost} ${refinementStyles.assignmentHost}`}
-        >
-          <GameMediaAssignmentsWorkspace
-            slug={slug}
-            revision={revision}
-          />
+    <GameMultimediaWorkspaceProvider key={`${slug}:${revision}`} slug={slug} revision={revision}>
+      <div className={shellStyles.workspaceShell}>
+        <div className={shellStyles.mainColumn}>
+          <div
+            className={`${shellStyles.legacyWorkspaceHost} ${refinementStyles.assignmentHost}`}
+          >
+            <GameMediaAssignmentsWorkspace slug={slug} />
+          </div>
+
+          <GameGalleryMediaManager slug={slug} />
+
+          <GameMediaAccessibilityEditor slug={slug} />
         </div>
 
-        <GameGalleryMediaManager
-          slug={slug}
-          revision={revision}
-        />
-
-        <GameMediaAccessibilityEditor
-          slug={slug}
-          revision={revision}
-        />
+        <GameMultimediaUtilityRail slug={slug} />
       </div>
-
-      <GameMultimediaUtilityRail
-        slug={slug}
-        revision={revision}
-      />
-    </div>
+    </GameMultimediaWorkspaceProvider>
   );
 }

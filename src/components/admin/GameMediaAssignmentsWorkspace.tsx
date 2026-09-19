@@ -8,7 +8,7 @@ import {
   MonitorPlay,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
@@ -18,9 +18,11 @@ import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor"
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
 import {
   type MultimediaLibraryResource,
-  type MultimediaLibraryState,
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
+import {
+  useGameMultimediaWorkspace,
+} from "@/components/admin/GameMultimediaWorkspaceProvider";
 import {
   HERO_GAME_MEDIA_MODES,
   STANDARD_GAME_MEDIA_MODES,
@@ -58,9 +60,29 @@ const COVER_SOURCES: Array<{ value: GameCoverArtworkSource; label: string }> = [
   { value: "custom", label: "Imagen diferente" },
 ];
 
-type Props = { slug: string; revision: number };
+type Props = { slug: string };
 type FixedTarget = "cover" | "hero" | "card";
 type EditState = { target: FixedTarget; kind: "image" | "video" } | null;
+
+function subscribeLocationHash(onStoreChange: () => void) {
+  window.addEventListener("hashchange", onStoreChange);
+  return () => window.removeEventListener("hashchange", onStoreChange);
+}
+
+function locationHashSnapshot() {
+  return window.location.hash;
+}
+
+function serverLocationHashSnapshot() {
+  return "";
+}
+
+function editStateFromHash(hash: string): EditState {
+  if (hash === "#cover-crop") return { target: "cover", kind: "image" };
+  if (hash === "#hero-crop") return { target: "hero", kind: "image" };
+  if (hash === "#card-crop") return { target: "card", kind: "image" };
+  return null;
+}
 
 type PickerTarget =
   | "cover-image"
@@ -316,48 +338,28 @@ function CropButton({
   );
 }
 
-export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props) {
-  const [state, setState] = useState<MultimediaLibraryState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<EditState>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch(
-          `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
-          { credentials: "same-origin", cache: "no-store", signal: controller.signal }
-        );
-        if (!response.ok) throw new Error("No se pudo cargar la asignación multimedia del juego.");
-        const payload = await response.json() as MultimediaLibraryState;
-        if (controller.signal.aborted) return;
-        setState(payload);
-
-        const hash = window.location.hash;
-        if (hash === "#cover-crop") setEditing({ target: "cover", kind: "image" });
-        else if (hash === "#hero-crop") setEditing({ target: "hero", kind: "image" });
-        else if (hash === "#card-crop") setEditing({ target: "card", kind: "image" });
-      } catch (loadError) {
-        if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar la asignación multimedia.");
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => controller.abort();
-  }, [slug]);
+export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
+  const {
+    workspace: state,
+    loading,
+    error,
+    currentRevision,
+    stale,
+    openLibrary,
+  } = useGameMultimediaWorkspace();
+  const locationHash = useSyncExternalStore(
+    subscribeLocationHash,
+    locationHashSnapshot,
+    serverLocationHashSnapshot
+  );
+  const [editingOverride, setEditing] =
+    useState<EditState | undefined>(undefined);
+  const editing = editingOverride === undefined
+    ? editStateFromHash(locationHash)
+    : editingOverride;
 
   const resources = state?.resources ?? EMPTY_RESOURCES;
   const assignments = state?.assignments;
-  const currentRevision = state?.revision ?? revision;
-  const stale = state !== null && state.revision !== revision;
   const imageResources = useMemo(() => resources.filter((resource) => resource.kind === "image"), [resources]);
   const videoResources = useMemo(() => resources.filter((resource) => resource.kind === "video"), [resources]);
 
@@ -554,7 +556,7 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
         </article>
 
         <GameBackgroundMediaEditor slug={slug} revision={currentRevision} resources={resources} assignment={{ mode: assignments.backgroundMode, image: assignments.backgroundImage, imageViewport: assignments.imageMedia?.background ?? null, video: assignments.backgroundVideo }} stale={stale} />
-        <GameDetailMediaEditor slug={slug} revision={currentRevision} endpoint={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`} resources={resources} assignment={{ mode: assignments.detailMode, image: assignments.detailImage, imageViewport: assignments.imageMedia?.detail ?? null, video: assignments.detailVideo }} stale={stale} onAddResource={() => document.querySelector<HTMLElement>("[data-multimedia-library-open]")?.click()} />
+        <GameDetailMediaEditor slug={slug} revision={currentRevision} endpoint={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`} resources={resources} assignment={{ mode: assignments.detailMode, image: assignments.detailImage, imageViewport: assignments.imageMedia?.detail ?? null, video: assignments.detailVideo }} stale={stale} onAddResource={openLibrary} />
       </div>
 
       <div className={styles.hint}><strong>Biblioteca compartida:</strong> los masters se crean una sola vez y se reutilizan por referencia. Card y Portada pueden compartir bytes con crops independientes. Ningún recurso se publica automáticamente desde esta vista.</div>

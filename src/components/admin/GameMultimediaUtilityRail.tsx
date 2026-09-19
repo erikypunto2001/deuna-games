@@ -14,13 +14,16 @@ import {
   TriangleAlert,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import AdminMediaLibraryPreview from "@/components/admin/AdminMediaLibraryPreview";
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
+import {
+  useGameMultimediaWorkspace,
+} from "@/components/admin/GameMultimediaWorkspaceProvider";
 import {
   GAME_MEDIA_MODES_BY_TARGET,
   type GameMediaModeTarget,
@@ -41,7 +44,6 @@ import shellStyles from "./GameMultimediaShell.module.css";
 
 type Props = {
   slug: string;
-  revision: number;
 };
 
 type AddKind = "image" | "video";
@@ -117,44 +119,21 @@ function firstGalleryItem(state: MultimediaLibraryState | null): GameGalleryItem
 
 export default function GameMultimediaUtilityRail({
   slug,
-  revision,
 }: Props) {
-  const [state, setState] = useState<MultimediaLibraryState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const {
+    workspace: state,
+    loading,
+    error,
+    currentRevision,
+    stale,
+    libraryOpen,
+    openLibrary,
+    closeLibrary,
+  } = useGameMultimediaWorkspace();
   const [helpOpen, setHelpOpen] = useState(false);
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const [previewResource, setPreviewResource] = useState<MultimediaLibraryResource | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch(
-          `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-          }
-        );
-        if (!response.ok) throw new Error("No se pudo cargar el workspace multimedia.");
-        const payload = await response.json() as MultimediaLibraryState;
-        if (!controller.signal.aborted) setState(payload);
-      } catch (loadError) {
-        if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar Multimedia.");
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [slug]);
 
   const resources = state?.resources ?? EMPTY_RESOURCES;
   const sortedResources = useMemo(
@@ -183,8 +162,6 @@ export default function GameMultimediaUtilityRail({
     [videos, libraryFilter]
   );
   const previewResources = sortedResources.slice(0, 3);
-  const currentRevision = state?.revision ?? revision;
-  const stale = state !== null && state.revision !== revision;
   const hygiene = state?.hygiene;
   const requirements = state?.requirements;
   const protectedCount =
@@ -427,7 +404,7 @@ export default function GameMultimediaUtilityRail({
         )}
 
         <div className={shellStyles.utilityActions}>
-          <button type="button" className={shellStyles.brandAction} onClick={() => setLibraryOpen(true)} disabled={loading || Boolean(error)}>
+          <button type="button" className={shellStyles.brandAction} onClick={() => openLibrary()} disabled={loading || Boolean(error)}>
             <FolderOpen size={16} aria-hidden="true" />
             Abrir biblioteca
           </button>
@@ -517,7 +494,7 @@ export default function GameMultimediaUtilityRail({
           eyebrow="BIBLIOTECA MULTIMEDIA"
           title="Biblioteca multimedia compartida"
           description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos."
-          onClose={() => setLibraryOpen(false)}
+          onClose={() => closeLibrary()}
         >
           <div className={shellStyles.libraryDialogTopbar}>
             <div>
