@@ -25,7 +25,7 @@
     "admin:create-owner": "node --env-file=.env.admin-migration.local ./tools/admin/create-owner.ts",
     "admin:change-password": "node --env-file=.env.admin-migration.local ./tools/admin/change-owner-password.ts",
     "admin:setup": "npm run db:migrate && npm run admin:import-content && npm run admin:create-owner",
-    "admin:update-local": "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
+    "admin:update-local": "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:purge-media-junk && npm run admin:preflight",
     "admin:preflight:migration": "node --env-file=.env.admin-migration.local ./tools/admin/preflight.ts --purpose=migration",
     "admin:preflight:local": "node --env-file=.env.local ./tools/admin/preflight-local.ts",
     "admin:preflight:runtime": "node ./tools/admin/preflight.ts --purpose=runtime",
@@ -38,7 +38,7 @@
     "check:account-dashboard": "node ./tools/check-account-dashboard-structure.mjs",
     "check:admin-ui": "node ./tools/check-admin-ui-css.mjs",
     "check:public-theme": "node ./tools/check-public-theme.mjs",
-    "check:maintenance": "node ./tools/check-maintenance.mjs && node ./tools/check-public-site-identity.mjs && node ./tools/check-site-brand-logo.mjs && node ./tools/check-site-brand-logo-surfaces.mjs && node ./tools/check-site-logo-svg-import.mjs && node ./tools/check-site-logo-raster-structure.mjs && node ./tools/check-site-logo-svg-privacy-edgecases.mjs && node --import ./tools/register-ts-paths.mjs ./tools/check-site-logo-scale.mjs && npm run check:public-theme && node ./tools/check-hero-accessibility.mjs && node ./tools/check-hero-motion-continuity.mjs && node ./tools/check-hero-admin-state.mjs && node ./tools/check-lan-mode.mjs && node ./tools/check-frontend-editorial-boundaries.mjs && node ./tools/check-admin-accessibility.mjs && node ./tools/check-admin-touch-contract.mjs && node ./tools/check-admin-persistent-save.mjs && npm run check:admin-ui && npm run check:account-dashboard && node ./tools/check-header-account-menu.mjs",
+    "check:maintenance": "node ./tools/check-maintenance.mjs && node --conditions=react-server ./tools/admin/purge-orphan-editorial-media.ts --self-test && node ./tools/check-public-site-identity.mjs && node ./tools/check-site-brand-logo.mjs && node ./tools/check-site-brand-logo-surfaces.mjs && node ./tools/check-site-logo-svg-import.mjs && node ./tools/check-site-logo-raster-structure.mjs && node ./tools/check-site-logo-svg-privacy-edgecases.mjs && node --import ./tools/register-ts-paths.mjs ./tools/check-site-logo-scale.mjs && npm run check:public-theme && node ./tools/check-hero-accessibility.mjs && node ./tools/check-hero-motion-continuity.mjs && node ./tools/check-hero-admin-state.mjs && node ./tools/check-lan-mode.mjs && node ./tools/check-frontend-editorial-boundaries.mjs && node ./tools/check-admin-accessibility.mjs && node ./tools/check-admin-touch-contract.mjs && node ./tools/check-admin-persistent-save.mjs && npm run check:admin-ui && npm run check:account-dashboard && node ./tools/check-header-account-menu.mjs",
     "check:source": "node ./tools/check-source-hygiene.mjs",
     "check:encoding": "node ./tools/check-text-encoding.mjs",
     "check:account-privacy": "node ./tools/check-account-privacy.mjs",
@@ -83,7 +83,9 @@
     "build:secure": "node ./tools/build-secure-deploy.mjs",
     "repo:housekeeping": "node ./tools/repository-housekeeping.mjs",
     "visual:admin-accounts-lifecycle": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-accounts-lifecycle-smoke.ts",
-    "visual:admin-historical-update-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-historical-update-visual-fixture.ts"
+    "visual:admin-historical-update-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-historical-update-visual-fixture.ts",
+    "admin:purge-media-junk:check": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts",
+    "admin:purge-media-junk": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
