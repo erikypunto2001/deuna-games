@@ -175,7 +175,7 @@ export default function GameDistributionEditor({
           </small>
         </label>
 
-        <label>
+        <label id="distribution-integrity">
           <span>Canal de distribución</span>
           <select name="channel" defaultValue={channel}>
             <option value="">Sin definir</option>
@@ -204,7 +204,7 @@ export default function GameDistributionEditor({
           </small>
         </label>
 
-        <GameDownloadEditor initialSources={sources} />
+        <GameDownloadEditor id="downloads" initialSources={sources} />
 
         <GameEditorFormActions
           note="Las URLs HTTP inseguras se rechazan; canal y SHA-256 quedan versionados junto con el paquete, y cada fuente conserva estado, visibilidad y orden editorial."
