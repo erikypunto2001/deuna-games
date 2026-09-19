@@ -33,8 +33,8 @@ import {
   readAccountSession,
 } from "@/lib/accounts/session";
 import {
-  resolveGameDownload,
-} from "@/lib/games/download";
+  resolveGameDetailPresentation,
+} from "@/lib/games/game-detail-presentation";
 import {
   getPublicGameBySlug,
   getPublicGames,
@@ -64,11 +64,6 @@ import { safeJsonLd } from "@/lib/safe-json-ld";
 import {
   getPublicUpdatesForGame,
 } from "@/lib/updates/public-updates";
-import type {
-  GameAgeRatingSystem,
-  GameHardwareRequirements,
-} from "@/types/game";
-
 import GameAccountActions from "./GameAccountActions";
 import GameCompatibilityCard from "./GameCompatibilityCard";
 import styles from "./page.module.css";
@@ -79,59 +74,8 @@ type GameDetailPageProps = {
   }>;
 };
 
-type RequirementRow = {
-  label: string;
-  minimum?: string;
-  recommended?: string;
-};
-
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
-
-function legacyRequirements(
-  requirements: GameHardwareRequirements
-): GameHardwareRequirements {
-  return {
-    system: requirements.system,
-    processor: requirements.processor,
-    ram: requirements.ram,
-    graphics: requirements.graphics,
-    storage: requirements.storage,
-  };
-}
-
-function buildRequirementRows(
-  minimum: GameHardwareRequirements | undefined,
-  recommended: GameHardwareRequirements | undefined
-): RequirementRow[] {
-  const fields: Array<{
-    key: keyof GameHardwareRequirements;
-    label: string;
-  }> = [
-    { key: "system", label: "Sistema operativo" },
-    { key: "processor", label: "Procesador" },
-    { key: "ram", label: "Memoria RAM" },
-    { key: "graphics", label: "Gráficos" },
-    { key: "storage", label: "Almacenamiento" },
-  ];
-
-  return fields
-    .map(({ key, label }) => ({
-      label,
-      minimum: minimum?.[key],
-      recommended: recommended?.[key],
-    }))
-    .filter(
-      (row) => row.minimum || row.recommended
-    );
-}
-
-function ageRatingSystemLabel(system: GameAgeRatingSystem) {
-  if (system === "CLASSIND") return "ClassInd";
-  if (system === "ACB") return "ACB";
-  if (system === "OTHER") return "Otro sistema";
-  return system;
-}
 
 export async function generateMetadata({
   params,
@@ -216,17 +160,20 @@ export default async function GameDetailPage({
         game.slug
       )
     : null;
-  const download = resolveGameDownload(game);
-  const requirements = game.requirements;
-  const minimum = requirements
-    ? requirements.minimum ??
-      legacyRequirements(requirements)
-    : undefined;
-  const recommended = requirements?.recommended;
-  const requirementRows = buildRequirementRows(
+  const {
+    download,
     minimum,
-    recommended
-  );
+    recommended,
+    requirementRows,
+    platforms,
+    platformLabel,
+    genres,
+    genreSummaryLabel,
+    ageRatingLabel,
+    visibleTags,
+    sizeLabel,
+    versionLabel,
+  } = resolveGameDetailPresentation(game);
   const recentGameUpdates = gameUpdates.slice(0, 3);
   const detailImage = resolveGameDestinationImage(game, "detail");
   const detailImageViewport = game.imageMedia?.detail ??
@@ -247,33 +194,6 @@ export default async function GameDetailPage({
 
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
-
-  const platforms = game.platforms ?? [];
-  const platformLabel = platforms.length
-    ? platforms.join(", ")
-    : "A confirmar";
-  const genres =
-    game.genres?.length
-      ? game.genres
-      : [game.category];
-  const ageRatingLabel = game.ageRating
-    ? `${ageRatingSystemLabel(game.ageRating.system)} · ${game.ageRating.rating}`
-    : null;
-
-  const visibleTags = Array.from(
-    new Set([
-      ...genres,
-      ...(game.tags ?? []),
-    ])
-  )
-    .filter((tag) => tag !== game.category)
-    .slice(0, 5);
-
-  const sizeLabel = download?.sizeGb
-    ? `${download.sizeGb} GB`
-    : minimum?.storage ??
-      recommended?.storage ??
-      "A confirmar";
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -493,7 +413,7 @@ export default async function GameDetailPage({
               </span>
               <div>
                 <dt>Género</dt>
-                <dd>{genres.slice(0, 2).join(", ")}</dd>
+                <dd>{genreSummaryLabel}</dd>
               </div>
             </div>
             <div>
@@ -511,7 +431,7 @@ export default async function GameDetailPage({
               </span>
               <div>
                 <dt>Versión</dt>
-                <dd>{game.version ?? "A confirmar"}</dd>
+                <dd>{versionLabel}</dd>
               </div>
             </div>
             <div>
