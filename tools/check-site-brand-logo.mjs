@@ -294,6 +294,12 @@ assert(
   "Preview de Identidad y Apariencia deben reflejar el modo efectivo real del asset raster o SVG."
 );
 
+assert(
+  appearanceWorkspace.includes("brandColor={brandColor}") &&
+    !appearanceWorkspace.includes("brandColor={initialBrandColor}"),
+  "Fondos debe previsualizar el color de marca actualmente editado, no el valor inicial guardado."
+);
+
 const socialImageBindsDataUri =
   socialImage.includes("logoDataUri") &&
   (
