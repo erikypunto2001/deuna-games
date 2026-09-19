@@ -388,6 +388,8 @@ async function runSelfTest() {
     }
 
     const nestedReferences = new Set<string>();
+    const backgroundPath =
+      `/media/editorial/${SITE_BACKGROUND_SLUG}/${"e".repeat(64)}.webp`;
     collectProtectedReferences(
       {
         logo: {
@@ -395,16 +397,20 @@ async function runSelfTest() {
             `/media/editorial/${SITE_BRAND_LOGO_SLUG}/${"d".repeat(64)}.svg`,
         },
         icon: [protectedPath],
+        background: {
+          image: backgroundPath,
+        },
       },
       nestedReferences
     );
 
     if (
-      nestedReferences.size !== 2 ||
-      !nestedReferences.has(protectedPath)
+      nestedReferences.size !== 3 ||
+      !nestedReferences.has(protectedPath) ||
+      !nestedReferences.has(backgroundPath)
     ) {
       throw new Error(
-        "El self-test no protegió referencias editoriales anidadas."
+        "El self-test no protegió referencias editoriales anidadas de logo, taxonomía y fondos."
       );
     }
 
