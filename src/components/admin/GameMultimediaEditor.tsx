@@ -4,7 +4,6 @@ import GameMediaAssignmentsWorkspace from "@/components/admin/GameMediaAssignmen
 import GameMultimediaUtilityRail from "@/components/admin/GameMultimediaUtilityRail";
 import { GameMultimediaWorkspaceProvider } from "@/components/admin/GameMultimediaWorkspaceProvider";
 
-import refinementStyles from "./GameMultimediaLayoutRefinements.module.css";
 import shellStyles from "./GameMultimediaShell.module.css";
 
 type GameMultimediaEditorProps = {
@@ -21,7 +20,7 @@ export default function GameMultimediaEditor({
       <div className={shellStyles.workspaceShell}>
         <div className={shellStyles.mainColumn}>
           <div
-            className={`${shellStyles.legacyWorkspaceHost} ${refinementStyles.assignmentHost}`}
+            className={shellStyles.assignmentHost}
           >
             <GameMediaAssignmentsWorkspace slug={slug} />
           </div>
