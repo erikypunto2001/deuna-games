@@ -19,6 +19,7 @@ const [
   integrity,
   readiness,
   libraryRoute,
+  mediaWorkspace,
   imageLayoutRoute,
   videoLayoutRoute,
   assignmentsWorkspace,
@@ -39,6 +40,7 @@ const [
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/lib/admin/game-media-workspace.ts"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
@@ -145,22 +147,26 @@ assert(
 
 assert(
   has(
-    libraryRoute,
-    '"detail-mode"',
-    '"detail-image"',
-    '"detail-video"',
-    "STANDARD_GAME_MEDIA_MODES",
-    "standardMediaModeSchema",
-    "detailImage: item.payload.detailImage ?? null",
-    'detailMode: resolveGameDestinationMediaMode(item.payload, "detail")',
-    "detailVideo: item.payload.videoMedia?.detail ?? null",
-    'target.data === "detail-image"',
-    'target.data === "detail-video"',
-    'requiredVideoViewport("detail")',
-    'playback: "always"',
-    "protectedReferencesForGame",
-    "getHistoricalGameMediaReferences"
+    mediaWorkspace,
+    "detailImage: game.detailImage ?? null",
+    'detailMode: resolveGameDestinationMediaMode(game, "detail")',
+    "detailVideo: game.videoMedia?.detail ?? null"
   ) &&
+    has(
+      libraryRoute,
+      '"detail-mode"',
+      '"detail-image"',
+      '"detail-video"',
+      "STANDARD_GAME_MEDIA_MODES",
+      "standardMediaModeSchema",
+      'target.data === "detail-image"',
+      'target.data === "detail-video"',
+      'requiredVideoViewport("detail")',
+      'playback: "always"',
+      "protectedReferencesForGame",
+      "getHistoricalGameMediaReferences"
+    ) &&
+    !libraryRoute.includes("export async function GET") &&
     !libraryRoute.includes('"image-delete"') &&
     !libraryRoute.includes('"video-delete"') &&
     !libraryRoute.includes("withoutImageResource") &&
@@ -168,7 +174,7 @@ assert(
     !libraryRoute.includes("storeEditorialWebp") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn("),
-  "Biblioteca debe limitar Contenedor a Imagen/Video, asignarlo por referencia y evitar trabajo físico o desasignación destructiva implícita."
+  "media-workspace debe exponer Contenedor; media-library debe limitarse a Imagen/Video por referencia sin trabajo físico ni desasignación implícita."
 );
 
 assert(

@@ -14,6 +14,7 @@ const [
   packageJson,
   library,
   libraryRoute,
+  mediaWorkspaceRoute,
   mediaResourceDeleteRoute,
   publishedVideoReferences,
   imageUploadRoute,
@@ -30,10 +31,12 @@ const [
   videoViewportEditor,
   imageViewportEditor,
   mediaIntegrity,
+  publicationLifecycle,
 ] = await Promise.all([
   source("package.json"),
   source("src/lib/media/editorial-media-library.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-workspace/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-resource-delete/route.ts"),
   source("src/lib/admin/published-game-video-references.ts"),
   source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
@@ -50,6 +53,7 @@ const [
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
+  source("tools/game-publication-lifecycle-smoke.mjs"),
 ]);
 
 assert(
@@ -95,7 +99,6 @@ assert(
 assert(
   has(
     libraryRoute,
-    "verifyAdminSession",
     "authorizeAdminFormRequest",
     "hasExactAdminFormFields",
     "findEditorialMediaResource",
@@ -109,6 +112,14 @@ assert(
     "reconcileEditorialMediaDeletions",
     "saveGameMediaDraft"
   ) &&
+    !libraryRoute.includes("export async function GET") &&
+    has(
+      mediaWorkspaceRoute,
+      "export async function GET",
+      "verifyAdminSession",
+      "getGameMediaWorkspaceSnapshot",
+      '"Cache-Control": "no-store"'
+    ) &&
     !libraryRoute.includes('"image-delete"') &&
     !libraryRoute.includes('"video-delete"') &&
     !libraryRoute.includes("markEditorialMediaForDeletion") &&
@@ -118,7 +129,7 @@ assert(
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile(") &&
     !libraryRoute.includes("unlink("),
-  "La ruta de biblioteca debe ser de lectura/asignación, proteger publicación e historial y no contener borrado físico."
+  "media-workspace debe ser la única lectura autenticada; media-library debe limitarse a asignación, proteger publicación/historial y no contener borrado físico."
 );
 
 assert(
@@ -135,6 +146,16 @@ assert(
       '"gallery-move"'
     ),
   "Galería debe tener una única superficie de escritura en gallery-media; media-library sólo asigna destinos fijos."
+);
+
+const lifecycleMediaSnapshot = publicationLifecycle.match(
+  /async function mediaSnapshot\([\s\S]*?\n\}/
+)?.[0] ?? "";
+
+assert(
+  lifecycleMediaSnapshot.includes("/media-workspace") &&
+    !lifecycleMediaSnapshot.includes("/media-library"),
+  "El lifecycle E2E debe leer el snapshot multimedia únicamente desde media-workspace; media-library queda reservado a mutaciones POST."
 );
 
 assert(

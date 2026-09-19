@@ -406,6 +406,7 @@ assert(
     "card: pendingImageViewport(imageResource.src)",
     "cover: pendingImageViewport(imageResource.src)"
   ) &&
+    !mediaLibraryRoute.includes("export async function GET") &&
     !mediaLibraryRoute.includes('"gallery-image"') &&
     !mediaLibraryRoute.includes('"gallery-remove"') &&
     has(

@@ -32,10 +32,8 @@ import {
   REQUIRED_DESTINATION_ASPECTS,
 } from "@/lib/media/game-media-requirements";
 import type {
-  GameCardVideo,
   GameCoverArtworkSource,
   GameDestinationMediaMode,
-  GameVideoViewport,
 } from "@/types/game";
 
 import styles from "./GameMediaAssignmentsWorkspace.module.css";
@@ -82,20 +80,6 @@ type CardModeCopy = {
   videoHelp: string | null;
   readyLabel: string;
 };
-
-function cardVideoClip(
-  card: GameCardVideo | null | undefined,
-  heroClip: string | null | undefined,
-  legacyClip: string | null | undefined
-) {
-  if (card?.source === "hero") return heroClip ?? null;
-  if (card?.source === "independent") return card.clip;
-  return legacyClip ?? null;
-}
-
-function cardVideoViewport(card: GameCardVideo | null | undefined): GameVideoViewport | undefined {
-  return card?.viewport;
-}
 
 function modeLabel(mode: GameDestinationMediaMode) {
   return MODE_LABELS[mode];
@@ -406,12 +390,8 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
       cardImage
     )
   );
-  const resolvedCardClip = cardVideoClip(
-    assignments.cardVideo,
-    assignments.heroVideo?.clip,
-    assignments.legacyPreviewClip
-  );
-  const resolvedCardViewport = cardVideoViewport(assignments.cardVideo);
+  const resolvedCardClip = assignments.resolvedCardVideo?.src ?? null;
+  const resolvedCardViewport = assignments.resolvedCardVideo?.viewport;
   const cardVideoResource = videoResources.find((resource) => resource.src === resolvedCardClip) ?? null;
   const cardVideoReady = Boolean(
     resolvedCardClip && isVideoCropConfirmed(resolvedCardViewport, REQUIRED_DESTINATION_ASPECTS.card)

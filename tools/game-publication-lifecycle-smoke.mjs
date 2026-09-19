@@ -403,10 +403,10 @@ async function assertRetiredAdminMutation(pathname, referer, cookie, label) {
 async function mediaSnapshot(slug, cookie) {
   return parseJson(
     await request(
-      `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+      `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
       { headers: { cookie } }
     ),
-    `Biblioteca multimedia de ${slug}`
+    `Workspace multimedia de ${slug}`
   );
 }
 
