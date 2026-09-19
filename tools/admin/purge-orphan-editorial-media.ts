@@ -1,8 +1,14 @@
 import {
   lstat,
+  mkdir,
+  mkdtemp,
   readdir,
+  rm,
   unlink,
+  utimes,
+  writeFile,
 } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
@@ -20,7 +26,9 @@ import {
 } from "../../src/lib/site/logo.ts";
 
 const APPLY_FLAG = "--apply";
+const SELF_TEST_FLAG = "--self-test";
 const apply = process.argv.includes(APPLY_FLAG);
+const selfTest = process.argv.includes(SELF_TEST_FLAG);
 const MIN_ORPHAN_AGE_MS = 24 * 60 * 60 * 1_000;
 const TAXONOMY_ICON_SLUG = "taxonomy-icons";
 const taxonomyIconAssetPattern =
@@ -272,7 +280,141 @@ async function deleteCandidate(
   return true;
 }
 
+async function runSelfTest() {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "deuna-media-purge-")
+  );
+  const namespace = namespaces[0];
+  const directory = path.join(root, namespace.slug);
+  const protectedName = `${"a".repeat(64)}.svg`;
+  const orphanName = `${"b".repeat(64)}.webp`;
+  const recentName = `${"c".repeat(64)}.svg`;
+  const protectedPath =
+    `/media/editorial/${namespace.slug}/${protectedName}`;
+  const orphanPath =
+    `/media/editorial/${namespace.slug}/${orphanName}`;
+
+  try {
+    await mkdir(directory, { recursive: true });
+    await writeFile(
+      path.join(directory, protectedName),
+      "<svg/>"
+    );
+    await writeFile(
+      path.join(directory, orphanName),
+      "orphan"
+    );
+    await writeFile(
+      path.join(directory, recentName),
+      "<svg/>"
+    );
+    await writeFile(
+      path.join(directory, "unexpected.txt"),
+      "manual"
+    );
+
+    const old = new Date(
+      Date.now() - MIN_ORPHAN_AGE_MS - 60_000
+    );
+    await utimes(
+      path.join(directory, protectedName),
+      old,
+      old
+    );
+    await utimes(
+      path.join(directory, orphanName),
+      old,
+      old
+    );
+
+    const references = new Set<string>([
+      protectedPath,
+    ]);
+    const scan = await scanNamespace(
+      root,
+      namespace,
+      references
+    );
+
+    if (
+      scan.orphaned.length !== 1 ||
+      scan.orphaned[0]?.publicPath !== orphanPath ||
+      scan.recentUnreferenced.length !== 1 ||
+      scan.unexpected.length !== 1
+    ) {
+      throw new Error(
+        "El self-test no clasificó correctamente assets protegidos, huérfanos, recientes e inesperados."
+      );
+    }
+
+    const candidate = scan.orphaned[0];
+
+    if (
+      await deleteCandidate(
+        candidate,
+        new Set([orphanPath])
+      )
+    ) {
+      throw new Error(
+        "El self-test borró un asset que apareció en la segunda lectura de referencias."
+      );
+    }
+
+    if (
+      !(await deleteCandidate(candidate, new Set()))
+    ) {
+      throw new Error(
+        "El self-test no eliminó el huérfano elegible."
+      );
+    }
+
+    try {
+      await lstat(candidate.filePath);
+      throw new Error(
+        "El self-test dejó el huérfano físico después del borrado."
+      );
+    } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+    }
+
+    const nestedReferences = new Set<string>();
+    collectProtectedReferences(
+      {
+        logo: {
+          value:
+            `/media/editorial/${SITE_BRAND_LOGO_SLUG}/${"d".repeat(64)}.svg`,
+        },
+        icon: [protectedPath],
+      },
+      nestedReferences
+    );
+
+    if (
+      nestedReferences.size !== 2 ||
+      !nestedReferences.has(protectedPath)
+    ) {
+      throw new Error(
+        "El self-test no protegió referencias editoriales anidadas."
+      );
+    }
+
+    console.log(
+      "Higiene multimedia self-test: OK (historial protegido, gracia temporal, entradas inesperadas y segunda lectura antes de borrar)."
+    );
+  } finally {
+    await rm(root, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
+
 async function main() {
+  if (selfTest) {
+    await runSelfTest();
+    return;
+  }
+
   const pool = new Pool(
     getAdminDatabaseConfig("runtime")
   );
