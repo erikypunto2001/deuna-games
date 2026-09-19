@@ -25,12 +25,14 @@ function normalized(value: string) {
 }
 
 export default function GameTaxonomyMultiSelect({
+  id,
   name,
   label,
   terms,
   initialValues,
   maximum,
 }: {
+  id?: string;
   name: string;
   label: string;
   terms: GameTaxonomyTerm[];
@@ -86,7 +88,7 @@ export default function GameTaxonomyMultiSelect({
   }
 
   return (
-    <fieldset className={styles.fieldset}>
+    <fieldset id={id} className={styles.fieldset}>
       <input
         type="hidden"
         name={name}
