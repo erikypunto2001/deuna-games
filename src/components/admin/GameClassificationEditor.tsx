@@ -52,7 +52,7 @@ export default function GameClassificationEditor({
       <form className={adminStyles.editorForm} method="post" action={action}>
         <input type="hidden" name="expectedRevision" value={revision} />
 
-        <label className={adminStyles.fieldWide}>
+        <label id="classification-primary" className={adminStyles.fieldWide}>
           <span>Clasificación principal</span>
           <select name="category" defaultValue={game.category} required>
             {primaryClassificationTerms.map((term) => (
@@ -72,6 +72,7 @@ export default function GameClassificationEditor({
         </label>
 
         <GameTaxonomyMultiSelect
+          id="classification-extra"
           name="genresText"
           label="Clasificaciones adicionales"
           terms={classificationTerms}
@@ -87,7 +88,7 @@ export default function GameClassificationEditor({
           maximum={30}
         />
 
-        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+        <div id="age-rating" className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Clasificación etaria · opcional</strong>
           <span>
             Registra únicamente una clasificación publicada por un organismo o sistema reconocido. No conviertas edades entre sistemas ni inventes equivalencias.
