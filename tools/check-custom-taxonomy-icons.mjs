@@ -97,8 +97,10 @@ assert(
     editor.includes("uploadLock.current = false") &&
     editor.includes("onSubmit={preventSubmitDuringUpload}") &&
     editor.includes("disabled={uploadBusy}") &&
+    editor.includes("disabled={uploadBusy || used > 0}") &&
+    editor.includes("disabled={uploadBusy || Boolean(normalizedQuery) || index === 0}") &&
     editor.includes('aria-busy={uploadBusy}'),
-  "Taxonomía debe serializar uploads de iconos y bloquear cualquier guardado mientras el asset todavía no quedó incorporado al estado editorial local."
+  "Taxonomía debe serializar uploads de iconos, congelar mutaciones editoriales y bloquear cualquier guardado mientras el asset todavía no quedó incorporado al estado local."
 );
 
 assert(
