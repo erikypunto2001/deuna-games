@@ -17,6 +17,10 @@ const cpuAssistantSource = readFileSync(
   new URL("../src/features/game-finder/CpuIdentificationAssistant.tsx", import.meta.url),
   "utf8"
 );
+const hardwareFieldsSource = readFileSync(
+  new URL("../src/features/game-finder/HardwareConfigurationFields.tsx", import.meta.url),
+  "utf8"
+);
 
 assert.ok(
   unifiedHeroSource.includes("HardwareSetupModal") &&
@@ -57,6 +61,14 @@ assert.ok(
   cpuAssistantSource.includes("useId") &&
     cpuAssistantSource.includes("showCloseButton"),
   "El selector de CPU debe soportar simultáneamente el aviso inline y el modal sin IDs duplicados."
+);
+
+assert.ok(
+  hardwareFieldsSource.includes("const searchFocusFrameRef = useRef<number | null>(null)") &&
+    hardwareFieldsSource.includes("window.cancelAnimationFrame(searchFocusFrameRef.current)") &&
+    hardwareFieldsSource.includes("triggerRef.current?.focus()") &&
+    !hardwareFieldsSource.includes("window.requestAnimationFrame(() => triggerRef.current?.focus())"),
+  "Cerrar un selector de hardware debe cancelar el autofocus pendiente y devolver foco al trigger sin una carrera entre frames."
 );
 
 console.log("Modal de configuración de hardware: OK (entrada automática, reapertura, foco, Escape y overlay verificados).");
