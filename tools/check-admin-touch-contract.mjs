@@ -13,12 +13,13 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, informationArchitectureCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
   source("src/app/admin/admin-touch-contract.css"),
   source("src/components/admin/GamePublicationWorkspace.module.css"),
+  source("src/components/admin/PublicationPanel.module.css"),
   source("src/components/admin/AdminInformationArchitecture.module.css"),
 ]);
 
@@ -44,6 +45,12 @@ assert(
     /\.historyAction button\s*\{[^}]*min-height:\s*44px;/s.test(publicationCss) &&
     !/\.historyAction button\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(publicationCss),
   "Restaurar y publicar en el historial debe conservar un target táctil mínimo de 44px también en desktop.",
+);
+
+assert(
+  /\.restoreButton\s*\{[^}]*min-height:\s*44px;/s.test(publicationPanelCss) &&
+    !/\.restoreButton\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(publicationPanelCss),
+  "El botón Restaurar del panel genérico de Publicación debe conservar un target táctil mínimo de 44px también en desktop.",
 );
 
 assert(
