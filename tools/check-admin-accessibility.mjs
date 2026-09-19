@@ -55,6 +55,7 @@ const [
   homeContentEditorCss,
   taxonomyEditor,
   appearanceWorkspace,
+  backgroundManager,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -94,6 +95,7 @@ const [
   source("src/components/admin/HomeContentEditor.module.css"),
   source("src/components/admin/GameTaxonomyEditor.tsx"),
   source("src/components/admin/SiteAppearanceWorkspace.tsx"),
+  source("src/components/admin/SiteBackgroundManager.tsx"),
 ]);
 
 assert(
@@ -415,6 +417,18 @@ assert(
     appearanceWorkspace.includes('event.key === "End"') &&
     appearanceWorkspace.includes("tabRefs.current[nextIndex]?.focus()"),
   "Apariencia debe implementar el patrón de teclado de tabs y mantener un único tab activo dentro del orden normal de foco."
+);
+
+assert(
+  backgroundManager.includes('role="tablist"') &&
+    backgroundManager.includes('role="tab"') &&
+    backgroundManager.includes("tabIndex={selected ? 0 : -1}") &&
+    backgroundManager.includes('event.key === "ArrowRight"') &&
+    backgroundManager.includes('event.key === "ArrowLeft"') &&
+    backgroundManager.includes('event.key === "Home"') &&
+    backgroundManager.includes('event.key === "End"') &&
+    backgroundManager.includes("pageTabRefs.current[nextIndex]?.focus()"),
+  "Fondos debe aplicar el mismo patrón de teclado a la selección de página y evitar múltiples tabs en el orden normal de foco."
 );
 
 assert(
