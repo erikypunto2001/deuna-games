@@ -40,6 +40,7 @@ const [
   requirements,
   publicationReadiness,
   validation,
+  validationCore,
   importRoute,
   uploadRoute,
   layoutRoute,
@@ -77,6 +78,7 @@ const [
   source("src/lib/media/game-media-requirements.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
@@ -418,6 +420,24 @@ assert(
     !publicationReadiness.includes("La Portada debe completar los recursos exigidos por su modo activo.") &&
     !publicationReadiness.includes("La imagen inicial 3:2 y el video que entra al hover"),
   "Readiness de publicación debe describir Portada image-only y Card sólo Imagen/Video."
+);
+
+assert(
+  !gameTypes.includes("GamePreviewMode") &&
+    !gameTypes.includes("GameYouTubePreview") &&
+    !gameTypes.includes("GameDirectPreview") &&
+    !gameTypes.includes("GameDirectPreviewPlatform") &&
+    !gameTypes.includes("previewMode?:") &&
+    !gameTypes.includes("youtubePreview?:") &&
+    !gameTypes.includes("directPreview?:") &&
+    gameTypes.includes("previewClip?: string") &&
+    !validationCore.includes("youtubePreviewSchema") &&
+    !validationCore.includes("previewMode:") &&
+    !validationCore.includes("youtubePreview:") &&
+    validation.includes("delete clean.previewMode") &&
+    validation.includes("delete clean.youtubePreview") &&
+    validation.includes("delete clean.directPreview"),
+  "El contrato activo no debe exponer previews externos legacy; la capa de compatibilidad debe consumir esas claves antes del parser core."
 );
 
 assert(
