@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 
 import {
+  gameEditorReadinessTarget,
+} from "@/lib/admin/game-editor-flow";
+import {
   evaluateGamePublicationChanges,
 } from "@/lib/admin/game-publication-changes";
 import {
@@ -345,7 +348,7 @@ export default function GamePublicationWorkspace({
           {readiness.items.map((item) => (
             <Link
               key={item.id}
-              href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=${item.section}`}
+              href={gameEditorReadinessTarget(slug, item.section, item.id)}
               className={item.complete ? styles.checkComplete : styles.checkMissing}
             >
               <span className={styles.checkIcon}>
