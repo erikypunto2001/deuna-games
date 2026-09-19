@@ -3,12 +3,12 @@ import {
   ArrowLeft,
   Download,
   ExternalLink,
-  Gauge,
+  Gamepad2,
   HardDrive,
   ImageIcon,
   Monitor,
+  RefreshCcw,
   Rocket,
-  ShieldCheck,
   Star,
 } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -29,8 +29,8 @@ import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 import {
-  resolveGameDownload,
-} from "@/lib/games/download";
+  resolveGameDetailPresentation,
+} from "@/lib/games/game-detail-presentation";
 import {
   getGameGalleryAccessibleFallback,
 } from "@/lib/media/game-media-accessibility";
@@ -48,7 +48,6 @@ import {
 } from "@/lib/media/image-viewport";
 import type {
   GameDownloadSourceStatus,
-  GameHardwareRequirements,
 } from "@/types/game";
 
 import styles from "./page.module.css";
@@ -57,12 +56,6 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-};
-
-type RequirementRow = {
-  label: string;
-  minimum?: string;
-  recommended?: string;
 };
 
 const downloadStatusLabels: Record<
@@ -79,50 +72,6 @@ const distributionChannelLabels = {
   beta: "Beta",
   testing: "Pruebas",
 } as const;
-
-function legacyMinimum(
-  requirements: GameHardwareRequirements | undefined
-) {
-  if (!requirements) return undefined;
-
-  const minimum: GameHardwareRequirements = {
-    system: requirements.system,
-    processor: requirements.processor,
-    ram: requirements.ram,
-    graphics: requirements.graphics,
-    storage: requirements.storage,
-  };
-
-  return Object.values(minimum).some(Boolean)
-    ? minimum
-    : undefined;
-}
-
-function buildRequirementRows(
-  minimum: GameHardwareRequirements | undefined,
-  recommended: GameHardwareRequirements | undefined
-): RequirementRow[] {
-  const fields: Array<{
-    key: keyof GameHardwareRequirements;
-    label: string;
-  }> = [
-    { key: "system", label: "Sistema operativo" },
-    { key: "processor", label: "Procesador" },
-    { key: "ram", label: "Memoria RAM" },
-    { key: "graphics", label: "Gráficos" },
-    { key: "storage", label: "Almacenamiento" },
-  ];
-
-  return fields
-    .map(({ key, label }) => ({
-      label,
-      minimum: minimum?.[key],
-      recommended: recommended?.[key],
-    }))
-    .filter(
-      (row) => row.minimum || row.recommended
-    );
-}
 
 function downloadHost(href: string) {
   if (href.startsWith("/")) return "Ruta interna";
@@ -155,16 +104,18 @@ export default async function AdminGamePreviewPage({
   }
 
   const game = item.payload;
-  const download = resolveGameDownload(game);
-  const requirements = game.requirements;
-  const minimum =
-    requirements?.minimum ??
-    legacyMinimum(requirements);
-  const recommended = requirements?.recommended;
-  const requirementRows = buildRequirementRows(
-    minimum,
-    recommended
-  );
+  const {
+    download,
+    requirementRows,
+    platforms,
+    platformLabel,
+    genres,
+    genreSummaryLabel,
+    ageRatingLabel,
+    visibleTags,
+    sizeLabel,
+    versionLabel,
+  } = resolveGameDetailPresentation(game);
   const detailImage = resolveGameDestinationImage(game, "detail");
   const detailImageViewport = game.imageMedia?.detail ??
     (!game.detailImage
@@ -175,25 +126,9 @@ export default async function AdminGamePreviewPage({
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
-  const platforms = game.platforms ?? [];
-  const platformLabel = platforms.length
-    ? platforms.join(", ")
-    : "A confirmar";
   const distributionChannelLabel = download?.channel
     ? distributionChannelLabels[download.channel]
     : "A confirmar";
-  const genres =
-    game.genres?.length
-      ? game.genres
-      : [game.category];
-  const visibleTags = Array.from(
-    new Set([
-      ...genres,
-      ...(game.tags ?? []),
-    ])
-  )
-    .filter((tag) => tag !== game.category)
-    .slice(0, 5);
   const sources = download?.sources ?? [];
   const publicationHref =
     `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
@@ -306,37 +241,39 @@ export default async function AdminGamePreviewPage({
         </div>
       </section>
 
-      <section className={styles.factGrid}>
-        <article>
-          <Monitor size={18} aria-hidden="true" />
-          <span>Plataformas</span>
-          <strong>{platformLabel}</strong>
-        </article>
-        <article>
-          <Gauge size={18} aria-hidden="true" />
-          <span>Versión</span>
-          <strong>{game.version ?? "A confirmar"}</strong>
-        </article>
-        <article>
-          <HardDrive size={18} aria-hidden="true" />
-          <span>Tamaño</span>
-          <strong>
-            {download?.sizeGb
-              ? `${download.sizeGb} GB`
-              : minimum?.storage ?? "A confirmar"}
-          </strong>
-        </article>
-        <article>
-          <Download size={18} aria-hidden="true" />
-          <span>Fuentes visibles</span>
-          <strong>{sources.length}</strong>
-        </article>
-        <article>
-          <ShieldCheck size={18} aria-hidden="true" />
-          <span>Canal</span>
-          <strong>{distributionChannelLabel}</strong>
-        </article>
-      </section>
+      <dl
+        className={styles.factGrid}
+        aria-label="Información pública resumida"
+      >
+        <div>
+          <dt>
+            <Gamepad2 size={18} aria-hidden="true" />
+            <span>Género</span>
+          </dt>
+          <dd>{genreSummaryLabel}</dd>
+        </div>
+        <div>
+          <dt>
+            <Monitor size={18} aria-hidden="true" />
+            <span>Plataforma</span>
+          </dt>
+          <dd>{platformLabel}</dd>
+        </div>
+        <div>
+          <dt>
+            <RefreshCcw size={18} aria-hidden="true" />
+            <span>Versión</span>
+          </dt>
+          <dd>{versionLabel}</dd>
+        </div>
+        <div>
+          <dt>
+            <HardDrive size={18} aria-hidden="true" />
+            <span>Almacenamiento</span>
+          </dt>
+          <dd>{sizeLabel}</dd>
+        </div>
+      </dl>
 
       <section
         className={`${styles.panel} ${styles.cardPreviewPanel}`}
@@ -412,9 +349,7 @@ export default async function AdminGamePreviewPage({
             <div>
               <dt>Clasificación etaria</dt>
               <dd>
-                {game.ageRating
-                  ? `${game.ageRating.system} · ${game.ageRating.rating}`
-                  : "Sin definir"}
+                {ageRatingLabel ?? "Sin definir"}
               </dd>
             </div>
             {game.ageRating?.descriptors?.length ? (
