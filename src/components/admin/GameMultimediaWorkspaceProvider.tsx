@@ -45,6 +45,7 @@ export function GameMultimediaWorkspaceProvider({
       try {
         setLoading(true);
         setError(null);
+        setWorkspace(null);
         const response = await fetch(
           `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
           {
@@ -76,7 +77,7 @@ export function GameMultimediaWorkspaceProvider({
 
     void load();
     return () => controller.abort();
-  }, [slug]);
+  }, [revision, slug]);
 
   const value = useMemo<GameMultimediaWorkspaceContextValue>(
     () => ({
