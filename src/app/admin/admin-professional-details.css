@@ -164,7 +164,7 @@
 }
 
 .admin-professional input[type="file"]::file-selector-button {
-  min-height: 36px;
+  min-height: 44px;
   margin-right: 11px;
   padding: 0 12px;
   color: #dce4ec;
@@ -315,7 +315,7 @@
 }
 
 .admin-professional .admin-history-action {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
