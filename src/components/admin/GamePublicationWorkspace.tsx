@@ -15,6 +15,9 @@ import {
   evaluateGamePublicationChanges,
 } from "@/lib/admin/game-publication-changes";
 import {
+  gameReadinessHref,
+} from "@/lib/admin/game-editor-sections";
+import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
 import type {
@@ -246,12 +249,9 @@ export default function GamePublicationWorkspace({
       : "Volver a publicar";
   const publicationEssentialsReady =
     readiness.essentialsReady && mediaHygiene.ready;
-  const completedControls =
-    readiness.completed + (mediaHygiene.ready ? 1 : 0);
-  const totalControls = readiness.total + 1;
-  const preparationPercentage = Math.round(
-    (completedControls / totalControls) * 100
-  );
+  const completedControls = readiness.completed;
+  const totalControls = readiness.total;
+  const preparationPercentage = readiness.percentage;
 
   return (
     <div className={styles.workspace}>
@@ -345,7 +345,7 @@ export default function GamePublicationWorkspace({
           {readiness.items.map((item) => (
             <Link
               key={item.id}
-              href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=${item.section}`}
+              href={gameReadinessHref(slug, item)}
               className={item.complete ? styles.checkComplete : styles.checkMissing}
             >
               <span className={styles.checkIcon}>
