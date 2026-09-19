@@ -463,7 +463,9 @@ export default function SiteBackgroundManager({
               }}
               type="button"
               role="tab"
+              id={`background-page-tab-${option.key}`}
               aria-selected={selected}
+              aria-controls="background-page-panel"
               tabIndex={selected ? 0 : -1}
               className={selected ? styles.pageTabActive : ""}
               onClick={() => setPage(option.key)}
@@ -475,7 +477,12 @@ export default function SiteBackgroundManager({
         })}
       </div>
 
-      <div className={styles.managerGrid}>
+      <div
+        id="background-page-panel"
+        role="tabpanel"
+        aria-labelledby={`background-page-tab-${page}`}
+        className={styles.managerGrid}
+      >
         <form
           className={styles.editorForm}
           method="post"
