@@ -4,6 +4,7 @@ import {
   lstat,
   mkdir,
   readFile,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -140,6 +141,11 @@ export async function storeEditorialWebp(
       throw new Error(
         "El archivo multimedia existente no coincide con su hash."
       );
+    }
+
+    if (slug === "site-backgrounds") {
+      const now = new Date();
+      await utimes(filePath, now, now);
     }
 
     reused = true;
