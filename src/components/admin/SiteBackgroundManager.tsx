@@ -292,6 +292,7 @@ export default function SiteBackgroundManager({
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const uploadLock = useRef(false);
   const assets = useMemo(
     () => getSiteBackgroundAssets(customAssets),
     [customAssets]
@@ -373,7 +374,7 @@ export default function SiteBackgroundManager({
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    if (uploadBusy) return;
+    if (uploadLock.current) return;
 
     const file = fileInput.current?.files?.[0];
     const name = uploadName.trim();
@@ -388,6 +389,7 @@ export default function SiteBackgroundManager({
       return;
     }
 
+    uploadLock.current = true;
     setUploadBusy(true);
     setUploadStatus("Preparando imagen…");
 
@@ -430,6 +432,7 @@ export default function SiteBackgroundManager({
 
       window.location.assign(resultUrl.toString());
     } catch (error) {
+      uploadLock.current = false;
       setUploadStatus(
         error instanceof Error
           ? error.message
@@ -762,7 +765,7 @@ export default function SiteBackgroundManager({
               <strong>Configuración de {siteBackgroundPageOptions.find((option) => option.key === page)?.label}</strong>
               <span>Guardar no publica ni modifica las demás páginas.</span>
             </div>
-            <button type="submit">Guardar fondo</button>
+            <button type="submit" disabled={uploadBusy}>Guardar fondo</button>
           </div>
         </form>
 
@@ -791,6 +794,7 @@ export default function SiteBackgroundManager({
               <input
                 name="name"
                 value={uploadName}
+                disabled={uploadBusy}
                 onChange={(event) => setUploadName(event.target.value)}
                 maxLength={80}
                 placeholder="Ej. Ciudad nocturna"
@@ -804,6 +808,7 @@ export default function SiteBackgroundManager({
                 ref={fileInput}
                 type="file"
                 name="image"
+                disabled={uploadBusy}
                 accept="image/avif,image/jpeg,image/png,image/webp,.avif,.jpg,.jpeg,.png,.webp"
                 onChange={(event) => handleFileChange(event.target.files?.[0])}
                 required
