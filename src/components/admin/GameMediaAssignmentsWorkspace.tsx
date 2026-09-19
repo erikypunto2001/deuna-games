@@ -8,7 +8,7 @@ import {
   MonitorPlay,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
@@ -63,6 +63,26 @@ const COVER_SOURCES: Array<{ value: GameCoverArtworkSource; label: string }> = [
 type Props = { slug: string };
 type FixedTarget = "cover" | "hero" | "card";
 type EditState = { target: FixedTarget; kind: "image" | "video" } | null;
+
+function subscribeLocationHash(onStoreChange: () => void) {
+  window.addEventListener("hashchange", onStoreChange);
+  return () => window.removeEventListener("hashchange", onStoreChange);
+}
+
+function locationHashSnapshot() {
+  return window.location.hash;
+}
+
+function serverLocationHashSnapshot() {
+  return "";
+}
+
+function editStateFromHash(hash: string): EditState {
+  if (hash === "#cover-crop") return { target: "cover", kind: "image" };
+  if (hash === "#hero-crop") return { target: "hero", kind: "image" };
+  if (hash === "#card-crop") return { target: "card", kind: "image" };
+  return null;
+}
 
 type PickerTarget =
   | "cover-image"
@@ -327,16 +347,16 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
     stale,
     openLibrary,
   } = useGameMultimediaWorkspace();
-  const [editing, setEditing] = useState<EditState>(null);
-
-  useEffect(() => {
-    if (!state) return;
-
-    const hash = window.location.hash;
-    if (hash === "#cover-crop") setEditing({ target: "cover", kind: "image" });
-    else if (hash === "#hero-crop") setEditing({ target: "hero", kind: "image" });
-    else if (hash === "#card-crop") setEditing({ target: "card", kind: "image" });
-  }, [state]);
+  const locationHash = useSyncExternalStore(
+    subscribeLocationHash,
+    locationHashSnapshot,
+    serverLocationHashSnapshot
+  );
+  const [editingOverride, setEditing] =
+    useState<EditState | undefined>(undefined);
+  const editing = editingOverride === undefined
+    ? editStateFromHash(locationHash)
+    : editingOverride;
 
   const resources = state?.resources ?? EMPTY_RESOURCES;
   const assignments = state?.assignments;
