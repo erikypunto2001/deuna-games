@@ -31,10 +31,15 @@ const apply = process.argv.includes(APPLY_FLAG);
 const selfTest = process.argv.includes(SELF_TEST_FLAG);
 const MIN_ORPHAN_AGE_MS = 24 * 60 * 60 * 1_000;
 const TAXONOMY_ICON_SLUG = "taxonomy-icons";
+const SITE_BACKGROUND_SLUG = "site-backgrounds";
 const taxonomyIconAssetPattern =
   /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/;
 const taxonomyFilenamePattern =
   /^[a-f0-9]{64}\.(?:svg|webp)$/;
+const siteBackgroundAssetPattern =
+  /^\/media\/editorial\/site-backgrounds\/[a-f0-9]{64}\.webp$/;
+const siteBackgroundFilenamePattern =
+  /^[a-f0-9]{64}\.webp$/;
 const siteLogoFilenamePattern =
   /^[a-f0-9]{64}\.(?:svg|png|jpg|webp|gif)$/;
 
@@ -69,6 +74,10 @@ const namespaces: NamespaceDefinition[] = [
     slug: SITE_BRAND_LOGO_SLUG,
     filenamePattern: siteLogoFilenamePattern,
   },
+  {
+    slug: SITE_BACKGROUND_SLUG,
+    filenamePattern: siteBackgroundFilenamePattern,
+  },
 ];
 
 function isMissingPathError(error: unknown) {
@@ -87,7 +96,8 @@ function collectProtectedReferences(
   if (typeof value === "string") {
     if (
       taxonomyIconAssetPattern.test(value) ||
-      siteBrandLogoAssetPattern.test(value)
+      siteBrandLogoAssetPattern.test(value) ||
+      siteBackgroundAssetPattern.test(value)
     ) {
       references.add(value);
     }
