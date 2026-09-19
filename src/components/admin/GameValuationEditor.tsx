@@ -143,7 +143,7 @@ export default async function GameValuationEditor({
       <form className={adminStyles.editorForm} method="post" action={action}>
         <input type="hidden" name="expectedRevision" value={revision} />
         <input type="hidden" name="valuationMode" value="manual" />
-        <label className={adminStyles.fieldWide}>
+        <label id="editorial-rating" className={adminStyles.fieldWide}>
           <span>Valoración editorial (0–5)</span>
           <input
             name="rating"
