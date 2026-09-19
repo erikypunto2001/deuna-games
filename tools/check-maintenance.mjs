@@ -193,11 +193,16 @@ const purgeMediaJunk = await read(
 const taxonomyIconStorage = await read(
   "src/lib/media/taxonomy-icon-upload.ts"
 );
+const editorialUpload = await read(
+  "src/lib/media/editorial-upload.ts"
+);
 assert(
   taxonomyIconStorage.includes("utimes") &&
     taxonomyIconStorage.includes("await utimes(filePath, now, now)") &&
-    taxonomyIconStorage.includes("reused = true"),
-  "Reutilizar un asset de logo/taxonomía debe renovar su gracia antes de que pueda ser considerado huérfano."
+    taxonomyIconStorage.includes("reused = true") &&
+    editorialUpload.includes('slug === "site-backgrounds"') &&
+    editorialUpload.includes("await utimes(filePath, now, now)"),
+  "Reutilizar un asset purgable de logo, taxonomía o fondo debe renovar su gracia antes de que pueda ser considerado huérfano."
 );
 for (const requiredGuard of [
   'getAdminDatabaseConfig("runtime")',
@@ -210,6 +215,8 @@ for (const requiredGuard of [
   "editorial_publications",
   "siteBrandLogoAssetPattern",
   "taxonomyIconAssetPattern",
+  "siteBackgroundAssetPattern",
+  'SITE_BACKGROUND_SLUG = "site-backgrounds"',
   "const currentReferences =",
   "await loadProtectedReferences(pool)",
   "stats.isSymbolicLink()",
