@@ -1,6 +1,9 @@
 import {
   resolvePerformanceProfile,
 } from "@/features/game-finder/performance-data";
+import type {
+  GameEditorSection,
+} from "@/lib/admin/game-editor-flow";
 import {
   hasCompleteContextualMediaAccessibility,
 } from "@/lib/media/game-media-accessibility";
@@ -13,14 +16,7 @@ import type {
   GameDestinationMediaMode,
 } from "@/types/game";
 
-export type GameReadinessSection =
-  | "ficha"
-  | "datos"
-  | "requisitos"
-  | "rendimiento"
-  | "multimedia"
-  | "descargas"
-  | "valoracion";
+export type GameReadinessSection = GameEditorSection;
 
 export type GameReadinessItem = {
   id: string;
