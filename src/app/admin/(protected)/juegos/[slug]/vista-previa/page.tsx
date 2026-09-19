@@ -246,23 +246,31 @@ export default async function AdminGamePreviewPage({
         aria-label="Información pública resumida"
       >
         <div>
-          <Gamepad2 size={18} aria-hidden="true" />
-          <dt>Género</dt>
+          <dt>
+            <Gamepad2 size={18} aria-hidden="true" />
+            <span>Género</span>
+          </dt>
           <dd>{genreSummaryLabel}</dd>
         </div>
         <div>
-          <Monitor size={18} aria-hidden="true" />
-          <dt>Plataforma</dt>
+          <dt>
+            <Monitor size={18} aria-hidden="true" />
+            <span>Plataforma</span>
+          </dt>
           <dd>{platformLabel}</dd>
         </div>
         <div>
-          <RefreshCcw size={18} aria-hidden="true" />
-          <dt>Versión</dt>
+          <dt>
+            <RefreshCcw size={18} aria-hidden="true" />
+            <span>Versión</span>
+          </dt>
           <dd>{versionLabel}</dd>
         </div>
         <div>
-          <HardDrive size={18} aria-hidden="true" />
-          <dt>Almacenamiento</dt>
+          <dt>
+            <HardDrive size={18} aria-hidden="true" />
+            <span>Almacenamiento</span>
+          </dt>
           <dd>{sizeLabel}</dd>
         </div>
       </dl>
