@@ -132,6 +132,38 @@ assert.equal(
   "Un modo Video válido de Card debe conservarse."
 );
 
+const legacyExternalPreview = parseEditorialPayload("game", {
+  ...structuredClone(source),
+  previewMode: "youtube",
+  youtubePreview: {
+    videoId: "abcdefghijk",
+    startSeconds: 2,
+    endSeconds: 18,
+  },
+  directPreview: {
+    platform: "vimeo",
+    url: "https://example.invalid/video",
+    startSeconds: 1,
+    endSeconds: 12,
+  },
+});
+
+assert.equal(
+  "previewMode" in legacyExternalPreview,
+  false,
+  "previewMode histórico debe consumirse en compatibilidad y no sobrevivir al contrato Game."
+);
+assert.equal(
+  "youtubePreview" in legacyExternalPreview,
+  false,
+  "youtubePreview histórico debe consumirse en compatibilidad y no sobrevivir al contrato Game."
+);
+assert.equal(
+  "directPreview" in legacyExternalPreview,
+  false,
+  "directPreview histórico debe consumirse en compatibilidad y no sobrevivir al contrato Game."
+);
+
 console.log(
   "Normalización multimedia: OK (Hero conserva hover; Card/Contenedor/Fondo degradan hover legacy a Imagen)."
 );
