@@ -16,6 +16,14 @@ export const DEFAULT_GAME_GALLERY_VIDEO_VIEWPORT: GameVideoViewport = {
   aspect: "16:9",
 };
 
+export function galleryVideoAspectRatio(viewport: GameVideoViewport) {
+  if (viewport.aspect === "3:2") return 3 / 2;
+  if (viewport.aspect === "1:1") return 1;
+  if (viewport.aspect === "4:5") return 4 / 5;
+  if (viewport.aspect === "9:16") return 9 / 16;
+  return 16 / 9;
+}
+
 function itemKey(item: GameGalleryItem) {
   return `${item.kind}:${item.src}`;
 }
