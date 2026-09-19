@@ -148,12 +148,14 @@ assert(
   "Galería debe tener una única superficie de escritura en gallery-media; media-library sólo asigna destinos fijos."
 );
 
+const lifecycleMediaSnapshot = publicationLifecycle.match(
+  /async function mediaSnapshot\([\s\S]*?\n\}/
+)?.[0] ?? "";
+
 assert(
-  publicationLifecycle.includes("/media-workspace") &&
-    !publicationLifecycle.includes(
-      `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`
-    ),
-  "El lifecycle E2E debe leer el snapshot multimedia únicamente desde media-workspace; media-library no puede volver a ser una API de lectura."
+  lifecycleMediaSnapshot.includes("/media-workspace") &&
+    !lifecycleMediaSnapshot.includes("/media-library"),
+  "El lifecycle E2E debe leer el snapshot multimedia únicamente desde media-workspace; media-library queda reservado a mutaciones POST."
 );
 
 assert(
