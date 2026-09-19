@@ -17,7 +17,7 @@ export default function GameMultimediaEditor({
   revision,
 }: GameMultimediaEditorProps) {
   return (
-    <GameMultimediaWorkspaceProvider slug={slug} revision={revision}>
+    <GameMultimediaWorkspaceProvider key={`${slug}:${revision}`} slug={slug} revision={revision}>
       <div className={shellStyles.workspaceShell}>
         <div className={shellStyles.mainColumn}>
           <div
