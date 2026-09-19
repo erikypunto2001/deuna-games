@@ -12,65 +12,31 @@
   gap: 18px;
 }
 
-.legacyWorkspaceHost {
+.assignmentHost {
   min-width: 0;
 }
 
-/* La biblioteca y la ayuda antiguas siguen montadas para no romper selectores
-   internos, pero dejan de ocupar espacio: el shell profesional las reemplaza. */
-.legacyWorkspaceHost :global(section:has(#shared-library-heading)),
-.legacyWorkspaceHost :global(aside[class*="helpRail"]),
-.legacyWorkspaceHost :global([class*="galleryAssignmentCard"]),
-.legacyWorkspaceHost :global([class*="continueGate"]),
-.legacyWorkspaceHost :global([class*="summaryGrid"] > article:last-child) {
-  display: none !important;
-}
-
-.legacyWorkspaceHost :global([class*="mediaWorkspace"]) {
-  margin-top: 0 !important;
-}
-
-.legacyWorkspaceHost :global([class*="mainGrid"]) {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-
-.legacyWorkspaceHost :global([class*="summaryGrid"]) {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
-
-/* Identidad: selección y acciones editoriales siguen la marca publicada. */
-.legacyWorkspaceHost :global([class*="compactHeading"] > div > span),
-.legacyWorkspaceHost :global([class*="sectionTitleRow"] > div:first-child > span),
-.legacyWorkspaceHost :global([class*="sectionTitleRow"] strong),
-.legacyWorkspaceHost :global([class*="assignmentCard"] header > div > span),
-.legacyWorkspaceHost :global([class*="libraryCardHeading"] span),
-.legacyWorkspaceHost :global([class*="summaryCard"] > div > span) {
+/* Fondo y Contenedor todavía reutilizan controles del módulo de asignaciones.
+   Mantener sólo estos overrides de marca evita depender de selectores legacy
+   de workspaces que ya no se montan. */
+.assignmentHost :global([class*="assignmentCard"] header > div > span) {
   color: var(--admin-brand-text, var(--brand)) !important;
 }
 
-.legacyWorkspaceHost :global([class*="sectionTitleRow"] > div:first-child > span) {
-  border-color: var(--admin-brand-border, var(--brand)) !important;
-  background: var(--admin-brand-surface, color-mix(in srgb, var(--brand) 10%, transparent)) !important;
-}
-
-.legacyWorkspaceHost :global([class*="modeActive"]),
-.legacyWorkspaceHost :global([class*="editorStepActive"]) {
+.assignmentHost :global([class*="modeActive"]) {
   color: var(--text-on-brand, #fff) !important;
   background: var(--brand) !important;
   box-shadow: none !important;
 }
 
-.legacyWorkspaceHost :global([class*="selectResourceButton"]),
-.legacyWorkspaceHost :global([class*="pickerAddButton"]) {
+.assignmentHost :global([class*="selectResourceButton"]) {
   color: var(--admin-brand-text-strong, #fff) !important;
   border-color: var(--admin-brand-border, var(--brand)) !important;
   background: var(--admin-brand-surface-soft, transparent) !important;
 }
 
-.legacyWorkspaceHost :global([class*="secondaryAction"]:hover),
-.legacyWorkspaceHost :global([class*="editDestinationButton"]:hover),
-.legacyWorkspaceHost :global([class*="resourceChoice"]:hover:not(:disabled)),
-.legacyWorkspaceHost :global([class*="galleryEditButton"]:hover:not(:disabled)) {
+.assignmentHost :global([class*="editDestinationButton"]:hover),
+.assignmentHost :global([class*="resourceChoice"]:hover:not(:disabled)) {
   border-color: var(--admin-brand-border, var(--brand)) !important;
 }
 
@@ -258,7 +224,7 @@
 .continueButton,
 .pickerTabs button,
 .addTabs button {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 850;
@@ -397,8 +363,8 @@
 
 .libraryDeleteButton {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   color: #ffc2c2;
@@ -700,8 +666,8 @@
 
 .galleryIconButton {
   display: grid;
-  width: 34px;
-  min-height: 34px;
+  width: 44px;
+  min-height: 44px;
   place-items: center;
   padding: 0;
   color: #b4c0ca;
@@ -715,7 +681,7 @@
 }
 
 .galleryDangerButton {
-  min-height: 34px;
+  min-height: 44px;
   color: #f1b2b2;
   border: 1px solid rgba(217, 92, 92, 0.38);
   background: rgba(125, 38, 38, 0.12);
@@ -727,7 +693,7 @@
 }
 
 .galleryEditButton {
-  min-height: 34px;
+  min-height: 44px;
 }
 
 .galleryEmpty {
@@ -881,10 +847,6 @@
 }
 
 @media (max-width: 900px) {
-  .legacyWorkspaceHost :global([class*="summaryGrid"]) {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
   .galleryItem {
     grid-template-columns: 30px 100px minmax(0, 1fr);
   }
