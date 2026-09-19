@@ -185,7 +185,7 @@ export default function GameGalleryMediaManager({ slug }: Props) {
   }
 
   return (
-    <section className={shellStyles.galleryPanel} aria-labelledby="professional-gallery-heading">
+    <section id="gallery-minimum" className={shellStyles.galleryPanel} aria-labelledby="professional-gallery-heading">
       <div className={shellStyles.galleryHeading}>
         <div>
           <span className={shellStyles.eyebrow}>GALERÍA MULTIMEDIA</span>
