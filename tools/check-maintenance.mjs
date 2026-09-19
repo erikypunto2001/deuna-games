@@ -159,9 +159,17 @@ assert(
 );
 
 assert(
+  scripts["admin:purge-media-junk:check"] ===
+    "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts" &&
+    scripts["admin:purge-media-junk"] ===
+      "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply",
+  "La higiene de assets editoriales debe usar el rol runtime de sólo lectura y conservar modos lectura/aplicar explícitos."
+);
+
+assert(
   scripts["admin:update-local"] ===
-    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:preflight",
-  "La actualización local debe purgar basura transitoria antes del preflight."
+    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:purge-media-junk && npm run admin:preflight",
+  "La actualización local debe purgar transitorios y assets físicos huérfanos antes del preflight."
 );
 
 const localSetupForPurge = await read("tools/setup-local-server.sh");
@@ -177,6 +185,34 @@ assert(
     localBackup.includes("backups.slice(MAX_LOCAL_BACKUPS)") &&
     localBackup.includes("pruneOldLocalBackups(backupDirectory)"),
   "El backup pre-migración debe conservar sólo las 3 copias locales propias más recientes."
+);
+
+const purgeMediaJunk = await read(
+  "tools/admin/purge-orphan-editorial-media.ts"
+);
+for (const requiredGuard of [
+  'getAdminDatabaseConfig("runtime")',
+  "getEditorialMediaRoot",
+  "MIN_ORPHAN_AGE_MS = 24 * 60 * 60 * 1_000",
+  "item.source_payload",
+  "item.draft_payload",
+  "item.published_payload",
+  "editorial_revisions",
+  "editorial_publications",
+  "siteBrandLogoAssetPattern",
+  "taxonomyIconAssetPattern",
+  "refreshedReferences",
+  "stats.isSymbolicLink()",
+]) {
+  assert(
+    purgeMediaJunk.includes(requiredGuard),
+    `La purga multimedia debe conservar la guarda ${requiredGuard}.`
+  );
+}
+assert(
+  purgeMediaJunk.includes("unlink(candidate.filePath)") &&
+    !purgeMediaJunk.includes("DELETE FROM"),
+  "La purga multimedia sólo debe eliminar archivos físicos huérfanos y nunca mutar PostgreSQL."
 );
 
 const purgeJunk = await read("tools/admin/purge-junk.ts");
