@@ -20,6 +20,9 @@ import {
 import {
   storeEditorialWebp,
 } from "@/lib/media/editorial-upload";
+import {
+  SITE_BACKGROUND_MEDIA_SLUG,
+} from "@/lib/site/backgrounds";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -124,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     const upload = await storeEditorialWebp(
-      "site-backgrounds",
+      SITE_BACKGROUND_MEDIA_SLUG,
       image
     );
     const id = `custom-${upload.digest.slice(0, 24)}`;
