@@ -58,6 +58,7 @@ type Props = {
   resources: LibraryResource[];
   assignment: BackgroundAssignment;
   stale?: boolean;
+  onAddResource: (kind: "image" | "video") => void;
 };
 
 const MODES = STANDARD_GAME_MEDIA_MODES.map((value) => ({
@@ -126,12 +127,14 @@ function ResourcePicker({
   selected,
   busy,
   onSelect,
+  onAddResource,
 }: {
   kind: "image" | "video";
   resources: LibraryResource[];
   selected: string | null;
   busy: boolean;
   onSelect: (src: string) => void;
+  onAddResource: (kind: "image" | "video") => void;
 }) {
   const available = resources.filter((resource) => resource.kind === kind);
   const complete = Boolean(selected);
@@ -188,7 +191,14 @@ function ResourcePicker({
             No hay {kind === "image" ? "imágenes" : "videos"} disponibles. Agrégalos una sola vez desde la Biblioteca multimedia compartida.
           </p>
         )}
-        <a className={styles.libraryLink} href="#shared-library-heading">Ir a Biblioteca multimedia compartida</a>
+        <button
+          type="button"
+          className={styles.libraryLink}
+          disabled={busy}
+          onClick={() => onAddResource(kind)}
+        >
+          Agregar {kind === "image" ? "imagen" : "video"} a Biblioteca
+        </button>
       </div>
     </details>
   );
@@ -200,6 +210,7 @@ export default function GameBackgroundMediaEditor({
   resources,
   assignment,
   stale = false,
+  onAddResource,
 }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -337,6 +348,7 @@ export default function GameBackgroundMediaEditor({
                 selected={assignment.image}
                 busy={controlsDisabled}
                 onSelect={(src) => void mutate("select-image", src)}
+                onAddResource={onAddResource}
               />
             )}
             {needsVideo && (
@@ -346,6 +358,7 @@ export default function GameBackgroundMediaEditor({
                 selected={assignment.video?.clip ?? null}
                 busy={controlsDisabled}
                 onSelect={(src) => void mutate("select-video", src)}
+                onAddResource={onAddResource}
               />
             )}
             {needsImage && (
