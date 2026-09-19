@@ -30,6 +30,8 @@ const files = Object.fromEntries(
       cardPresentation: "src/lib/media/game-card-presentation.ts",
       card: "src/components/ui/UniversalGameCardBase.tsx",
       publicPage: "src/app/juegos/[slug]/page.tsx",
+      adminPreview: "src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx",
+      galleryMedia: "src/lib/media/game-gallery-media.ts",
       publicationChanges: "src/lib/admin/game-publication-changes.ts",
       readiness: "src/lib/admin/game-publication-readiness.ts",
       framedVideo: "src/components/ui/FramedVideo.tsx",
@@ -149,6 +151,19 @@ assert(
     files.publicPage.includes("getPublicGameBySlug") &&
     !files.publicPage.includes("draft_payload"),
   "La ficha pública debe usar sólo el snapshot publicado para Hero social y etiquetas de Galería."
+);
+
+assert(
+  files.adminPreview.includes("resolvePublicGameGalleryItems(game)") &&
+    files.adminPreview.includes("getGameGalleryAccessibleFallback") &&
+    files.adminPreview.includes("galleryImageViewport(game, item)") &&
+    files.adminPreview.includes("resolveGameImageCropAspectRatio(viewport)") &&
+    files.adminPreview.includes("<GameGalleryVideo") &&
+    files.adminPreview.includes("alt={accessibleLabel}") &&
+    files.adminPreview.includes("label={accessibleLabel}") &&
+    files.adminPreview.includes("galleryVideoAspectRatio(item.viewport)") &&
+    files.galleryMedia.includes("export function galleryVideoAspectRatio"),
+  "La Vista previa editorial debe compartir orden, crops, aspect-ratio, accesibilidad y renderer de Galería con la ficha pública."
 );
 
 assert(
