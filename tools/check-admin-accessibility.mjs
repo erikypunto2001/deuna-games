@@ -54,6 +54,7 @@ const [
   homeContentEditor,
   homeContentEditorCss,
   taxonomyEditor,
+  appearanceWorkspace,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -92,6 +93,7 @@ const [
   source("src/components/admin/HomeContentEditor.tsx"),
   source("src/components/admin/HomeContentEditor.module.css"),
   source("src/components/admin/GameTaxonomyEditor.tsx"),
+  source("src/components/admin/SiteAppearanceWorkspace.tsx"),
 ]);
 
 assert(
@@ -401,6 +403,18 @@ assert(
     taxonomyEditor.includes("data-taxonomy-term-row") &&
     taxonomyEditor.includes("moveTerm(currentSection.kind, index"),
   "Catálogos debe limitar Clasificaciones ricas a 6 filas, mantener Etiquetas compactas en 12 y conservar el índice absoluto al reordenar términos filtrados o paginados."
+);
+
+assert(
+  appearanceWorkspace.includes('role="tablist"') &&
+    appearanceWorkspace.includes('role="tab"') &&
+    appearanceWorkspace.includes("tabIndex={selected ? 0 : -1}") &&
+    appearanceWorkspace.includes('event.key === "ArrowRight"') &&
+    appearanceWorkspace.includes('event.key === "ArrowLeft"') &&
+    appearanceWorkspace.includes('event.key === "Home"') &&
+    appearanceWorkspace.includes('event.key === "End"') &&
+    appearanceWorkspace.includes("tabRefs.current[nextIndex]?.focus()"),
+  "Apariencia debe implementar el patrón de teclado de tabs y mantener un único tab activo dentro del orden normal de foco."
 );
 
 assert(
