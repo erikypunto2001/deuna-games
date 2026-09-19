@@ -586,7 +586,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
           </div>
         </article>
 
-        <GameBackgroundMediaEditor slug={slug} revision={currentRevision} resources={resources} assignment={{ mode: assignments.backgroundMode, image: assignments.backgroundImage, imageViewport: assignments.imageMedia?.background ?? null, video: assignments.backgroundVideo }} stale={stale} />
+        <GameBackgroundMediaEditor slug={slug} revision={currentRevision} resources={resources} assignment={{ mode: assignments.backgroundMode, image: assignments.backgroundImage, imageViewport: assignments.imageMedia?.background ?? null, video: assignments.backgroundVideo }} stale={stale} onAddResource={openLibrary} />
         <GameDetailMediaEditor slug={slug} revision={currentRevision} endpoint={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`} resources={resources} assignment={{ mode: assignments.detailMode, image: assignments.detailImage, imageViewport: assignments.imageMedia?.detail ?? null, video: assignments.detailVideo }} stale={stale} onAddResource={openLibrary} />
       </div>
 
