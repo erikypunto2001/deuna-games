@@ -87,7 +87,7 @@ export default function GamePerformanceEditor({
           </div>
         )}
 
-        <label>
+        <label id="performance">
           <span>FPS de referencia</span>
           <input
             name="referenceFps"
@@ -147,7 +147,7 @@ export default function GamePerformanceEditor({
           </small>
         </label>
 
-        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+        <div id="performance-provenance" className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Procedencia del benchmark</strong>
           <span>
             Estos campos no cambian el cálculo: documentan la calidad editorial del dato y permiten explicar públicamente su origen.
