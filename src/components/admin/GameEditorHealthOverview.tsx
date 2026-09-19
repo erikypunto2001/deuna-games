@@ -7,6 +7,9 @@ import {
 } from "lucide-react";
 
 import {
+  gameEditorReadinessTarget,
+} from "@/lib/admin/game-editor-flow";
+import {
   getGameEditorSection,
 } from "@/lib/admin/game-editor-sections";
 import type {
@@ -72,7 +75,7 @@ export default function GameEditorHealthOverview({
               return (
                 <li key={item.id}>
                   <Link
-                    href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=${item.section}`}
+                    href={gameEditorReadinessTarget(slug, item.section, item.id)}
                   >
                     <span>
                       <strong>{item.label}</strong>
