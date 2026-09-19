@@ -481,20 +481,22 @@ async function main() {
     }
 
     /*
-     * Releemos referencias justo antes de borrar. El período de gracia evita
-     * competir con uploads recientes; esta segunda lectura además conserva
-     * cualquier asset que haya quedado referenciado durante el escaneo.
+     * Releemos referencias por candidato inmediatamente antes de borrar.
+     * El período de gracia evita competir con uploads recientes; esta lectura
+     * por archivo reduce además la ventana entre una nueva referencia editorial
+     * y el unlink físico del asset.
      */
-    const refreshedReferences =
-      await loadProtectedReferences(pool);
     let removed = 0;
     let removedBytes = 0;
 
     for (const candidate of orphaned) {
+      const currentReferences =
+        await loadProtectedReferences(pool);
+
       if (
         await deleteCandidate(
           candidate,
-          refreshedReferences
+          currentReferences
         )
       ) {
         removed += 1;
