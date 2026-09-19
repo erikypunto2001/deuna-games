@@ -130,12 +130,17 @@ assert(
 );
 
 assert(
-  logoEditor.includes("useEffect") &&
+  logoEditor.includes("const uploadLock = useRef(false)") &&
+    logoEditor.includes("if (uploadLock.current) return") &&
+    logoEditor.includes("uploadLock.current = true") &&
+    logoEditor.includes("uploadLock.current = false") &&
     logoEditor.includes('closest("form")') &&
+    logoEditor.includes("if (!uploadLock.current) return") &&
     logoEditor.includes('form.addEventListener("submit", blockSubmit)') &&
-    logoEditor.includes("control.disabled = true") &&
-    logoEditor.includes("disabledBeforeUpload"),
-  "Mientras el logo se valida, Identidad debe bloquear submit por botón o Enter para evitar carreras."
+    logoEditor.includes('form.removeEventListener("submit", blockSubmit)') &&
+    logoEditor.includes("disabled={uploading}") &&
+    !logoEditor.includes("querySelectorAll<"),
+  "Logo debe serializar uploads y bloquear el submit padre desde un listener estable, sin depender del timing de estado React ni manipular botones por querySelector."
 );
 
 assert(
