@@ -282,7 +282,7 @@ export default function GameDetailMediaEditor({
 
   return (
     <>
-      <article className={assignmentStyles.assignmentCard} aria-labelledby="game-detail-media-heading">
+      <article id="detail-container-media" className={assignmentStyles.assignmentCard} aria-labelledby="game-detail-media-heading">
         <header>
           <div><span>E</span><h3 id="game-detail-media-heading">Contenedor de la ficha</h3></div>
           <small>Obligatorio · recorte adaptable</small>
