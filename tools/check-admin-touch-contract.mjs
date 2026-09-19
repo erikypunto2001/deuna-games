@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -24,6 +24,7 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/app/admin/admin.module.css"),
   source("src/app/admin/admin-professional.css"),
   source("src/app/admin/admin-professional-details.css"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
 ]);
 
 assert(
@@ -74,6 +75,12 @@ assert(
     /input\[type="file"\]::file-selector-button\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss) &&
     /\.admin-professional \.admin-history-action\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss),
   "Las acciones compartidas de ownership, tablas, historial y archivos deben conservar targets táctiles de al menos 44px en desktop.",
+);
+
+assert(
+  /\.backLink,\s*\n\.publicLink\s*\{[^}]*min-height:\s*44px;/s.test(gamePreviewCss) &&
+    !gamePreviewCss.includes(".publishGate button"),
+  "Vista previa debe conservar navegación de 44px y no CSS legacy para un botón de Publicación que ya no se renderiza.",
 );
 
 assert(
