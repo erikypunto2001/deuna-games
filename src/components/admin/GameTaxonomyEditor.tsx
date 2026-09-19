@@ -11,9 +11,13 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { CSSProperties } from "react";
+import type {
+  CSSProperties,
+  FormEvent,
+} from "react";
 import {
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -147,7 +151,9 @@ export default function GameTaxonomyEditor({
     tags: "",
   });
   const [feedback, setFeedback] = useState("");
+  const uploadLock = useRef(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const uploadBusy = uploadingKey !== null;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
 
@@ -299,6 +305,13 @@ export default function GameTaxonomyEditor({
     key: string,
     file: File
   ) {
+    if (uploadLock.current) {
+      setFeedback(
+        "Espera a que termine la carga del icono actual antes de iniciar otra."
+      );
+      return;
+    }
+
     const type = file.type.toLowerCase();
 
     if (
@@ -311,6 +324,7 @@ export default function GameTaxonomyEditor({
       return;
     }
 
+    uploadLock.current = true;
     setUploadingKey(key);
     setFeedback("");
 
@@ -368,8 +382,19 @@ export default function GameTaxonomyEditor({
         "No se pudo conectar con el almacén de iconos. Intenta nuevamente."
       );
     } finally {
+      uploadLock.current = false;
       setUploadingKey(null);
     }
+  }
+
+  function preventSubmitDuringUpload(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    if (!uploadLock.current) return;
+    event.preventDefault();
+    setFeedback(
+      "Espera a que termine la carga del icono antes de guardar clasificaciones."
+    );
   }
 
   function moveTerm(
@@ -415,6 +440,8 @@ export default function GameTaxonomyEditor({
       method="post"
       action={`/api/admin/content/catalogs/games?seccion=${returnSection}`}
       className={styles.root}
+      aria-busy={uploadBusy}
+      onSubmit={preventSubmitDuringUpload}
     >
       <input
         type="hidden"
@@ -562,7 +589,7 @@ export default function GameTaxonomyEditor({
                 const tone = taxonomyToneOptions.find(
                   (option) => option.key === term.tone
                 );
-                const uploading = uploadingKey === term.key;
+                const uploadingThisTerm = uploadingKey === term.key;
 
                 return (
                   <div
@@ -654,11 +681,11 @@ export default function GameTaxonomyEditor({
                           <div className={styles.customIconRow}>
                             <label
                               className={styles.iconUpload}
-                              data-busy={uploading ? "true" : "false"}
+                              data-busy={uploadingThisTerm ? "true" : "false"}
                             >
                               <Upload size={14} aria-hidden="true" />
                               <span>
-                                {uploading
+                                {uploadingThisTerm
                                   ? "Subiendo icono..."
                                   : term.iconAsset
                                     ? "Reemplazar icono propio"
@@ -667,7 +694,7 @@ export default function GameTaxonomyEditor({
                               <input
                                 type="file"
                                 accept=".svg,.webp,image/svg+xml,image/webp"
-                                disabled={uploading}
+                                disabled={uploadBusy}
                                 aria-label={`Subir icono propio para ${term.label}`}
                                 onChange={(event) => {
                                   const input = event.currentTarget;
@@ -694,6 +721,7 @@ export default function GameTaxonomyEditor({
                                 <button
                                   type="button"
                                   className={styles.clearCustomButton}
+                                  disabled={uploadBusy}
                                   onClick={() =>
                                     clearCustomIcon(
                                       currentSection.kind,
@@ -801,8 +829,14 @@ export default function GameTaxonomyEditor({
             ? "El orden de esta ventana es el mismo orden que se reutiliza públicamente. El contador considera cada juego una sola vez por clasificación. Los iconos propios conservan el mismo selector de color."
             : "Las etiquetas usadas no se eliminan para proteger las fichas existentes; puedes desactivarlas y mantener el historial editorial."}
         </p>
-        <button type="submit" data-brand-action="true">
-          Guardar {hasVisuals ? "clasificaciones" : "etiquetas"}
+        <button
+          type="submit"
+          data-brand-action="true"
+          disabled={uploadBusy}
+        >
+          {uploadBusy
+            ? "Esperando icono…"
+            : `Guardar ${hasVisuals ? "clasificaciones" : "etiquetas"}`}
         </button>
       </div>
     </form>
