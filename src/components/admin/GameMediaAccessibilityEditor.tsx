@@ -11,9 +11,9 @@ import GameEditorFormActions from "./GameEditorFormActions";
 import {
   multimediaShortName,
 } from "./game-multimedia-library-types";
-import type {
-  MultimediaLibraryState,
-} from "./game-multimedia-library-types";
+import {
+  useGameMultimediaWorkspace,
+} from "./GameMultimediaWorkspaceProvider";
 
 type AccessibilityLabels = {
   cover: string;
@@ -39,67 +39,33 @@ function emptyLabels(): AccessibilityLabels {
 
 export default function GameMediaAccessibilityEditor({
   slug,
-  revision,
 }: {
   slug: string;
-  revision: number;
 }) {
-  const [workspace, setWorkspace] =
-    useState<MultimediaLibraryState | null>(null);
+  const {
+    workspace,
+    loading,
+    error,
+    stale,
+  } = useGameMultimediaWorkspace();
   const [labels, setLabels] = useState<AccessibilityLabels>(emptyLabels);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (!workspace) return;
 
-    fetch(
-      `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
-      {
-        cache: "no-store",
-        credentials: "same-origin",
-        signal: controller.signal,
-      }
-    )
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("workspace unavailable");
-        }
-        return response.json() as Promise<MultimediaLibraryState>;
-      })
-      .then((payload) => {
-        const galleryLabels: Record<string, string> = {};
-        for (const item of payload.accessibility?.gallery ?? []) {
-          galleryLabels[galleryKey(item.kind, item.src)] = item.label;
-        }
+    const galleryLabels: Record<string, string> = {};
+    for (const item of workspace.accessibility?.gallery ?? []) {
+      galleryLabels[galleryKey(item.kind, item.src)] = item.label;
+    }
 
-        setWorkspace(payload);
-        setLabels({
-          cover: payload.accessibility?.cover ?? "",
-          hero: payload.accessibility?.hero ?? "",
-          card: payload.accessibility?.card ?? "",
-          detail: payload.accessibility?.detail ?? "",
-          gallery: galleryLabels,
-        });
-        setError(false);
-      })
-      .catch((requestError: unknown) => {
-        if (
-          requestError instanceof DOMException &&
-          requestError.name === "AbortError"
-        ) {
-          return;
-        }
-        setError(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [slug]);
+    setLabels({
+      cover: workspace.accessibility?.cover ?? "",
+      hero: workspace.accessibility?.hero ?? "",
+      card: workspace.accessibility?.card ?? "",
+      detail: workspace.accessibility?.detail ?? "",
+      gallery: galleryLabels,
+    });
+  }, [workspace]);
 
   const accessibilityJson = useMemo(() => {
     const compact = {
@@ -187,7 +153,7 @@ export default function GameMediaAccessibilityEditor({
     );
   }
 
-  if (workspace.revision !== revision) {
+  if (stale) {
     return (
       <section className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>
