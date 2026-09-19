@@ -278,7 +278,7 @@ assert(
     catalogCss.includes("nth-child(even)") &&
     catalogCss.includes(":focus-within") &&
     informationArchitectureCss.includes(".rowActions") &&
-    informationArchitectureCss.includes("min-height: 34px") &&
+    informationArchitectureCss.includes("min-height: 44px") &&
     !catalogCss.includes("#e8adb9") &&
     !catalogCss.includes("#ffd4de"),
   "Los catálogos administrativos deben distinguir filas, jerarquía de texto, foco, acciones legibles y color de marca dinámico."

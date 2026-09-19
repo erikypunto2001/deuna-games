@@ -91,7 +91,7 @@
 }
 
 .contextSecondary a {
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -130,7 +130,7 @@
 }
 
 .dashboardHeaderActions a {
-  min-height: 40px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -273,7 +273,7 @@
 }
 
 .publicPageActions a {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -303,7 +303,7 @@
 .rowActions > a,
 .rowMenu summary,
 .rowMenuPanel a {
-  min-height: 34px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -457,7 +457,7 @@
 
   .mobileNavPanel a,
   .contextMobilePanel a {
-    min-height: 42px;
+    min-height: 44px;
     display: flex;
     align-items: center;
     gap: 9px;
