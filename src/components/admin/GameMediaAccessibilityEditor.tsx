@@ -49,6 +49,7 @@ export default function GameMediaAccessibilityEditor({
     stale,
   } = useGameMultimediaWorkspace();
   const [labels, setLabels] = useState<AccessibilityLabels>(emptyLabels);
+  const [labelsRevision, setLabelsRevision] = useState<number | null>(null);
 
   useEffect(() => {
     if (!workspace) return;
@@ -65,6 +66,7 @@ export default function GameMediaAccessibilityEditor({
       detail: workspace.accessibility?.detail ?? "",
       gallery: galleryLabels,
     });
+    setLabelsRevision(workspace.revision);
   }, [workspace]);
 
   const accessibilityJson = useMemo(() => {
@@ -121,7 +123,10 @@ export default function GameMediaAccessibilityEditor({
     }));
   }
 
-  if (loading) {
+  if (
+    loading ||
+    (workspace !== null && labelsRevision !== workspace.revision)
+  ) {
     return (
       <section className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>
