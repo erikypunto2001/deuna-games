@@ -114,13 +114,16 @@ export default function GameMediaAccessibilityEditor({
     value: string
   ) {
     const key = galleryKey(kind, src);
-    setLabelsOverride((current) => ({
-      ...(current ?? labelsFromWorkspace(workspace)),
-      gallery: {
-        ...current.gallery,
-        [key]: value,
-      },
-    }));
+    setLabelsOverride((current) => {
+      const base = current ?? labelsFromWorkspace(workspace);
+      return {
+        ...base,
+        gallery: {
+          ...base.gallery,
+          [key]: value,
+        },
+      };
+    });
   }
 
   if (loading) {
