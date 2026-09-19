@@ -3,7 +3,11 @@ import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-const [page, downloadPage, updatePage] = await Promise.all([
+const [presentation, page, downloadPage, updatePage] = await Promise.all([
+  readFile(
+    path.join(root, "src", "lib", "games", "game-detail-presentation.ts"),
+    "utf8"
+  ),
   readFile(
     path.join(root, "src", "app", "juegos", "[slug]", "page.tsx"),
     "utf8"
@@ -34,10 +38,13 @@ const assert = (condition, message) => {
 };
 
 assert(
-  page.includes("const platforms = game.platforms ?? [];") &&
-    page.includes("const platformLabel = platforms.length") &&
-    page.includes(': "A confirmar";'),
-  "La ficha pública debe tratar una plataforma ausente como dato pendiente, no inferir una plataforma."
+  presentation.includes("const platforms = game.platforms ?? [];") &&
+    presentation.includes("const platformLabel = platforms.length") &&
+    presentation.includes(': "A confirmar";') &&
+    page.includes("resolveGameDetailPresentation(game)") &&
+    page.includes("platforms,") &&
+    page.includes("platformLabel,"),
+  "La presentación compartida y la ficha pública deben tratar una plataforma ausente como dato pendiente, no inferir una plataforma."
 );
 
 assert(
@@ -51,8 +58,10 @@ assert(
 );
 
 assert(
-  !/game\.platforms\?\.length[\s\S]{0,120}\[\s*["']PC["']\s*\]/.test(page),
-  "La ficha pública no debe volver a asumir PC cuando Compatibilidad no publicó una plataforma."
+  !/game\.platforms\?\.length[\s\S]{0,120}\[\s*["']PC["']\s*\]/.test(page) &&
+    !/game\.platforms\?\.length[\s\S]{0,120}\[\s*["']PC["']\s*\]/.test(presentation) &&
+    !/platformLabel[\s\S]{0,120}["']PC["']/.test(presentation),
+  "La ficha pública y su presentación compartida no deben volver a asumir PC cuando Compatibilidad no publicó una plataforma."
 );
 
 assert(
