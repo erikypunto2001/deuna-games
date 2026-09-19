@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -19,6 +20,9 @@ type GameMultimediaWorkspaceContextValue = {
   error: string | null;
   currentRevision: number;
   stale: boolean;
+  libraryOpen: boolean;
+  openLibrary: () => void;
+  closeLibrary: () => void;
 };
 
 const GameMultimediaWorkspaceContext =
@@ -37,6 +41,9 @@ export function GameMultimediaWorkspaceProvider({
     useState<MultimediaLibraryState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const openLibrary = useCallback(() => setLibraryOpen(true), []);
+  const closeLibrary = useCallback(() => setLibraryOpen(false), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,8 +93,19 @@ export function GameMultimediaWorkspaceProvider({
       error,
       currentRevision: workspace?.revision ?? revision,
       stale: workspace !== null && workspace.revision !== revision,
+      libraryOpen,
+      openLibrary,
+      closeLibrary,
     }),
-    [error, loading, revision, workspace]
+    [
+      closeLibrary,
+      error,
+      libraryOpen,
+      loading,
+      openLibrary,
+      revision,
+      workspace,
+    ]
   );
 
   return (
