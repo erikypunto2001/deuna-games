@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
+import GameGalleryVideo from "@/components/games/GameGalleryVideo";
 import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
@@ -29,6 +31,21 @@ import {
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
+import {
+  getGameGalleryAccessibleFallback,
+} from "@/lib/media/game-media-accessibility";
+import {
+  galleryImageViewport,
+  galleryVideoAspectRatio,
+  resolvePublicGameGalleryItems,
+} from "@/lib/media/game-gallery-media";
+import {
+  resolveGameDestinationImage,
+  resolveGameDestinationMediaMode,
+} from "@/lib/media/game-video-media";
+import {
+  resolveGameImageCropAspectRatio,
+} from "@/lib/media/image-viewport";
 import type {
   GameDownloadSourceStatus,
   GameHardwareRequirements,
@@ -148,6 +165,16 @@ export default async function AdminGamePreviewPage({
     minimum,
     recommended
   );
+  const detailImage = resolveGameDestinationImage(game, "detail");
+  const detailImageViewport = game.imageMedia?.detail ??
+    (!game.detailImage
+      ? game.heroImage
+        ? game.imageMedia?.hero
+        : game.imageMedia?.cover
+      : undefined);
+  const detailMode = resolveGameDestinationMediaMode(game, "detail");
+  const gallery = resolvePublicGameGalleryItems(game);
+  const galleryHasVideo = gallery.some((item) => item.kind === "video");
   const platforms = game.platforms ?? [];
   const platformLabel = platforms.length
     ? platforms.join(", ")
@@ -164,13 +191,9 @@ export default async function AdminGamePreviewPage({
       ...genres,
       ...(game.tags ?? []),
     ])
-  ).slice(0, 8);
-  const gallery = Array.from(
-    new Set([
-      ...(game.screenshots ?? []),
-      ...(game.heroImage ? [game.heroImage] : []),
-    ])
-  ).slice(0, 8);
+  )
+    .filter((tag) => tag !== game.category)
+    .slice(0, 5);
   const sources = download?.sources ?? [];
   const publicationHref =
     `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
@@ -232,17 +255,11 @@ export default async function AdminGamePreviewPage({
 
       <section className={styles.hero}>
         <div className={styles.heroBackground} aria-hidden="true">
-          <GameMedia
-            src={game.heroImage ?? game.coverImage}
-            alt=""
-            sizes="100vw"
-            variant="hero"
-            viewport={
-              game.heroImage
-                ? game.imageMedia?.hero
-                : game.imageMedia?.cover
-            }
-            priority
+          <GameDetailContainerMedia
+            mode={detailMode}
+            imageSrc={detailImage}
+            imageViewport={detailImageViewport}
+            video={game.videoMedia?.detail}
           />
           <div className={styles.heroShade} />
         </div>
@@ -474,34 +491,62 @@ export default async function AdminGamePreviewPage({
           </div>
 
           {gallery.length > 0 ? (
-            <div className={styles.gallery}>
-              {gallery.map((image, index) => {
-                const contextualLabel = game.mediaAccessibility?.gallery?.find(
-                  (entry) => entry.kind === "image" && entry.src === image
-                )?.label;
+            <>
+              <p className={styles.gallerySummary}>
+                {galleryHasVideo
+                  ? "Capturas y videos con el mismo orden, recorte y renderer de la ficha pública."
+                  : "Imágenes con el mismo orden, recorte y renderer de la ficha pública."}
+              </p>
+              <div className={styles.gallery}>
+                {gallery.map((item, index) => {
+                  const accessibleLabel = getGameGalleryAccessibleFallback(
+                    game,
+                    item,
+                    index
+                  );
 
-                return (
-                  <div key={image} className={styles.galleryItem}>
-                    <GameMedia
-                      src={image}
-                      alt={contextualLabel ?? `Vista previa ${index + 1} de ${game.title}`}
-                      sizes="(max-width: 900px) 50vw, 240px"
-                      variant="hero"
-                      viewport={
-                        game.imageMedia?.gallery?.[image]
-                        ?? (image === game.heroImage
-                          ? game.imageMedia?.hero
-                          : undefined)
-                      }
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                  if (item.kind === "image") {
+                    const viewport = galleryImageViewport(game, item);
+                    return (
+                      <figure
+                        key={`image:${item.src}`}
+                        className={styles.galleryItem}
+                        style={{
+                          aspectRatio: resolveGameImageCropAspectRatio(viewport),
+                        }}
+                      >
+                        <GameMedia
+                          src={item.src}
+                          alt={accessibleLabel}
+                          sizes="(max-width: 900px) 50vw, 240px"
+                          viewport={viewport}
+                        />
+                      </figure>
+                    );
+                  }
+
+                  return (
+                    <figure
+                      key={`video:${item.src}`}
+                      className={styles.galleryItem}
+                      style={{
+                        aspectRatio: galleryVideoAspectRatio(item.viewport),
+                      }}
+                    >
+                      <GameGalleryVideo
+                        src={item.src}
+                        viewport={item.viewport}
+                        label={accessibleLabel}
+                      />
+                    </figure>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <div className={styles.emptyState}>
               <ImageIcon size={22} aria-hidden="true" />
-              No hay capturas configuradas.
+              No hay capturas ni videos configurados.
             </div>
           )}
         </article>
