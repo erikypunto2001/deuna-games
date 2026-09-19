@@ -44,6 +44,7 @@ import {
 } from "@/lib/media/game-media-accessibility";
 import {
   galleryImageViewport,
+  galleryVideoAspectRatio,
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
 import {
@@ -66,7 +67,6 @@ import {
 import type {
   GameAgeRatingSystem,
   GameHardwareRequirements,
-  GameVideoViewport,
 } from "@/types/game";
 
 import GameAccountActions from "./GameAccountActions";
@@ -124,14 +124,6 @@ function buildRequirementRows(
     .filter(
       (row) => row.minimum || row.recommended
     );
-}
-
-function galleryVideoAspectRatio(viewport: GameVideoViewport) {
-  if (viewport.aspect === "3:2") return 3 / 2;
-  if (viewport.aspect === "1:1") return 1;
-  if (viewport.aspect === "4:5") return 4 / 5;
-  if (viewport.aspect === "9:16") return 9 / 16;
-  return 16 / 9;
 }
 
 function ageRatingSystemLabel(system: GameAgeRatingSystem) {
