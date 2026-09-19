@@ -23,6 +23,7 @@ const files = Object.fromEntries(
       route: "src/app/api/admin/content/games/[slug]/media-accessibility/route.ts",
       editor: "src/components/admin/GameMediaAccessibilityEditor.tsx",
       multimediaEditor: "src/components/admin/GameMultimediaEditor.tsx",
+      workspaceProvider: "src/components/admin/GameMultimediaWorkspaceProvider.tsx",
       workspace: "src/lib/admin/game-media-workspace.ts",
       accessibility: "src/lib/media/game-media-accessibility.ts",
       cover: "src/components/ui/GameCoverMedia.tsx",
@@ -101,15 +102,19 @@ assert(
 );
 
 assert(
-  files.editor.includes("/media-workspace") &&
+  files.workspaceProvider.includes("/media-workspace") &&
+    files.workspaceProvider.includes("useGameMultimediaWorkspace") &&
+    files.editor.includes("useGameMultimediaWorkspace") &&
+    !files.editor.includes("/media-workspace") &&
     files.editor.includes("/media-accessibility") &&
     files.editor.includes('name="expectedRevision"') &&
     files.editor.includes('name="accessibilityJson"') &&
-    files.editor.includes("workspace.revision !== revision") &&
+    files.editor.includes("if (stale)") &&
     files.editor.includes("maxLength={240}") &&
     files.editor.includes("GameEditorFormActions") &&
+    files.multimediaEditor.includes("GameMultimediaWorkspaceProvider") &&
     files.multimediaEditor.includes("GameMediaAccessibilityEditor"),
-  "Multimedia debe integrar un editor accesible sobre el workspace y revisión actuales."
+  "Multimedia debe integrar Accesibilidad sobre el único workspace compartido y la misma revisión optimista."
 );
 
 assert(
