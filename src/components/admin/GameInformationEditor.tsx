@@ -38,7 +38,7 @@ export default function GameInformationEditor({
       <form className={adminStyles.editorForm} method="post" action={action}>
         <input type="hidden" name="expectedRevision" value={revision} />
 
-        <label className={adminStyles.fieldWide}>
+        <label id="information-core" className={adminStyles.fieldWide}>
           <span>Título</span>
           <input name="title" defaultValue={game.title} maxLength={140} required />
         </label>
@@ -73,7 +73,7 @@ export default function GameInformationEditor({
           />
         </label>
 
-        <label>
+        <label id="identity">
           <span>Desarrollador</span>
           <input name="developer" defaultValue={game.developer ?? ""} maxLength={160} />
         </label>
