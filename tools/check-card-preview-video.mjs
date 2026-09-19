@@ -39,6 +39,7 @@ const [
   videoMedia,
   requirements,
   publicationReadiness,
+  publicationChanges,
   validation,
   validationCore,
   importRoute,
@@ -77,6 +78,7 @@ const [
   source("src/lib/media/game-video-media.ts"),
   source("src/lib/media/game-media-requirements.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
+  source("src/lib/admin/game-publication-changes.ts"),
   source("src/lib/admin/content-validation.ts"),
   source("src/lib/admin/content-validation-core.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
@@ -436,8 +438,11 @@ assert(
     !validationCore.includes("youtubePreview:") &&
     validation.includes("delete clean.previewMode") &&
     validation.includes("delete clean.youtubePreview") &&
-    validation.includes("delete clean.directPreview"),
-  "El contrato activo no debe exponer previews externos legacy; la capa de compatibilidad debe consumir esas claves antes del parser core."
+    validation.includes("delete clean.directPreview") &&
+    !publicationChanges.includes("previewMode") &&
+    !publicationChanges.includes("youtubePreview") &&
+    !publicationChanges.includes("directPreview"),
+  "El contrato activo y el diff de publicación no deben exponer previews externos legacy; la capa de compatibilidad debe consumir esas claves antes del parser core."
 );
 
 assert(
