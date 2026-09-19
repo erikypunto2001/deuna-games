@@ -140,6 +140,19 @@ assert(
 assert(
   has(
     libraryEditor,
+    "const operationLock = useRef(false)",
+    "if (operationLock.current) return",
+    "operationLock.current = true",
+    "operationLock.current = false",
+    "Espera a que termine la operación multimedia actual."
+  ) &&
+    !libraryEditor.includes("sourceBusy || busy) return"),
+  "La Biblioteca de video debe usar una única autoridad síncrona para impedir solapamientos entre preparación de fuente y creación del master."
+);
+
+assert(
+  has(
+    libraryEditor,
     '"X-Deuna-Preview-Target": "library"',
     'target: "library"',
     "VideoTrimEditor",
