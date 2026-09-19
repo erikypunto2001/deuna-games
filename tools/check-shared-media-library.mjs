@@ -21,8 +21,10 @@ const [
   imageUploadForm,
   assignmentsWorkspace,
   galleryManager,
+  accessibilityEditor,
   utilityRail,
   multimediaEditor,
+  workspaceProvider,
   mediaPreview,
   mediaPreviewCss,
   contextualDialog,
@@ -31,7 +33,6 @@ const [
   videoViewportEditor,
   imageViewportEditor,
   mediaIntegrity,
-  publicationLifecycle,
 ] = await Promise.all([
   source("package.json"),
   source("src/lib/media/editorial-media-library.ts"),
@@ -43,8 +44,10 @@ const [
   source("src/components/admin/GameMediaUploadForm.tsx"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/components/admin/GameMediaAccessibilityEditor.tsx"),
   source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
+  source("src/components/admin/GameMultimediaWorkspaceProvider.tsx"),
   source("src/components/admin/AdminMediaLibraryPreview.tsx"),
   source("src/components/admin/AdminMediaLibraryPreview.module.css"),
   source("src/components/admin/ContextualMediaDialog.tsx"),
@@ -53,7 +56,6 @@ const [
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
-  source("tools/game-publication-lifecycle-smoke.mjs"),
 ]);
 
 assert(
@@ -148,16 +150,6 @@ assert(
   "Galería debe tener una única superficie de escritura en gallery-media; media-library sólo asigna destinos fijos."
 );
 
-const lifecycleMediaSnapshot = publicationLifecycle.match(
-  /async function mediaSnapshot\([\s\S]*?\n\}/
-)?.[0] ?? "";
-
-assert(
-  lifecycleMediaSnapshot.includes("/media-workspace") &&
-    !lifecycleMediaSnapshot.includes("/media-library"),
-  "El lifecycle E2E debe leer el snapshot multimedia únicamente desde media-workspace; media-library queda reservado a mutaciones POST."
-);
-
 assert(
   has(
     mediaResourceDeleteRoute,
@@ -222,12 +214,34 @@ assert(
 assert(
   has(
     multimediaEditor,
+    "GameMultimediaWorkspaceProvider",
     "GameMediaAssignmentsWorkspace",
     "GameGalleryMediaManager",
     "GameMediaAccessibilityEditor",
     "GameMultimediaUtilityRail"
-  ) && !multimediaEditor.includes("GameMultimediaWorkspaceContextual"),
-  "El editor principal debe componer asignaciones, Galería, accesibilidad y rail sin reintroducir el workspace legacy."
+  ) &&
+    has(
+      workspaceProvider,
+      "createContext",
+      "useGameMultimediaWorkspace",
+      "/media-workspace",
+      "currentRevision",
+      "stale",
+      "openLibrary",
+      "closeLibrary"
+    ) &&
+    assignmentsWorkspace.includes("onAddResource={openLibrary}") &&
+    utilityRail.includes("libraryOpen") &&
+    utilityRail.includes("openLibrary") &&
+    utilityRail.includes("closeLibrary") &&
+    !assignmentsWorkspace.includes("document.querySelector") &&
+    !assignmentsWorkspace.includes("data-multimedia-library-open") &&
+    !assignmentsWorkspace.includes("/media-workspace") &&
+    !galleryManager.includes("/media-workspace") &&
+    !accessibilityEditor.includes("/media-workspace") &&
+    !utilityRail.includes("/media-workspace") &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual"),
+  "El editor multimedia debe cargar media-workspace una sola vez y compartir exactamente el mismo snapshot/revisión entre Asignaciones, Galería, Accesibilidad y rail."
 );
 
 for (const label of [
