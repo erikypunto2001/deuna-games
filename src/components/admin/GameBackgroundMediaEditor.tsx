@@ -267,7 +267,7 @@ export default function GameBackgroundMediaEditor({
 
   return (
     <>
-      <article className={assignmentStyles.assignmentCard} aria-labelledby="game-background-heading">
+      <article id="background-media" className={assignmentStyles.assignmentCard} aria-labelledby="game-background-heading">
         <header>
           <div><span>D</span><h3 id="game-background-heading">Fondo del juego</h3></div>
           <small>Opcional · recorte adaptable</small>
