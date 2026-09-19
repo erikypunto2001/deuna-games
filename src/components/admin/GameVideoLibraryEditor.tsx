@@ -5,6 +5,7 @@ import {
   type FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -190,6 +191,7 @@ export default function GameVideoLibraryEditor({
   const [previewViewport, setPreviewViewport] = useState<PreviewViewport>({
     ...DEFAULT_PREVIEW_VIEWPORT,
   });
+  const operationLock = useRef(false);
   const [sourceBusy, setSourceBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -247,6 +249,7 @@ export default function GameVideoLibraryEditor({
   }
 
   function switchSourceMode(mode: SourceMode) {
+    if (operationLock.current) return;
     resetPreparedSource();
     setSourceMode(mode);
     setSourceUrl("");
@@ -340,6 +343,9 @@ export default function GameVideoLibraryEditor({
   }
 
   async function prepareLocalFile(file: File) {
+    if (operationLock.current) return;
+
+    operationLock.current = true;
     setSourceBusy(true);
     const src = URL.createObjectURL(file);
     let keepObjectUrl = false;
@@ -367,11 +373,14 @@ export default function GameVideoLibraryEditor({
       );
     } finally {
       if (!keepObjectUrl) URL.revokeObjectURL(src);
+      operationLock.current = false;
       setSourceBusy(false);
     }
   }
 
   function handleLocalFile(event: ChangeEvent<HTMLInputElement>) {
+    if (operationLock.current) return;
+
     const file = event.target.files?.[0];
     resetPreparedSource();
     setStatus(null);
@@ -389,7 +398,7 @@ export default function GameVideoLibraryEditor({
   }
 
   async function prepareRemoteSource() {
-    if (sourceMode === "file" || sourceBusy || busy) return;
+    if (sourceMode === "file" || operationLock.current) return;
 
     if (!normalizedRemoteUrl) {
       setStatus(
@@ -400,6 +409,7 @@ export default function GameVideoLibraryEditor({
       return;
     }
 
+    operationLock.current = true;
     resetPreparedSource();
     setSourceBusy(true);
     const label = selectedProvider?.label ?? "URL directa";
@@ -481,12 +491,18 @@ export default function GameVideoLibraryEditor({
           : `No se pudo preparar ${label}.`
       );
     } finally {
+      operationLock.current = false;
       setSourceBusy(false);
     }
   }
 
   async function saveVideo() {
-    if (!preparedSource || !trim || busy || sourceBusy) {
+    if (operationLock.current) {
+      setStatus("Espera a que termine la operación multimedia actual.");
+      return;
+    }
+
+    if (!preparedSource || !trim) {
       setStatus(
         "Prepara la fuente y selecciona un tramo válido con IN y OUT."
       );
@@ -530,6 +546,7 @@ export default function GameVideoLibraryEditor({
       };
     }
 
+    operationLock.current = true;
     setBusy(true);
     setStatus(
       `Creando master ${selectedQuality.label} · ${fps} FPS solicitados con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`
@@ -558,6 +575,7 @@ export default function GameVideoLibraryEditor({
       }
       window.location.assign(resultUrl.toString());
     } catch (error) {
+      operationLock.current = false;
       setStatus(
         error instanceof Error
           ? error.message
