@@ -64,9 +64,23 @@ type Props = { slug: string };
 type FixedTarget = "cover" | "hero" | "card";
 type EditState = { target: FixedTarget; kind: "image" | "video" } | null;
 
+const LOCATION_HASH_SYNC_EVENT =
+  "deuna:media-readiness-hash-sync";
+
 function subscribeLocationHash(onStoreChange: () => void) {
   window.addEventListener("hashchange", onStoreChange);
-  return () => window.removeEventListener("hashchange", onStoreChange);
+  window.addEventListener(
+    LOCATION_HASH_SYNC_EVENT,
+    onStoreChange
+  );
+
+  return () => {
+    window.removeEventListener("hashchange", onStoreChange);
+    window.removeEventListener(
+      LOCATION_HASH_SYNC_EVENT,
+      onStoreChange
+    );
+  };
 }
 
 function locationHashSnapshot() {
@@ -82,6 +96,19 @@ function editStateFromHash(hash: string): EditState {
   if (hash === "#hero-crop") return { target: "hero", kind: "image" };
   if (hash === "#card-crop") return { target: "card", kind: "image" };
   return null;
+}
+
+function clearReadinessHash() {
+  if (!editStateFromHash(window.location.hash)) return;
+
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${window.location.pathname}${window.location.search}`
+  );
+  window.dispatchEvent(
+    new Event(LOCATION_HASH_SYNC_EVENT)
+  );
 }
 
 type PickerTarget =
@@ -352,11 +379,15 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
     locationHashSnapshot,
     serverLocationHashSnapshot
   );
-  const [editingOverride, setEditing] =
-    useState<EditState | undefined>(undefined);
-  const editing = editingOverride === undefined
-    ? editStateFromHash(locationHash)
-    : editingOverride;
+  const [manualEditing, setManualEditing] =
+    useState<EditState>(null);
+  const editing =
+    manualEditing ?? editStateFromHash(locationHash);
+
+  function closeEditing() {
+    setManualEditing(null);
+    clearReadinessHash();
+  }
 
   const resources = state?.resources ?? EMPTY_RESOURCES;
   const assignments = state?.assignments;
@@ -471,7 +502,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
               </div>
               <div className={styles.actions}>
                 {posterSource === "custom" && <ResourcePicker slug={slug} revision={currentRevision} target="cover-image" kind="image" resources={imageResources} selected={posterImage} disabled={stale} label="Imagen de portada" />}
-                <CropButton ready={posterReady} assigned={Boolean(posterImage)} aspect="4:5" kind="image" disabled={stale} onClick={() => setEditing({ target: "cover", kind: "image" })} />
+                <CropButton ready={posterReady} assigned={Boolean(posterImage)} aspect="4:5" kind="image" disabled={stale} onClick={() => setManualEditing({ target: "cover", kind: "image" })} />
               </div>
               <RequirementLine ready={posterReady} text={posterReady ? "PORTADA LISTA · 4:5" : "FALTA COMPLETAR LA PORTADA 4:5"} />
             </section>
@@ -512,7 +543,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
                 </div>
                 <div className={styles.actions}>
                   <ResourcePicker slug={slug} revision={currentRevision} target="card-image" kind="image" resources={imageResources} selected={cardImage} disabled={stale} label={cardCopy.imagePickerLabel} />
-                  <CropButton ready={cardImageReady} assigned={Boolean(cardImage)} aspect="3:2" kind="image" disabled={stale} onClick={() => setEditing({ target: "card", kind: "image" })} />
+                  <CropButton ready={cardImageReady} assigned={Boolean(cardImage)} aspect="3:2" kind="image" disabled={stale} onClick={() => setManualEditing({ target: "card", kind: "image" })} />
                 </div>
               </div>
 
@@ -524,7 +555,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
                   </div>
                   <div className={styles.actions}>
                     <ResourcePicker slug={slug} revision={currentRevision} target="card-video" kind="video" resources={videoResources} selected={resolvedCardClip} disabled={stale} label="Video 3:2" />
-                    <CropButton ready={cardVideoReady} assigned={Boolean(resolvedCardClip)} aspect="3:2" kind="video" disabled={stale} onClick={() => setEditing({ target: "card", kind: "video" })} />
+                    <CropButton ready={cardVideoReady} assigned={Boolean(resolvedCardClip)} aspect="3:2" kind="video" disabled={stale} onClick={() => setManualEditing({ target: "card", kind: "video" })} />
                   </div>
                 </div>
               )}
@@ -548,8 +579,8 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
               <div className={styles.currentMeta}><span>Modo Hero</span><strong>{modeLabel(heroMode)}</strong><small>Destino panorámico independiente de la Card.</small></div>
             </div>
             <div className={styles.actions}>
-              {needsImage(heroMode) && <><ResourcePicker slug={slug} revision={currentRevision} target="hero-image" kind="image" resources={imageResources} selected={heroImage} disabled={stale} label="Imagen Hero" /><CropButton ready={heroImageReady} assigned={Boolean(heroImage)} aspect="3:1" kind="image" disabled={stale} onClick={() => setEditing({ target: "hero", kind: "image" })} /></>}
-              {needsVideo(heroMode) && <><ResourcePicker slug={slug} revision={currentRevision} target="hero-video" kind="video" resources={videoResources} selected={heroVideo?.clip ?? null} disabled={stale} label="Video Hero" /><CropButton ready={heroVideoReady} assigned={Boolean(heroVideo?.clip)} aspect="3:1" kind="video" disabled={stale} onClick={() => setEditing({ target: "hero", kind: "video" })} /></>}
+              {needsImage(heroMode) && <><ResourcePicker slug={slug} revision={currentRevision} target="hero-image" kind="image" resources={imageResources} selected={heroImage} disabled={stale} label="Imagen Hero" /><CropButton ready={heroImageReady} assigned={Boolean(heroImage)} aspect="3:1" kind="image" disabled={stale} onClick={() => setManualEditing({ target: "hero", kind: "image" })} /></>}
+              {needsVideo(heroMode) && <><ResourcePicker slug={slug} revision={currentRevision} target="hero-video" kind="video" resources={videoResources} selected={heroVideo?.clip ?? null} disabled={stale} label="Video Hero" /><CropButton ready={heroVideoReady} assigned={Boolean(heroVideo?.clip)} aspect="3:1" kind="video" disabled={stale} onClick={() => setManualEditing({ target: "hero", kind: "video" })} /></>}
             </div>
             <RequirementLine ready={heroReady} text={heroReady ? "HERO LISTO · 3:1" : "HERO INCOMPLETO · 3:1"} />
           </div>
@@ -562,14 +593,14 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
       <div className={styles.hint}><strong>Biblioteca compartida:</strong> los masters se crean una sola vez y se reutilizan por referencia. Card y Portada pueden compartir bytes con crops independientes. Ningún recurso se publica automáticamente desde esta vista.</div>
 
       {editing?.kind === "image" && editImage && (
-        <ContextualMediaDialog eyebrow={editing.target === "cover" ? "CARD · PORTADA" : editing.target === "card" ? "CARD · MEDIA" : "HERO"} title={editing.target === "cover" ? "Recorte 4:5 de la Portada" : editing.target === "card" ? (cardMode === "video" ? "Recorte 3:2 de la imagen de respaldo" : "Recorte 3:2 de la imagen de Card") : "Recorte 3:1 del Hero"} description="Se guarda únicamente el encuadre editorial. El archivo físico permanece intacto y reutilizable." onClose={() => setEditing(null)}>
-          <ImageViewportEditor slug={slug} revision={currentRevision} target={editing.target} src={editImage} label={editing.target === "cover" ? "Portada · 4:5" : editing.target === "card" ? (cardMode === "video" ? "Card · imagen de respaldo 3:2" : "Card · imagen 3:2") : "Hero · 3:1"} initialViewport={editImageViewport} onClose={() => setEditing(null)} />
+        <ContextualMediaDialog eyebrow={editing.target === "cover" ? "CARD · PORTADA" : editing.target === "card" ? "CARD · MEDIA" : "HERO"} title={editing.target === "cover" ? "Recorte 4:5 de la Portada" : editing.target === "card" ? (cardMode === "video" ? "Recorte 3:2 de la imagen de respaldo" : "Recorte 3:2 de la imagen de Card") : "Recorte 3:1 del Hero"} description="Se guarda únicamente el encuadre editorial. El archivo físico permanece intacto y reutilizable." onClose={closeEditing}>
+          <ImageViewportEditor slug={slug} revision={currentRevision} target={editing.target} src={editImage} label={editing.target === "cover" ? "Portada · 4:5" : editing.target === "card" ? (cardMode === "video" ? "Card · imagen de respaldo 3:2" : "Card · imagen 3:2") : "Hero · 3:1"} initialViewport={editImageViewport} onClose={closeEditing} />
         </ContextualMediaDialog>
       )}
 
       {editing?.kind === "video" && editVideo && editVideoViewport && editing.target !== "cover" && (
-        <ContextualMediaDialog eyebrow={editing.target === "card" ? "CARD · VIDEO" : "HERO"} title={editing.target === "card" ? "Recorte 3:2 del video de Card" : "Recorte 3:1 del video Hero"} description="El WebM se reutiliza por referencia; este editor sólo confirma el encuadre del destino." onClose={() => setEditing(null)}>
-          <GameVideoViewportEditor slug={slug} revision={currentRevision} target={editing.target} source={editing.target === "hero" ? "hero" : assignments.cardVideo?.source ?? "independent"} clip={editVideo} label={editing.target === "card" ? "Card · video 3:2" : "Hero · video 3:1"} initialViewport={editVideoViewport} onClose={() => setEditing(null)} />
+        <ContextualMediaDialog eyebrow={editing.target === "card" ? "CARD · VIDEO" : "HERO"} title={editing.target === "card" ? "Recorte 3:2 del video de Card" : "Recorte 3:1 del video Hero"} description="El WebM se reutiliza por referencia; este editor sólo confirma el encuadre del destino." onClose={closeEditing}>
+          <GameVideoViewportEditor slug={slug} revision={currentRevision} target={editing.target} source={editing.target === "hero" ? "hero" : assignments.cardVideo?.source ?? "independent"} clip={editVideo} label={editing.target === "card" ? "Card · video 3:2" : "Hero · video 3:1"} initialViewport={editVideoViewport} onClose={closeEditing} />
         </ContextualMediaDialog>
       )}
     </div>
