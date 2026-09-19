@@ -53,6 +53,7 @@ export function GameMultimediaWorkspaceProvider({
         setLoading(true);
         setError(null);
         setWorkspace(null);
+        setLibraryOpen(false);
         const response = await fetch(
           `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
           {
