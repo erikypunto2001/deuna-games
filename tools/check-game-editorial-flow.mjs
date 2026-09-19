@@ -1,4 +1,5 @@
 import "./check-game-editorial-flow-core.mjs";
+import "./check-game-readiness-navigation.mjs";
 import "./check-public-game-platforms.mjs";
 import "./check-performance-provenance.mjs";
 import "./check-compatibility-verification.mjs";
