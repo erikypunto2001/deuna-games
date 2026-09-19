@@ -194,8 +194,11 @@ assert(
     "assignmentStyles.assignmentActions",
     "revision: number",
     "resources: LibraryResource[]",
-    "assignment: BackgroundAssignment"
+    "assignment: BackgroundAssignment",
+    'onAddResource: (kind: "image" | "video") => void',
+    "onAddResource(kind)"
   ) &&
+    !admin.includes("#shared-library-heading") &&
     !admin.includes("Imagen + hover") &&
     !admin.includes("Video hover seleccionado") &&
     !admin.includes("hoverMode") &&
@@ -285,6 +288,7 @@ assert(
     "assignments.imageMedia?.background",
     "assignments.backgroundVideo",
     "<GameBackgroundMediaEditor",
+    "onAddResource={openLibrary}",
     "<GameDetailMediaEditor"
   ) &&
     has(
