@@ -11,6 +11,30 @@ export type GameEditorContinuation =
   | Exclude<GameEditorSection, "ficha">
   | "publicacion";
 
+const multimediaReadinessAnchors = new Set([
+  "cover-crop",
+  "hero-crop",
+  "card-crop",
+  "detail-container-media",
+  "background-media",
+  "gallery-minimum",
+  "media-accessibility",
+]);
+
+export function gameEditorReadinessTarget(
+  slug: string,
+  section: GameEditorSection,
+  readinessId: string
+) {
+  const base =
+    `/admin/juegos/${encodeURIComponent(slug)}?seccion=${section}`;
+
+  return section === "multimedia" &&
+    multimediaReadinessAnchors.has(readinessId)
+    ? `${base}#${readinessId}`
+    : base;
+}
+
 const nextSection: Record<
   GameEditorSection,
   GameEditorContinuation
