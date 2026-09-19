@@ -128,7 +128,7 @@ export default function GameMediaAccessibilityEditor({
 
   if (loading) {
     return (
-      <section className={adminStyles.editorPanel} aria-live="polite">
+      <section id="media-accessibility" className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>
           <div>
             <span>ACCESIBILIDAD</span>
@@ -144,7 +144,7 @@ export default function GameMediaAccessibilityEditor({
 
   if (error || !workspace) {
     return (
-      <section className={adminStyles.editorPanel} aria-live="polite">
+      <section id="media-accessibility" className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>
           <div>
             <span>ACCESIBILIDAD</span>
@@ -160,7 +160,7 @@ export default function GameMediaAccessibilityEditor({
 
   if (stale) {
     return (
-      <section className={adminStyles.editorPanel} aria-live="polite">
+      <section id="media-accessibility" className={adminStyles.editorPanel} aria-live="polite">
         <div className={adminStyles.sectionHeading}>
           <div>
             <span>ACCESIBILIDAD</span>
@@ -188,7 +188,7 @@ export default function GameMediaAccessibilityEditor({
     `/api/admin/content/games/${encodeURIComponent(slug)}/media-accessibility`;
 
   return (
-    <section className={adminStyles.editorPanel}>
+    <section id="media-accessibility" className={adminStyles.editorPanel}>
       <div className={adminStyles.sectionHeading}>
         <div>
           <span>ACCESIBILIDAD</span>
