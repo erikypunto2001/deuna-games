@@ -28,6 +28,7 @@ const [
   taxonomyIcon,
   uploadRoute,
   uploadStorage,
+  taxonomyPolicy,
   publicMediaRoute,
   mediaServing,
   homeClassifications,
@@ -40,6 +41,7 @@ const [
   source("src/components/taxonomy/TaxonomyIcon.tsx"),
   source("src/app/api/admin/content/catalogs/icon-upload/route.ts"),
   source("src/lib/media/taxonomy-icon-upload.ts"),
+  source("src/lib/media/taxonomy-icon-policy.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/lib/media/editorial-media-serving.ts"),
   source("src/components/home/FeaturedCategories.tsx"),
@@ -74,10 +76,12 @@ for (const unsafe of [
 
 assert(
   completeValidation.includes("iconAsset: taxonomyIconAssetSchema.optional()") &&
-    completeValidation.includes("taxonomy-icons") &&
-    completeValidation.includes("(?:svg|webp)") &&
-    completeValidation.includes("iconAsset: existing.iconAsset ?? term.iconAsset"),
-  "La taxonomía debe aceptar sólo assets SVG/WebP hashados del almacén de iconos y conservarlos al migrar datos heredados."
+    completeValidation.includes("taxonomyIconAssetPattern") &&
+    completeValidation.includes("iconAsset: existing.iconAsset ?? term.iconAsset") &&
+    taxonomyPolicy.includes('TAXONOMY_ICON_SLUG = "taxonomy-icons"') &&
+    taxonomyPolicy.includes("taxonomyIconAssetPattern") &&
+    taxonomyPolicy.includes("(?:svg|webp)"),
+  "La taxonomía debe aceptar sólo assets SVG/WebP hashados mediante la policy compartida y conservarlos al migrar datos heredados."
 );
 
 assert(
