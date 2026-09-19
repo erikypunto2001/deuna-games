@@ -2,7 +2,9 @@
 
 import {
   type CSSProperties,
+  type KeyboardEvent,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -91,6 +93,7 @@ export default function SiteAppearanceWorkspace({
 }: SiteAppearanceWorkspaceProps) {
   const [activePanel, setActivePanel] =
     useState<AppearancePanel>(initialPanel);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [themeColor, setThemeColor] =
     useState(initialThemeColor);
   const [brandColor, setBrandColor] =
@@ -126,6 +129,30 @@ export default function SiteAppearanceWorkspace({
     "--appearance-preview-on-brand": onBrand,
   } as CSSProperties;
 
+  function moveTab(
+    currentIndex: number,
+    event: KeyboardEvent<HTMLButtonElement>
+  ) {
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % panels.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + panels.length) % panels.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = panels.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextPanel = panels[nextIndex];
+    setActivePanel(nextPanel.id);
+    tabRefs.current[nextIndex]?.focus();
+  }
+
   return (
     <div className={styles.workspace}>
       <nav
@@ -133,20 +160,25 @@ export default function SiteAppearanceWorkspace({
         role="tablist"
         aria-label="Herramientas de apariencia"
       >
-        {panels.map((panel) => {
+        {panels.map((panel, index) => {
           const Icon = panel.icon;
           const selected = activePanel === panel.id;
 
           return (
             <button
               key={panel.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
               type="button"
               role="tab"
               id={`appearance-tab-${panel.id}`}
               aria-selected={selected}
               aria-controls={`appearance-panel-${panel.id}`}
+              tabIndex={selected ? 0 : -1}
               className={selected ? styles.tabActive : undefined}
               onClick={() => setActivePanel(panel.id)}
+              onKeyDown={(event) => moveTab(index, event)}
             >
               <span className={styles.tabIcon} aria-hidden="true">
                 <Icon size={17} strokeWidth={1.9} />
@@ -346,7 +378,7 @@ export default function SiteAppearanceWorkspace({
       >
         <SiteBackgroundManager
           revision={revision}
-          brandColor={initialBrandColor}
+          brandColor={brandColor}
           customAssets={customAssets}
           pageBackgrounds={pageBackgrounds}
         />
