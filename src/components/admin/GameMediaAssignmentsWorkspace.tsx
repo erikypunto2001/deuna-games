@@ -325,6 +325,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
     error,
     currentRevision,
     stale,
+    openLibrary,
   } = useGameMultimediaWorkspace();
   const [editing, setEditing] = useState<EditState>(null);
 
@@ -535,7 +536,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
         </article>
 
         <GameBackgroundMediaEditor slug={slug} revision={currentRevision} resources={resources} assignment={{ mode: assignments.backgroundMode, image: assignments.backgroundImage, imageViewport: assignments.imageMedia?.background ?? null, video: assignments.backgroundVideo }} stale={stale} />
-        <GameDetailMediaEditor slug={slug} revision={currentRevision} endpoint={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`} resources={resources} assignment={{ mode: assignments.detailMode, image: assignments.detailImage, imageViewport: assignments.imageMedia?.detail ?? null, video: assignments.detailVideo }} stale={stale} onAddResource={() => document.querySelector<HTMLElement>("[data-multimedia-library-open]")?.click()} />
+        <GameDetailMediaEditor slug={slug} revision={currentRevision} endpoint={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`} resources={resources} assignment={{ mode: assignments.detailMode, image: assignments.detailImage, imageViewport: assignments.imageMedia?.detail ?? null, video: assignments.detailVideo }} stale={stale} onAddResource={openLibrary} />
       </div>
 
       <div className={styles.hint}><strong>Biblioteca compartida:</strong> los masters se crean una sola vez y se reutilizan por referencia. Card y Portada pueden compartir bytes con crops independientes. Ningún recurso se publica automáticamente desde esta vista.</div>
