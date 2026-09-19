@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -21,6 +21,9 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/GamePublicationWorkspace.module.css"),
   source("src/components/admin/PublicationPanel.module.css"),
   source("src/components/admin/AdminInformationArchitecture.module.css"),
+  source("src/app/admin/admin.module.css"),
+  source("src/app/admin/admin-professional.css"),
+  source("src/app/admin/admin-professional-details.css"),
 ]);
 
 assert(
@@ -61,6 +64,16 @@ assert(
     /\.mobileNavPanel a,[\s\S]*?min-height:\s*44px;/s.test(informationArchitectureCss) &&
     !/min-height:\s*(?:3[0-9]|4[0-3])px;/.test(informationArchitectureCss),
   "Dashboard, navegación contextual y acciones de filas/páginas deben conservar targets táctiles de al menos 44px también fuera del override móvil.",
+);
+
+assert(
+  /\.ownerBlock button\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
+    /\.tableAction\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
+    /\.historyList button\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
+    /\.admin-professional \.admin-table-action\s*\{[^}]*min-height:\s*44px;/s.test(professionalCss) &&
+    /input\[type="file"\]::file-selector-button\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss) &&
+    /\.admin-professional \.admin-history-action\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss),
+  "Las acciones compartidas de ownership, tablas, historial y archivos deben conservar targets táctiles de al menos 44px en desktop.",
 );
 
 assert(
