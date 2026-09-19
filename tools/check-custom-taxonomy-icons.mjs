@@ -91,6 +91,17 @@ assert(
 );
 
 assert(
+  editor.includes("const uploadLock = useRef(false)") &&
+    editor.includes("if (uploadLock.current)") &&
+    editor.includes("uploadLock.current = true") &&
+    editor.includes("uploadLock.current = false") &&
+    editor.includes("onSubmit={preventSubmitDuringUpload}") &&
+    editor.includes("disabled={uploadBusy}") &&
+    editor.includes('aria-busy={uploadBusy}'),
+  "Taxonomía debe serializar uploads de iconos y bloquear cualquier guardado mientras el asset todavía no quedó incorporado al estado editorial local."
+);
+
+assert(
   presentation.includes("customTaxonomyIconPattern") &&
     presentation.includes("iconAsset") &&
     taxonomyIcon.includes("maskImage") &&
