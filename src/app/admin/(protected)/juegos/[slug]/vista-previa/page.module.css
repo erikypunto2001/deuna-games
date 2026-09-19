@@ -430,16 +430,24 @@
   line-height: 1.5;
 }
 
+.gallerySummary {
+  margin-top: 12px;
+  color: #8f9dac;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .gallery {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
-  margin-top: 17px;
+  margin-top: 12px;
 }
 
 .galleryItem {
   position: relative;
   min-height: 145px;
+  margin: 0;
   overflow: hidden;
   border: 1px solid #344150;
   border-radius: 8px;
