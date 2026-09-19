@@ -239,6 +239,7 @@ export default function GameMediaUploadForm({
 }: GameMediaUploadFormProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const submitLock = useRef(false);
   const [sourceMode, setSourceMode] =
     useState<SourceMode>("file");
   const [processingMode, setProcessingMode] =
@@ -377,10 +378,11 @@ export default function GameMediaUploadForm({
   ) {
     event.preventDefault();
 
-    if (busy) return;
+    if (submitLock.current) return;
 
     const kind = "library";
 
+    submitLock.current = true;
     setBusy(true);
     setStatus("Preparando imagen…");
 
@@ -441,6 +443,7 @@ export default function GameMediaUploadForm({
 
       window.location.assign(resultUrl.toString());
     } catch (error) {
+      submitLock.current = false;
       setStatus(
         error instanceof Error
           ? error.message
