@@ -4,6 +4,7 @@ import Image from "next/image";
 import {
   type CSSProperties,
   type FormEvent,
+  type KeyboardEvent,
   useEffect,
   useMemo,
   useRef,
@@ -275,6 +276,7 @@ export default function SiteBackgroundManager({
   pageBackgrounds = {},
 }: SiteBackgroundManagerProps) {
   const [page, setPage] = useState<SiteBackgroundPage>("home");
+  const pageTabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [drafts, setDrafts] = useState<
     Record<SiteBackgroundPage, ResolvedSiteBackgroundSetting>
   >(() =>
@@ -306,6 +308,31 @@ export default function SiteBackgroundManager({
       if (uploadPreview) URL.revokeObjectURL(uploadPreview);
     };
   }, [uploadPreview]);
+
+  function movePageTab(
+    currentIndex: number,
+    event: KeyboardEvent<HTMLButtonElement>
+  ) {
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % siteBackgroundPageOptions.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex =
+        (currentIndex - 1 + siteBackgroundPageOptions.length) %
+        siteBackgroundPageOptions.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = siteBackgroundPageOptions.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    setPage(siteBackgroundPageOptions[nextIndex].key);
+    pageTabRefs.current[nextIndex]?.focus();
+  }
 
   function updateCurrent(
     patch: Partial<ResolvedSiteBackgroundSetting>
@@ -425,18 +452,27 @@ export default function SiteBackgroundManager({
       </div>
 
       <div className={styles.pageTabs} role="tablist" aria-label="Página a personalizar">
-        {siteBackgroundPageOptions.map((option) => (
-          <button
-            key={option.key}
-            type="button"
-            role="tab"
-            aria-selected={page === option.key}
-            className={page === option.key ? styles.pageTabActive : ""}
-            onClick={() => setPage(option.key)}
-          >
-            {option.label}
-          </button>
-        ))}
+        {siteBackgroundPageOptions.map((option, index) => {
+          const selected = page === option.key;
+
+          return (
+            <button
+              key={option.key}
+              ref={(node) => {
+                pageTabRefs.current[index] = node;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              tabIndex={selected ? 0 : -1}
+              className={selected ? styles.pageTabActive : ""}
+              onClick={() => setPage(option.key)}
+              onKeyDown={(event) => movePageTab(index, event)}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className={styles.managerGrid}>
