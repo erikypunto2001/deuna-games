@@ -37,10 +37,7 @@ function multimediaState(game: Game) {
     mediaAccessibility: game.mediaAccessibility,
     mediaModes: game.mediaModes,
     videoMedia: game.videoMedia,
-    previewMode: game.previewMode,
     previewClip: game.previewClip,
-    youtubePreview: game.youtubePreview,
-    directPreview: game.directPreview,
   };
 }
 
