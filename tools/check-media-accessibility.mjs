@@ -32,6 +32,8 @@ const files = Object.fromEntries(
       publicPage: "src/app/juegos/[slug]/page.tsx",
       adminPreview: "src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx",
       galleryMedia: "src/lib/media/game-gallery-media.ts",
+      galleryRenderer: "src/components/games/GameDetailGalleryGrid.tsx",
+      galleryRendererCss: "src/components/games/GameDetailGalleryGrid.module.css",
       publicationChanges: "src/lib/admin/game-publication-changes.ts",
       readiness: "src/lib/admin/game-publication-readiness.ts",
       framedVideo: "src/components/ui/FramedVideo.tsx",
@@ -143,27 +145,36 @@ assert(
   "La Card pública debe resolver el texto contextual en la presentación canónica y el renderer debe consumirlo sin lógica paralela."
 );
 assert(
-  files.publicPage.includes("getGameGalleryAccessibleFallback") &&
-    files.publicPage.includes("const accessibleLabel") &&
-    files.publicPage.includes("alt={accessibleLabel}") &&
-    files.publicPage.includes("label={accessibleLabel}") &&
-    files.publicPage.includes("game.mediaAccessibility?.hero ?? game.imageAlt") &&
+  files.publicPage.includes("game.mediaAccessibility?.hero ?? game.imageAlt") &&
     files.publicPage.includes("getPublicGameBySlug") &&
+    files.publicPage.includes("resolvePublicGameGalleryItems(game)") &&
+    files.publicPage.includes('import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid"') &&
+    files.publicPage.includes("<GameDetailGalleryGrid game={game} gallery={gallery} />") &&
     !files.publicPage.includes("draft_payload"),
-  "La ficha pública debe usar sólo el snapshot publicado para Hero social y etiquetas de Galería."
+  "La ficha pública debe usar sólo el snapshot publicado para Hero social y delegar la Galería al renderer canónico."
 );
 
 assert(
   files.adminPreview.includes("resolvePublicGameGalleryItems(game)") &&
-    files.adminPreview.includes("getGameGalleryAccessibleFallback") &&
-    files.adminPreview.includes("galleryImageViewport(game, item)") &&
-    files.adminPreview.includes("resolveGameImageCropAspectRatio(viewport)") &&
-    files.adminPreview.includes("<GameGalleryVideo") &&
-    files.adminPreview.includes("alt={accessibleLabel}") &&
-    files.adminPreview.includes("label={accessibleLabel}") &&
-    files.adminPreview.includes("galleryVideoAspectRatio(item.viewport)") &&
-    files.galleryMedia.includes("export function galleryVideoAspectRatio"),
-  "La Vista previa editorial debe compartir orden, crops, aspect-ratio, accesibilidad y renderer de Galería con la ficha pública."
+    files.adminPreview.includes('import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid"') &&
+    files.adminPreview.includes("<GameDetailGalleryGrid game={game} gallery={gallery} />") &&
+    !files.adminPreview.includes("<GameGalleryVideo") &&
+    !files.adminPreview.includes("gallery.map(") &&
+    !files.publicPage.includes("<GameGalleryVideo") &&
+    !files.publicPage.includes("gallery.map(") &&
+    files.galleryRenderer.includes("getGameGalleryAccessibleFallback") &&
+    files.galleryRenderer.includes("galleryImageViewport(game, item)") &&
+    files.galleryRenderer.includes("resolveGameImageCropAspectRatio(viewport)") &&
+    files.galleryRenderer.includes("<GameGalleryVideo") &&
+    files.galleryRenderer.includes("alt={accessibleLabel}") &&
+    files.galleryRenderer.includes("label={accessibleLabel}") &&
+    files.galleryRenderer.includes("galleryVideoAspectRatio(item.viewport)") &&
+    files.galleryMedia.includes("export function galleryVideoAspectRatio") &&
+    /\.grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s.test(files.galleryRendererCss) &&
+    /@media \(max-width:\s*900px\)[\s\S]*?\.grid\s*\{[^}]*repeat\(2,/s.test(files.galleryRendererCss) &&
+    /@media \(max-width:\s*700px\)[\s\S]*?\.grid\s*\{[^}]*grid-template-columns:\s*1fr;/s.test(files.galleryRendererCss) &&
+    /\.item:first-child\s*\{[^}]*grid-column:\s*span 2;[^}]*grid-row:\s*span 2;/s.test(files.galleryRendererCss),
+  "Vista previa y ficha pública deben montar la misma Galería real: orden, crops, accesibilidad, renderer y layout responsive 3→2→1."
 );
 
 assert(
