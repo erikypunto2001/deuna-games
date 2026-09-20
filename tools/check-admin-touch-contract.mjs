@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -30,6 +30,9 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/ContextualMediaDialog.module.css"),
   source("src/components/admin/GameBackgroundMediaEditor.module.css"),
   source("src/components/admin/GameMultimediaUtilityRail.module.css"),
+  source("src/components/admin/MediaViewportEditor.tsx"),
+  source("src/components/admin/VideoTrimEditor.module.css"),
+  source("src/components/admin/MediaViewportEditorEnhancements.module.css"),
 ]);
 
 assert(
@@ -96,6 +99,26 @@ assert(
     /\.libraryLink,\s*\n\.globalButton\s*\{[^}]*min-height:\s*44px;/s.test(backgroundMediaCss) &&
     /\.libraryFilters button\s*\{[^}]*min-height:\s*44px;/s.test(multimediaRailCss),
   "Los controles multimedia compartidos y las acciones de viewport deben conservar targets táctiles de 44px.",
+);
+
+assert(
+  viewportEditor.includes("className={styles.viewportResizeHandle}") &&
+    !viewportEditor.includes("width: sideHandle") &&
+    /\.viewportResizeHandle\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(trimCss) &&
+    /\.viewportMoveHandle\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(trimCss) &&
+    /\.centerPlayViewport\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(trimCss) &&
+    /\.viewportPositionGrid input,[\s\S]*?min-height:\s*44px;/s.test(trimCss) &&
+    /\.viewportControl input\[type="range"\]\s*\{[^}]*min-height:\s*44px;/s.test(trimCss) &&
+    /\.viewportPresets button,[\s\S]*?min-height:\s*44px;/s.test(trimCss) &&
+    /\.handle\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(trimCss) &&
+    /\.handle span\s*\{[^}]*width:\s*28px;[^}]*height:\s*42px;/s.test(trimCss) &&
+    /\.controls button\s*\{[^}]*min-height:\s*44px;/s.test(trimCss) &&
+    /\.numericControls input\s*\{[^}]*min-height:\s*44px;/s.test(trimCss) &&
+    /\.viewportPresetGrid button\s*\{[^}]*min-height:\s*44px;/s.test(viewportEnhancementCss) &&
+    /\.viewportGuideToggle\s*\{[^}]*min-height:\s*44px;/s.test(viewportEnhancementCss) &&
+    /\.videoViewportTransport button\s*\{[^}]*min-height:\s*44px;/s.test(viewportEnhancementCss) &&
+    /\.videoViewportTransport input\[type="range"\]\s*\{[^}]*min-height:\s*44px;/s.test(viewportEnhancementCss),
+  "Viewport, crop y trim deben conservar hit-areas de 44px sin agrandar los marcadores visuales de precisión.",
 );
 
 assert(

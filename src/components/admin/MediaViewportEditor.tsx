@@ -781,31 +781,19 @@ export default function MediaViewportEditor({
 
               {freeResizeEnabled && RESIZE_HANDLES.map((handle) => {
                 const position = resizeHandlePosition(handle, viewportRect);
-                const sideHandle = handle.length === 1;
-                const horizontalSide = handle === "n" || handle === "s";
                 return (
                   <button
                     key={handle}
                     type="button"
+                    className={styles.viewportResizeHandle}
                     data-resize-handle={handle}
                     disabled={disabled}
                     aria-label={`Redimensionar recorte desde ${handleLabel(handle)}`}
                     title="Arrastra para cambiar libremente el tamaño del recorte"
                     style={{
-                      position: "absolute",
-                      zIndex: 7,
                       left: position.left,
                       top: position.top,
-                      width: sideHandle ? (horizontalSide ? 34 : 12) : 16,
-                      height: sideHandle ? (horizontalSide ? 12 : 34) : 16,
-                      padding: 0,
-                      border: "2px solid color-mix(in srgb, var(--brand) 78%, #fff)",
-                      borderRadius: sideHandle ? 6 : 3,
-                      background: "#f8fafc",
-                      boxShadow: "0 2px 8px rgba(0,0,0,.45)",
                       cursor: disabled ? "not-allowed" : position.cursor,
-                      transform: "translate(-50%, -50%)",
-                      touchAction: "none",
                       opacity: disabled ? 0.48 : 1,
                     }}
                     onPointerDown={startResize}
@@ -813,7 +801,9 @@ export default function MediaViewportEditor({
                     onPointerUp={finishResize}
                     onPointerCancel={cancelResize}
                     onKeyDown={handleResizeKey}
-                  />
+                  >
+                    <span aria-hidden="true" />
+                  </button>
                 );
               })}
 
