@@ -36,7 +36,7 @@
 }
 
 .viewportPresetGrid button {
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 6px;
   font-size: 13px;
 }
@@ -44,7 +44,7 @@
 .viewportGuideToggle {
   display: inline-flex;
   width: 100%;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -88,7 +88,7 @@
 
 .videoViewportTransport button {
   display: inline-flex;
-  min-height: 34px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 5px;
@@ -111,6 +111,7 @@
 .videoViewportTransport input[type="range"] {
   width: 100%;
   min-width: 0;
+  min-height: 44px;
   accent-color: var(--brand);
 }
 
