@@ -345,6 +345,10 @@
   line-height: 1.65;
 }
 
+a.draftState {
+  min-height: 44px;
+}
+
 .draftState {
   flex-shrink: 0;
   color: #f0bf8f;
@@ -555,6 +559,7 @@
 }
 
 .backLink {
+  min-height: 44px;
   margin-bottom: 17px;
   font-size: 12px;
 }
