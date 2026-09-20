@@ -42,6 +42,7 @@ import {
 import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
+  resolveGameDetailImageViewport,
 } from "@/lib/media/game-video-media";
 import {
   resolveGameImageCropAspectRatio,
@@ -117,12 +118,7 @@ export default async function AdminGamePreviewPage({
     versionLabel,
   } = resolveGameDetailPresentation(game);
   const detailImage = resolveGameDestinationImage(game, "detail");
-  const detailImageViewport = game.imageMedia?.detail ??
-    (!game.detailImage
-      ? game.heroImage
-        ? game.imageMedia?.hero
-        : game.imageMedia?.cover
-      : undefined);
+  const detailImageViewport = resolveGameDetailImageViewport(game);
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
