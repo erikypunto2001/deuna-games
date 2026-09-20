@@ -14,9 +14,8 @@ import {
 import { notFound } from "next/navigation";
 
 import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
-import GameGalleryVideo from "@/components/games/GameGalleryVideo";
+import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
 import GameCoverMedia from "@/components/ui/GameCoverMedia";
-import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
@@ -32,11 +31,6 @@ import {
   resolveGameDetailPresentation,
 } from "@/lib/games/game-detail-presentation";
 import {
-  getGameGalleryAccessibleFallback,
-} from "@/lib/media/game-media-accessibility";
-import {
-  galleryImageViewport,
-  galleryVideoAspectRatio,
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
 import {
@@ -44,9 +38,6 @@ import {
   resolveGameDestinationMediaMode,
   resolveGameDetailImageViewport,
 } from "@/lib/media/game-video-media";
-import {
-  resolveGameImageCropAspectRatio,
-} from "@/lib/media/image-viewport";
 import type {
   GameDownloadSourceStatus,
 } from "@/types/game";
@@ -428,51 +419,7 @@ export default async function AdminGamePreviewPage({
                   ? "Capturas y videos con el mismo orden, recorte y renderer de la ficha pública."
                   : "Imágenes con el mismo orden, recorte y renderer de la ficha pública."}
               </p>
-              <div className={styles.gallery}>
-                {gallery.map((item, index) => {
-                  const accessibleLabel = getGameGalleryAccessibleFallback(
-                    game,
-                    item,
-                    index
-                  );
-
-                  if (item.kind === "image") {
-                    const viewport = galleryImageViewport(game, item);
-                    return (
-                      <figure
-                        key={`image:${item.src}`}
-                        className={styles.galleryItem}
-                        style={{
-                          aspectRatio: resolveGameImageCropAspectRatio(viewport),
-                        }}
-                      >
-                        <GameMedia
-                          src={item.src}
-                          alt={accessibleLabel}
-                          sizes="(max-width: 900px) 50vw, 240px"
-                          viewport={viewport}
-                        />
-                      </figure>
-                    );
-                  }
-
-                  return (
-                    <figure
-                      key={`video:${item.src}`}
-                      className={styles.galleryItem}
-                      style={{
-                        aspectRatio: galleryVideoAspectRatio(item.viewport),
-                      }}
-                    >
-                      <GameGalleryVideo
-                        src={item.src}
-                        viewport={item.viewport}
-                        label={accessibleLabel}
-                      />
-                    </figure>
-                  );
-                })}
-              </div>
+              <GameDetailGalleryGrid game={game} gallery={gallery} />
             </>
           ) : (
             <div className={styles.emptyState}>
