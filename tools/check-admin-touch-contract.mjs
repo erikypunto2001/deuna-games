@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -33,6 +33,7 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/VideoTrimEditor.module.css"),
   source("src/components/admin/MediaViewportEditorEnhancements.module.css"),
+  source("src/components/admin/HomeHeroEditor.module.css"),
 ]);
 
 assert(
@@ -119,6 +120,20 @@ assert(
     /\.videoViewportTransport button\s*\{[^}]*min-height:\s*44px;/s.test(viewportEnhancementCss) &&
     /\.videoViewportTransport input\[type="range"\]\s*\{[^}]*min-height:\s*44px;/s.test(viewportEnhancementCss),
   "Viewport, crop y trim deben conservar hit-areas de 44px sin agrandar los marcadores visuales de precisión.",
+);
+
+assert(
+  !/min-height:\s*(?:[0-3]\d|4[0-3])px;/.test(heroEditorCss) &&
+    /\.app button\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
+    /\.actions \.publish\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
+    /\.imageActions a\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
+    /\.rowActions button\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(heroEditorCss) &&
+    /\.inspector header button\s*\{[^}]*width:44px;[^}]*height:44px;/s.test(heroEditorCss) &&
+    /\.range b input\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
+    /\.range input\[type="range"\]\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
+    /\.previewToolbar input\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
+    /\.editScope select\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss),
+  "El editor Hero debe conservar un único piso táctil de 44px para botones, links, campos, selects y sliders; sus controles compactos no pueden reintroducir targets menores.",
 );
 
 assert(
