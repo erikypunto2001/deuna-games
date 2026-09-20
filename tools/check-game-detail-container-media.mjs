@@ -266,17 +266,30 @@ assert(
 
 assert(
   has(
+    videoMedia,
+    "export function resolveGameDetailImageViewport(game: Game)",
+    "if (game.imageMedia?.detail) return game.imageMedia.detail",
+    "if (game.detailImage) return undefined",
+    "if (game.heroImage) return game.imageMedia?.hero",
+    "return game.imageMedia?.cover"
+  ),
+  "El fallback de viewport del Contenedor debe vivir en un único resolver compartido y conservar detail → hero → cover sin mezclar crops de recursos explícitos."
+);
+
+assert(
+  has(
     publicPage,
     'import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia"',
     'resolveGameDestinationImage(game, "detail")',
     'resolveGameDestinationMediaMode(game, "detail")',
-    "game.imageMedia?.detail",
+    "resolveGameDetailImageViewport(game)",
     "data-game-detail-media-scope",
     "<GameDetailContainerMedia",
     "video={game.videoMedia?.detail}"
   ) &&
+    !publicPage.includes("const detailImageViewport = game.imageMedia?.detail") &&
     !publicPage.includes('src={game.heroImage ?? game.coverImage}\n              alt=""\n              sizes="100vw"\n              priority'),
-  "La ficha pública debe dejar de renderizar Hero directamente como fondo interno y consumir el destino detail."
+  "La ficha pública debe consumir imagen, modo y viewport del Contenedor desde resolvers compartidos."
 );
 
 assert(
@@ -285,12 +298,13 @@ assert(
     'import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia"',
     'resolveGameDestinationImage(game, "detail")',
     'resolveGameDestinationMediaMode(game, "detail")',
-    "game.imageMedia?.detail",
+    "resolveGameDetailImageViewport(game)",
     "<GameDetailContainerMedia",
     "video={game.videoMedia?.detail}"
   ) &&
+    !adminPreview.includes("const detailImageViewport = game.imageMedia?.detail") &&
     !adminPreview.includes("src={game.heroImage ?? game.coverImage}"),
-  "La Vista previa editorial debe consumir el mismo destino Contenedor y el mismo renderer multimedia que la ficha pública."
+  "La Vista previa editorial debe consumir el mismo Contenedor y resolver su viewport con la misma fuente de verdad que la ficha pública."
 );
 
 assert(
