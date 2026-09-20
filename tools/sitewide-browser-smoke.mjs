@@ -421,7 +421,10 @@ async function auditPage(cdp, page, viewport) {
           name: element.getAttribute("name") ?? "",
         }));
 
-      const touchFailures = mobile
+      const enforceTouchTargets =
+        mobile || pageId.startsWith("admin-");
+
+      const touchFailures = enforceTouchTargets
         ? interactive
             .filter((element) => {
               if (element instanceof HTMLAnchorElement &&
