@@ -512,6 +512,7 @@
 .activeButton,
 .inactiveButton,
 .removeButton {
+  min-width: 44px;
   min-height: 44px;
   border-radius: 8px;
   font-size: 12px;
