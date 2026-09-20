@@ -376,6 +376,9 @@ body {
 
 .skip-link {
   position: fixed;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 
   z-index: 10000;
 
