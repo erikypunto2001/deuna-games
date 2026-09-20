@@ -66,8 +66,8 @@
 
 .closeButton {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   place-items: center;
   color: #aebbc7;
@@ -104,7 +104,7 @@
 
 .secondary,
 .primary {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 15px;
   border-radius: 8px;
   font-size: 12px;
@@ -162,6 +162,7 @@
     padding-right: 13px;
     padding-left: 13px;
   }
+
 }
 
 @media (prefers-reduced-motion: reduce) {

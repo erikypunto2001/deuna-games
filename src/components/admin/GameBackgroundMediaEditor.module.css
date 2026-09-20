@@ -115,7 +115,7 @@
 .libraryLink,
 .globalButton {
   display: inline-flex;
-  min-height: 38px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 7px;
