@@ -494,7 +494,7 @@
 
 .rowActions button,
 .candidateRow > button {
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid #354454;
   border-radius: 8px;
   outline: none;
@@ -507,7 +507,7 @@
 }
 
 .rowActions button {
-  width: 38px;
+  width: 44px;
   display: grid;
   place-items: center;
   padding: 0;
