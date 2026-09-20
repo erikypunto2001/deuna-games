@@ -41,10 +41,17 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
 ]);
 
 const adminCatalogCss = await source("src/components/admin/AdminCatalog.module.css");
+const sitewideBrowserSmoke = await source("tools/sitewide-browser-smoke.mjs");
 const [gameDownloadCss, gameHealthCss] = await Promise.all([
   source("src/components/admin/GameDownloadEditor.module.css"),
   source("src/components/admin/GameEditorHealthOverview.module.css"),
 ]);
+
+assert(
+  sitewideBrowserSmoke.includes('mobile || pageId.startsWith("admin-")') &&
+    sitewideBrowserSmoke.includes("const touchFailures = enforceTouchTargets"),
+  "El smoke site-wide debe medir el piso táctil de 44px del Admin también en desktop y tablet, no sólo en móvil.",
+);
 
 assert(
   layout.includes('import "../admin-touch-contract.css"'),
