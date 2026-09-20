@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss, homeCurationCss, homePresentationCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -35,6 +35,8 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/MediaViewportEditorEnhancements.module.css"),
   source("src/components/admin/HomeHeroEditor.module.css"),
   source("src/components/admin/SiteBackgroundManager.module.css"),
+  source("src/components/admin/HomeCurationEditor.module.css"),
+  source("src/components/admin/HomePresentationEditor.module.css"),
 ]);
 
 assert(
@@ -147,6 +149,15 @@ assert(
     /\.saveBar button,\s*\n\.uploadActions button\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss) &&
     /::file-selector-button\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss),
   "Fondos debe conservar targets táctiles de 44px para tabs, reset, sliders, color, guardado y archivos sin engordar la pista ni el thumb visual.",
+);
+
+assert(
+  /\.rowActions button,\s*\n\.candidateRow > button\s*\{[^}]*min-height:\s*44px;/s.test(homeCurationCss) &&
+    /\.rowActions button\s*\{[^}]*width:\s*44px;/s.test(homeCurationCss) &&
+    !/\.rowActions button,\s*\n\.candidateRow > button\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(homeCurationCss) &&
+    /\.orderButtons button,\.visibilityButton\{[^}]*min-height:44px;/s.test(homePresentationCss) &&
+    !/\.orderButtons button,\.visibilityButton\{[^}]*min-height:(?:[0-3]\d|4[0-3])px;/s.test(homePresentationCss),
+  "Curaduría y Presentación de Inicio deben conservar 44px en reordenar, agregar/quitar y visibilidad también en desktop.",
 );
 
 assert(
