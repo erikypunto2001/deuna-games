@@ -420,6 +420,12 @@ assert(
 );
 
 assert(
+  appearanceWorkspace.includes('<span className={styles.previewAction}>') &&
+    !appearanceWorkspace.includes('<button type="button" tabIndex={-1}>'),
+  "La vista previa de Apariencia debe representar la acción principal como muestra visual no interactiva y no como un botón falso fuera del orden de foco.",
+);
+
+assert(
   backgroundManager.includes('role="tablist"') &&
     backgroundManager.includes('role="tab"') &&
     backgroundManager.includes('aria-controls="background-page-panel"') &&

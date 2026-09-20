@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -34,6 +34,7 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/VideoTrimEditor.module.css"),
   source("src/components/admin/MediaViewportEditorEnhancements.module.css"),
   source("src/components/admin/HomeHeroEditor.module.css"),
+  source("src/components/admin/SiteBackgroundManager.module.css"),
 ]);
 
 assert(
@@ -134,6 +135,18 @@ assert(
     /\.previewToolbar input\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss) &&
     /\.editScope select\s*\{[^}]*min-height:\s*44px;/s.test(heroEditorCss),
   "El editor Hero debe conservar un único piso táctil de 44px para botones, links, campos, selects y sliders; sus controles compactos no pueden reintroducir targets menores.",
+);
+
+assert(
+  /\.pageTabs button\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss) &&
+    /\.resetButton\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss) &&
+    /\.sliderControl input\[type="range"\]\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss) &&
+    /::-webkit-slider-runnable-track\s*\{[^}]*height:\s*4px;/s.test(siteBackgroundCss) &&
+    /::-webkit-slider-thumb\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px;/s.test(siteBackgroundCss) &&
+    /\.colorPicker input\[type="color"\]\s*\{[^}]*width:\s*46px;[^}]*height:\s*44px;/s.test(siteBackgroundCss) &&
+    /\.saveBar button,\s*\n\.uploadActions button\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss) &&
+    /::file-selector-button\s*\{[^}]*min-height:\s*44px;/s.test(siteBackgroundCss),
+  "Fondos debe conservar targets táctiles de 44px para tabs, reset, sliders, color, guardado y archivos sin engordar la pista ni el thumb visual.",
 );
 
 assert(

@@ -335,9 +335,9 @@ export default function SiteAppearanceWorkspace({
               <p>
                 Los fondos de cada página se eligen y ajustan desde su editor específico.
               </p>
-              <button type="button" tabIndex={-1}>
+              <span className={styles.previewAction}>
                 Acción principal
-              </button>
+              </span>
             </div>
 
             <div className={styles.previewStatus}>
