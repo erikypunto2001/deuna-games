@@ -80,6 +80,13 @@ export function resolveGameDestinationImage(
   return game.detailImage ?? game.heroImage ?? game.coverImage;
 }
 
+export function resolveGameDetailImageViewport(game: Game) {
+  if (game.imageMedia?.detail) return game.imageMedia.detail;
+  if (game.detailImage) return undefined;
+  if (game.heroImage) return game.imageMedia?.hero;
+  return game.imageMedia?.cover;
+}
+
 export function resolveGameDestinationMediaMode(
   game: Game,
   target: GameMediaDestinationTarget
