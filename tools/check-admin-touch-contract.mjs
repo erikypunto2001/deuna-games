@@ -41,10 +41,31 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
 ]);
 
 const adminCatalogCss = await source("src/components/admin/AdminCatalog.module.css");
+const [globalCss, performanceEstimateCss, sitewideBrowserSmoke] = await Promise.all([
+  source("src/app/globals.css"),
+  source("src/features/game-finder/GamePerformanceEstimate.module.css"),
+  source("tools/sitewide-browser-smoke.mjs"),
+]);
 const [gameDownloadCss, gameHealthCss] = await Promise.all([
   source("src/components/admin/GameDownloadEditor.module.css"),
   source("src/components/admin/GameEditorHealthOverview.module.css"),
 ]);
+
+assert(
+  /\.skip-link\s*\{[^}]*min-height:\s*44px;/s.test(globalCss) &&
+    /\.backLink\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
+    /a\.draftState\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
+    /\.rowMenu summary\s*\{[^}]*min-width:\s*44px;/s.test(informationArchitectureCss) &&
+    /\.orderButtons button,\s*\n\.activeButton,\s*\n\.inactiveButton,\s*\n\.removeButton\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s.test(taxonomyCss) &&
+    /\.footer a\s*\{[^}]*min-height:\s*44px;/s.test(performanceEstimateCss),
+  "Skip-link, navegación de retorno, estado publicado, menú de fila, taxonomía y CTA de hardware deben conservar 44px también fuera de móvil.",
+);
+
+assert(
+  sitewideBrowserSmoke.includes('mobile || pageId.startsWith("admin-")') &&
+    sitewideBrowserSmoke.includes("const touchFailures = enforceTouchTargets"),
+  "El smoke site-wide debe medir el piso táctil de 44px del Admin en desktop, tablet y mobile.",
+);
 
 assert(
   layout.includes('import "../admin-touch-contract.css"'),
