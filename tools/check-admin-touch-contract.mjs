@@ -40,6 +40,8 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/GameTaxonomyEditor.module.css"),
 ]);
 
+const adminCatalogCss = await source("src/components/admin/AdminCatalog.module.css");
+
 assert(
   layout.includes('import "../admin-touch-contract.css"'),
   "El layout protegido debe cargar el contrato táctil después del contrato visual del Admin.",
@@ -88,6 +90,13 @@ assert(
     /input\[type="file"\]::file-selector-button\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss) &&
     /\.admin-professional \.admin-history-action\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss),
   "Las acciones compartidas de ownership, tablas, historial y archivos deben conservar targets táctiles de al menos 44px en desktop.",
+);
+
+assert(
+  /\.searchBox button\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s.test(adminCatalogCss) &&
+    /\.table tbody th > a\s*\{[^}]*min-height:\s*44px;/s.test(adminCatalogCss) &&
+    !/\.searchBox button\s*\{[^}]*width:\s*(?:[0-3]\d|4[0-3])px;/s.test(adminCatalogCss),
+  "El Catálogo debe conservar 44px en limpiar búsqueda y en el enlace principal de cada juego también en desktop.",
 );
 
 assert(

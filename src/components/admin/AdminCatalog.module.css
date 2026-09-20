@@ -107,8 +107,8 @@
 }
 
 .searchBox button {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -289,6 +289,12 @@
   min-width: 270px;
   font-weight: 400;
   text-align: left;
+}
+
+.table tbody th > a {
+  min-height: 44px;
+  display: grid;
+  align-content: center;
 }
 
 .table tbody th strong,
