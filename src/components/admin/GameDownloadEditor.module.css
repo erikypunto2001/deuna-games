@@ -36,7 +36,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 13px;
   border-radius: 8px;
   outline: none;
@@ -144,8 +144,8 @@
 }
 
 .sourceToolbar button {
-  width: 40px;
-  min-height: 40px;
+  width: 44px;
+  min-height: 44px;
   padding: 0;
   color: #aab6c2;
   border: 1px solid #354250;
