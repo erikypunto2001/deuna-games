@@ -165,7 +165,7 @@
 .termSearch input {
   min-width: 0;
   width: 100%;
-  height: 42px;
+  height: 44px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -200,8 +200,8 @@
 }
 
 .pagination button {
-  width: 40px;
-  min-height: 40px;
+  width: 44px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   border: 1px solid #405169;
@@ -411,7 +411,7 @@
 
 .iconUpload,
 .clearCustomButton {
-  min-height: 32px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -512,7 +512,7 @@
 .activeButton,
 .inactiveButton,
 .removeButton {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   font-size: 12px;
   cursor: pointer;
