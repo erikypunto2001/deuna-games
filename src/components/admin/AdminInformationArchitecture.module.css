@@ -327,6 +327,8 @@
 }
 
 .rowMenu summary {
+  min-width: 44px;
+  justify-content: center;
   cursor: pointer;
   list-style: none;
 }
