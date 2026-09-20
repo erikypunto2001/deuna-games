@@ -41,6 +41,10 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
 ]);
 
 const adminCatalogCss = await source("src/components/admin/AdminCatalog.module.css");
+const [gameDownloadCss, gameHealthCss] = await Promise.all([
+  source("src/components/admin/GameDownloadEditor.module.css"),
+  source("src/components/admin/GameEditorHealthOverview.module.css"),
+]);
 
 assert(
   layout.includes('import "../admin-touch-contract.css"'),
@@ -97,6 +101,14 @@ assert(
     /\.table tbody th > a\s*\{[^}]*min-height:\s*44px;/s.test(adminCatalogCss) &&
     !/\.searchBox button\s*\{[^}]*width:\s*(?:[0-3]\d|4[0-3])px;/s.test(adminCatalogCss),
   "El Catálogo debe conservar 44px en limpiar búsqueda y en el enlace principal de cada juego también en desktop.",
+);
+
+assert(
+  /\.addButton,\s*\n\.removeButton,\s*\n\.sourceToolbar button\s*\{[^}]*min-height:\s*44px;/s.test(gameDownloadCss) &&
+    /\.sourceToolbar button\s*\{[^}]*width:\s*44px;[^}]*min-height:\s*44px;/s.test(gameDownloadCss) &&
+    /\.ready > a\s*\{[^}]*min-height:\s*44px;/s.test(gameHealthCss) &&
+    !/\.sourceToolbar button\s*\{[^}]*width:\s*(?:[0-3]\d|4[0-3])px;/s.test(gameDownloadCss),
+  "Descargas y Readiness deben conservar 44px en agregar/quitar, ordenar/visibilidad y revisar publicación también en desktop.",
 );
 
 assert(
