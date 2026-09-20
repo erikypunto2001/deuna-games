@@ -13,7 +13,7 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss, homeCurationCss, homePresentationCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss, homeCurationCss, homePresentationCss, taxonomyCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -37,6 +37,7 @@ const [layout, shell, shellUx, touchContract, publicationCss, publicationPanelCs
   source("src/components/admin/SiteBackgroundManager.module.css"),
   source("src/components/admin/HomeCurationEditor.module.css"),
   source("src/components/admin/HomePresentationEditor.module.css"),
+  source("src/components/admin/GameTaxonomyEditor.module.css"),
 ]);
 
 assert(
@@ -158,6 +159,16 @@ assert(
     /\.orderButtons button,\.visibilityButton\{[^}]*min-height:44px;/s.test(homePresentationCss) &&
     !/\.orderButtons button,\.visibilityButton\{[^}]*min-height:(?:[0-3]\d|4[0-3])px;/s.test(homePresentationCss),
   "Curaduría y Presentación de Inicio deben conservar 44px en reordenar, agregar/quitar y visibilidad también en desktop.",
+);
+
+assert(
+  /\.termSearch input\s*\{[^}]*height:\s*44px;/s.test(taxonomyCss) &&
+    /\.pagination button\s*\{[^}]*width:\s*44px;[^}]*min-height:\s*44px;/s.test(taxonomyCss) &&
+    /\.iconUpload,\s*\n\.clearCustomButton\s*\{[^}]*min-height:\s*44px;/s.test(taxonomyCss) &&
+    /\.orderButtons button,\s*\n\.activeButton,\s*\n\.inactiveButton,\s*\n\.removeButton\s*\{[^}]*min-height:\s*44px;/s.test(taxonomyCss) &&
+    !/\.pagination button\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(taxonomyCss) &&
+    !/\.iconUpload,\s*\n\.clearCustomButton\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(taxonomyCss),
+  "Taxonomía debe conservar 44px en búsqueda, paginación, carga/limpieza de iconos y acciones de catálogo también en desktop.",
 );
 
 assert(
