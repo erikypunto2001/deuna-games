@@ -24,6 +24,8 @@ const [
   viewport,
   publicBackground,
   publicBackgroundCss,
+  backgroundMedia,
+  backgroundMediaCss,
   publicLayout,
   multimediaEditor,
   assignmentsWorkspace,
@@ -43,6 +45,8 @@ const [
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
   source("src/components/games/GameDetailBackground.module.css"),
+  source("src/components/games/GameDetailBackgroundMedia.tsx"),
+  source("src/components/games/GameDetailBackgroundMedia.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
@@ -215,41 +219,61 @@ assert(
     "PREVISUALIZACIÓN ADAPTABLE",
     "Escritorio",
     "Móvil",
-    "GameMedia",
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "<GameDetailBackgroundMedia",
     "Un recorte, distintas pantallas",
     "Confirmar recorte adaptable",
     'action: kind === "image" ? "layout-image" : "layout-video"'
-  ),
-  "Fondo debe reutilizar el mismo motor espacial y añadir sólo previews adaptables de salida."
+  ) &&
+    !viewport.includes("<GameMedia") &&
+    !viewport.includes("<video"),
+  "El editor de Fondo debe conservar el motor espacial y previsualizar la salida con la misma capa pública, sin renderer paralelo."
 );
 
 assert(
   has(
     publicBackground,
-    "resolveGameBackgroundMediaMode",
-    "REDUCED_MOTION_MEDIA",
-    "motionAllowed",
-    'mode === "video"',
-    "game.backgroundImage",
-    "game?.videoMedia?.background",
-    "mediaStyle(",
-    '"--game-background-position"',
-    '"--game-background-zoom"',
-    "autoPlay",
-    "documentVisible",
-    "failedVideo"
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "<GameDetailBackgroundMedia game={game} />",
+    "styles.backdrop",
+    "styles.content"
   ) &&
-    !publicBackground.includes("FINE_POINTER_MEDIA") &&
-    !publicBackground.includes("hoverActive") &&
-    !publicBackground.includes("onPointerEnter") &&
-    !publicBackground.includes("onPointerLeave") &&
     has(
       publicBackgroundCss,
+      "position: fixed",
+      "pointer-events: none",
+      ".content {",
+      "z-index: 1"
+    ) &&
+    has(
+      backgroundMedia,
+      "resolveGameBackgroundMediaMode",
+      "REDUCED_MOTION_MEDIA",
+      "motionAllowed",
+      'mode === "video"',
+      "game?.backgroundImage",
+      "game?.videoMedia?.background?.clip",
+      "mediaStyle(",
+      '"--game-background-position"',
+      '"--game-background-zoom"',
+      "autoPlay",
+      "documentVisible",
+      "failedVideo",
+      'data-game-detail-background-media="true"'
+    ) &&
+    !backgroundMedia.includes("FINE_POINTER_MEDIA") &&
+    !backgroundMedia.includes("hoverActive") &&
+    !backgroundMedia.includes("onPointerEnter") &&
+    !backgroundMedia.includes("onPointerLeave") &&
+    has(
+      backgroundMediaCss,
       "object-position: var(--game-background-position, 50% 50%)",
       "transform-origin: var(--game-background-position, 50% 50%)",
-      "transform: scale(var(--game-background-zoom, 1))"
+      "transform: scale(var(--game-background-zoom, 1))",
+      ".colorWash {",
+      ".readabilityShade {"
     ),
-  "El runtime público debe usar Imagen/Video por referencia, sin activación por hover, respetando reduced-motion, visibilidad, error y X/Y/zoom adaptables."
+  "El runtime público debe delegar Imagen/Video, crops, reduced-motion, visibilidad, error, wash y shade a una única capa compartida."
 );
 
 assert(
