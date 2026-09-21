@@ -17,6 +17,7 @@ const [
   publicPage,
   previewPage,
   previewCss,
+  gameHeroDestinationPreview,
   homeHeroLivePreview,
   homeHeroRenderer,
 ] = await Promise.all([
@@ -24,6 +25,7 @@ const [
   source("src/app/juegos/[slug]/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
+  source("src/components/admin/GameHeroDestinationPreview.tsx"),
   source("src/components/admin/HomeHeroLivePreview.tsx"),
   source("src/components/home/HeroSection.tsx"),
 ]);
@@ -67,17 +69,39 @@ for (const [label, page] of [
 
 assert(
   previewPage.includes(
-    'import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview"'
+    'import GameHeroDestinationPreview from "@/components/admin/GameHeroDestinationPreview"'
   ) &&
     previewPage.includes("buildHomeGameCollections") &&
     previewPage.includes("getPublicHomeConfig") &&
     previewPage.includes('data-game-hero-public-preview="true"') &&
-    (previewPage.match(/<HomeHeroLivePreview/g) ?? []).length === 3 &&
-    previewPage.includes('device="desktop"') &&
-    previewPage.includes('device="tablet"') &&
-    previewPage.includes('device="mobile"') &&
-    previewPage.includes("playing={false}") &&
-    previewPage.includes("showToolbar={false}") &&
+    previewPage.includes("<GameHeroDestinationPreview") &&
+    !previewPage.includes("<HomeHeroLivePreview") &&
+    gameHeroDestinationPreview.includes(
+      'import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview"'
+    ) &&
+    gameHeroDestinationPreview.includes("useSyncExternalStore") &&
+    gameHeroDestinationPreview.includes("homeHeroDeviceForWidth") &&
+    gameHeroDestinationPreview.includes(
+      '{ value: "desktop", label: "Escritorio" }'
+    ) &&
+    gameHeroDestinationPreview.includes(
+      '{ value: "tablet", label: "Tableta" }'
+    ) &&
+    gameHeroDestinationPreview.includes(
+      '{ value: "mobile", label: "Móvil" }'
+    ) &&
+    gameHeroDestinationPreview.includes(
+      'data-game-hero-responsive-preview="true"'
+    ) &&
+    gameHeroDestinationPreview.includes(
+      "data-hero-preview-device-option={option.value}"
+    ) &&
+    gameHeroDestinationPreview.includes(
+      "data-hero-preview-device={device}"
+    ) &&
+    gameHeroDestinationPreview.includes("<HomeHeroLivePreview") &&
+    gameHeroDestinationPreview.includes("playing={false}") &&
+    gameHeroDestinationPreview.includes("showToolbar={false}") &&
     homeHeroLivePreview.includes(
       'import HeroSection from "@/components/home/HeroSection"'
     ) &&
@@ -87,7 +111,7 @@ assert(
       'resolveGameDestinationMediaMode(activeGame, "hero")'
     ) &&
     homeHeroRenderer.includes("<HeroVideoLayer"),
-  "Vista previa debe validar Hero 3:1 con el renderer público real, el contexto público efectivo y los tres viewports sin duplicar su lógica."
+  "Vista previa debe validar Hero 3:1 con el renderer público real y un selector compacto que conserve escritorio, tableta y móvil sin duplicar su lógica."
 );
 
 assert(
@@ -145,5 +169,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Presentación compartida de ficha: OK (Preview y web comparten presentación; Hero 3:1 usa el renderer público real en escritorio, tableta y móvil)."
+  "Presentación compartida de ficha: OK (Preview y web comparten presentación; Hero 3:1 usa el renderer público real con selector de escritorio, tableta y móvil)."
 );
