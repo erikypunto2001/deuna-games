@@ -528,6 +528,18 @@ async function auditPage(cdp, page, viewport) {
         pageId === "admin-game-preview" ||
         !pageId.startsWith("admin-game-") ||
         Boolean(document.querySelector('a[href*="?seccion=valoracion"]'));
+      const historicalUpdateNavigationReady =
+        !pageId.startsWith("admin-historical-update-") || (() => {
+          const currentGamesLink = document.querySelector(
+            'a[href="/admin/juegos"][aria-current="page"]'
+          );
+          const mobileSummary = Array.from(
+            document.querySelectorAll("summary")
+          ).find((summary) =>
+            summary.textContent?.includes("Juegos")
+          );
+          return Boolean(currentGamesLink && mobileSummary);
+        })();
       const gameEditorSaveBarHeight =
         mobile && pageId.startsWith("admin-game-")
           ? (() => {
@@ -670,6 +682,7 @@ async function auditPage(cdp, page, viewport) {
         homeContentSingleStep,
         taxonomyVisibleRows,
         gameValuationNavigationReady,
+        historicalUpdateNavigationReady,
         gameEditorSaveBarHeight,
         gamePreviewGalleryWidthRatio,
         publicGameBackgroundReady,
@@ -864,6 +877,11 @@ function validateAudit(result, failures) {
   if (!audit.gameValuationNavigationReady) {
     failures.push(`${prefix}: el editor de juego perdió el acceso canónico a Valoración.`);
   }
+  if (!audit.historicalUpdateNavigationReady) {
+    failures.push(
+      `${prefix}: el borrador histórico de actualización perdió el contexto activo de Juegos en la navegación administrativa.`
+    );
+  }
   if (
     audit.gameEditorSaveBarHeight !== null &&
     audit.gameEditorSaveBarHeight > 80
@@ -941,6 +959,7 @@ async function writeReport(results, sweeps, failures) {
         publicGameBackgroundReady: result.audit.publicGameBackgroundReady,
         adminGameBackgroundPreviewReady: result.audit.adminGameBackgroundPreviewReady,
         adminGameHeroPreviewReady: result.audit.adminGameHeroPreviewReady,
+        historicalUpdateNavigationReady: result.audit.historicalUpdateNavigationReady,
         truncated: result.capture.truncated,
       }, null, 2))}</pre>
     </article>
