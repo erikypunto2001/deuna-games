@@ -177,9 +177,7 @@ export default function GameMediaAccessibilityEditor({
   const assignments = workspace.assignments;
   const hasCover = Boolean(assignments.coverImage);
   const hasHero = Boolean(assignments.heroImage);
-  const hasCard = Boolean(
-    assignments.cardMode !== "video" && assignments.cardImage
-  );
+  const hasCard = Boolean(assignments.cardImage);
   const hasDetail = Boolean(
     assignments.detailMode !== "video" && assignments.detailImage
   );
@@ -258,7 +256,7 @@ export default function GameMediaAccessibilityEditor({
               placeholder="Descripción breve para la tarjeta del juego"
             />
             <small>
-              Úsalo para describir la imagen de descubrimiento cuando aporte información distinta a la Portada.
+              Describe la imagen 3:2 de descubrimiento. En modo Video sigue siendo el respaldo obligatorio durante carga, errores y reduced motion, así que conserva este contexto accesible.
             </small>
           </label>
         )}
