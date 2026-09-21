@@ -536,12 +536,6 @@
   }
 
   .tableViewport {
-    max-height: none;
-  }
-}
-
-@media (max-width: 720px) {
-  .tableViewport {
     display: none;
   }
 
@@ -559,7 +553,9 @@
     border-top: 1px solid #2e3a47;
     background: #0b121a;
   }
+}
 
+@media (max-width: 720px) {
   .toolbar {
     padding: 12px;
   }
