@@ -597,7 +597,7 @@ async function auditPage(cdp, page, viewport) {
           const devices = ["desktop", "tablet", "mobile"];
           return devices.every((device) => {
             const host = panel.querySelector(
-              `[data-hero-preview-device="${device}"]`
+              '[data-hero-preview-device="' + device + '"]'
             );
             if (!(host instanceof HTMLElement) || !visible(host)) return false;
             const frames = Array.from(host.querySelectorAll("iframe"));
