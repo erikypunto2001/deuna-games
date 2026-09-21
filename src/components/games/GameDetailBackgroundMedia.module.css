@@ -58,6 +58,20 @@
     );
 }
 
+.mobilePreview .imageLayer {
+  opacity: 0.64;
+}
+
+.mobilePreview .readabilityShade {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(3, 5, 9, 0.28),
+      rgba(3, 5, 9, 0.52) 64%,
+      rgba(3, 5, 9, 0.7)
+    );
+}
+
 @media (max-width: 760px) {
   .imageLayer {
     opacity: 0.64;
