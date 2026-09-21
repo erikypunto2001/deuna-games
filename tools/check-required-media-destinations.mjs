@@ -240,7 +240,8 @@ assert(
     "essentialMediaStates.filter(Boolean).length",
     "const essentialMediaTotal = essentialMediaStates.length",
     'Destinos esenciales activos',
-    'Al activar un Fondo propio pasa a ser un destino esencial para publicar'
+    'Al activar un Fondo propio pasa a ser un destino esencial para publicar',
+    'data-optional={requirements.background.active ? undefined : "true"}'
   ) &&
     utilityRail.includes(
       '${essentialMediaReadyCount}/${essentialMediaTotal}'
