@@ -24,6 +24,10 @@ const [
   viewport,
   publicBackground,
   publicBackgroundCss,
+  publicBackgroundMedia,
+  publicBackgroundMediaCss,
+  adminPreview,
+  adminPreviewCss,
   publicLayout,
   multimediaEditor,
   assignmentsWorkspace,
@@ -43,6 +47,10 @@ const [
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
   source("src/components/games/GameDetailBackground.module.css"),
+  source("src/components/games/GameDetailBackgroundMedia.tsx"),
+  source("src/components/games/GameDetailBackgroundMedia.module.css"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
@@ -215,41 +223,99 @@ assert(
     "PREVISUALIZACIÓN ADAPTABLE",
     "Escritorio",
     "Móvil",
-    "GameMedia",
+    "GameDetailBackgroundMediaLayer",
     "Un recorte, distintas pantallas",
-    "Confirmar recorte adaptable",
+    "requireConfirmed={false}",
     'action: kind === "image" ? "layout-image" : "layout-video"'
-  ),
-  "Fondo debe reutilizar el mismo motor espacial y añadir sólo previews adaptables de salida."
+  ) &&
+    !viewport.includes("GameMedia") &&
+    !viewport.includes("<video") &&
+    !viewport.includes("previewShade"),
+  "El editor de Fondo debe reutilizar la capa pública real y limitarse a aportar el viewport editable."
 );
 
 assert(
   has(
-    publicBackground,
+    publicBackgroundMedia,
+    "GameMedia",
+    "normalizeGameMediaMode",
     "resolveGameBackgroundMediaMode",
     "REDUCED_MOTION_MEDIA",
     "motionAllowed",
-    'mode === "video"',
-    "game.backgroundImage",
-    "game?.videoMedia?.background",
+    'effectiveMode === "video"',
+    "imageSrc",
+    "videoSrc",
     "mediaStyle(",
     '"--game-background-position"',
     '"--game-background-zoom"',
     "autoPlay",
     "documentVisible",
-    "failedVideo"
+    "failedVideo",
+    'data-game-background-media="true"',
+    'position === "fixed" ? styles.fixed : styles.contained'
   ) &&
-    !publicBackground.includes("FINE_POINTER_MEDIA") &&
-    !publicBackground.includes("hoverActive") &&
-    !publicBackground.includes("onPointerEnter") &&
-    !publicBackground.includes("onPointerLeave") &&
+    !publicBackgroundMedia.includes("FINE_POINTER_MEDIA") &&
+    !publicBackgroundMedia.includes("hoverActive") &&
+    !publicBackgroundMedia.includes("onPointerEnter") &&
+    !publicBackgroundMedia.includes("onPointerLeave") &&
     has(
-      publicBackgroundCss,
+      publicBackgroundMediaCss,
+      ".fixed {",
+      "position: fixed",
+      ".contained {",
+      "position: absolute",
       "object-position: var(--game-background-position, 50% 50%)",
       "transform-origin: var(--game-background-position, 50% 50%)",
-      "transform: scale(var(--game-background-zoom, 1))"
+      "transform: scale(var(--game-background-zoom, 1))",
+      ".colorWash {",
+      ".readabilityShade {",
+      "@media (max-width: 760px)"
     ),
-  "El runtime público debe usar Imagen/Video por referencia, sin activación por hover, respetando reduced-motion, visibilidad, error y X/Y/zoom adaptables."
+  "La capa canónica de Fondo debe concentrar Imagen/Video, crop, fallback, reduced-motion, visibilidad, error, color wash y sombreado."
+);
+
+assert(
+  has(
+    publicBackground,
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "resolveGameBackgroundMediaMode",
+    "<GameDetailBackgroundMedia",
+    'position="fixed"',
+    'sizes="100vw"'
+  ) &&
+    !publicBackground.includes("GameMedia") &&
+    !publicBackground.includes("<video") &&
+    !publicBackground.includes("REDUCED_MOTION_MEDIA") &&
+    !publicBackgroundCss.includes(".imageLayer") &&
+    !publicBackgroundCss.includes(".videoLayer") &&
+    !publicBackgroundCss.includes(".readabilityShade"),
+  "El layout público debe delegar toda la capa multimedia del Fondo al renderer canónico y conservar sólo el shell de contenido."
+);
+
+assert(
+  has(
+    adminPreview,
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "resolveGameBackgroundMediaMode(game)",
+    'data-game-background-preview="true"',
+    'data-game-background-preview-viewport="desktop"',
+    'data-game-background-preview-viewport="mobile"',
+    "<GameDetailBackgroundMedia",
+    'position="contained"'
+  ) &&
+    has(
+      adminPreviewCss,
+      ".backgroundPreviewGrid {",
+      ".backgroundPreviewFrame {",
+      "position: relative",
+      ".backgroundPreviewDesktop {",
+      "aspect-ratio: 16 / 9",
+      ".backgroundPreviewMobile {",
+      "aspect-ratio: 9 / 16"
+    ) &&
+    !adminPreview.includes("<video") &&
+    !adminPreview.includes("GameMedia"),
+  "Vista previa debe mostrar el Fondo del borrador en marcos desktop/mobile usando el renderer público real, sin imitar su media."
 );
 
 assert(
@@ -311,5 +377,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (Fondo Imagen/Video integrado, biblioteca no destructiva, override opcional, bytes compartidos y recorte adaptable)."
+  "Game background media: OK (Fondo Imagen/Video integrado; capa pública compartida por producción, editor y Vista previa; biblioteca no destructiva y recorte adaptable)."
 );
