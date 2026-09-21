@@ -1,3 +1,4 @@
+import { resolveGameCoverArtworkSource } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 export type GamePublicationChangeSection =
@@ -26,6 +27,7 @@ function changed(current: unknown, published: unknown) {
 
 function multimediaState(game: Game) {
   return {
+    coverArtworkSource: resolveGameCoverArtworkSource(game),
     coverImage: game.coverImage,
     heroImage: game.heroImage,
     cardImage: game.cardImage,
@@ -170,7 +172,7 @@ export function evaluateGamePublicationChanges(
       id: "media",
       label: "Multimedia",
       detail:
-        "Cambian recursos, modos, recortes, orden de Galería, videos o textos accesibles contextuales que se mostrarán en las superficies públicas.",
+        "Cambian recursos, fuente de Portada, modos, recortes, orden de Galería, videos o textos accesibles contextuales que se mostrarán en las superficies públicas.",
       section: "multimedia",
     });
   }
