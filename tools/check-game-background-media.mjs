@@ -27,6 +27,7 @@ const [
   backgroundMedia,
   backgroundMediaCss,
   publicLayout,
+  adminPreview,
   multimediaEditor,
   assignmentsWorkspace,
   galleryManager,
@@ -48,6 +49,7 @@ const [
   source("src/components/games/GameDetailBackgroundMedia.tsx"),
   source("src/components/games/GameDetailBackgroundMedia.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
@@ -284,6 +286,30 @@ assert(
     "children"
   ),
   "El override de Fondo debe limitarse al layout de la ficha /juegos/[slug]."
+);
+
+assert(
+  has(
+    adminPreview,
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "resolveGameBackgroundMediaMode(game)",
+    'data-game-detail-background-preview="true"',
+    '<GameDetailBackgroundMedia game={game} sizes="900px" />',
+    '<GameDetailBackgroundMedia game={game} sizes="220px" />',
+    "FONDO DE LA FICHA · BORRADOR",
+    "Salidas públicas adaptables"
+  ) ||
+    has(
+      adminPreview,
+      'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+      "resolveGameBackgroundMediaMode(game)",
+      'data-game-detail-background-preview="true"',
+      '<GameDetailBackgroundMedia game={game} sizes="900px" />',
+      '<GameDetailBackgroundMedia game={game} sizes="220px" />',
+      "FONDO DE LA FICHA · BORRADOR",
+      "Salida pública adaptable"
+    ),
+  "La Vista previa editorial debe mostrar el Fondo del borrador con la misma capa pública en escritorio y móvil."
 );
 
 assert(
