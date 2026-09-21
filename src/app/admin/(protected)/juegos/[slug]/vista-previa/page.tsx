@@ -13,11 +13,15 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
 import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia";
 import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
 import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame";
 import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
+import {
+  buildHomeGameCollections,
+} from "@/data/home";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -30,6 +34,12 @@ import {
 import {
   resolveGameDetailPresentation,
 } from "@/lib/games/game-detail-presentation";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
+import {
+  getPublicHomeConfig,
+} from "@/lib/home/public-home-config";
 import {
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
@@ -93,7 +103,24 @@ export default async function AdminGamePreviewPage({
     );
   }
 
+  const [publicGames, publicHomeConfig] = await Promise.all([
+    getPublicGames(),
+    getPublicHomeConfig(),
+  ]);
   const game = item.payload;
+  const publicHeroGames = buildHomeGameCollections(
+    publicGames,
+    publicHomeConfig
+  ).heroGames;
+  const heroPreviewGames = [
+    game,
+    ...publicHeroGames.filter(
+      (candidate) => candidate.slug !== game.slug
+    ),
+  ].slice(0, Math.max(1, publicHeroGames.length));
+  const heroIsCurrentlyFeatured = publicHeroGames.some(
+    (candidate) => candidate.slug === game.slug
+  );
   const {
     download,
     requirementRows,
@@ -287,6 +314,76 @@ export default async function AdminGamePreviewPage({
           <dd>{sizeLabel}</dd>
         </div>
       </dl>
+
+      <section
+        className={`${styles.panel} ${styles.heroDestinationPreviewPanel}`}
+        aria-labelledby="public-hero-preview-title"
+        data-game-hero-public-preview="true"
+      >
+        <div className={styles.sectionHeading}>
+          <span>HERO DE INICIO · BORRADOR DEL JUEGO</span>
+          <h2 id="public-hero-preview-title">
+            Renderer público real en los tres viewports
+          </h2>
+        </div>
+        <p className={styles.heroDestinationPreviewSummary}>
+          Estas ventanas montan el mismo HeroSection de la Home con la
+          configuración pública efectiva de Inicio. El primer slide usa esta
+          revisión privada del juego; los laterales, cuando existen, usan
+          snapshots ya publicados sólo para conservar el contexto visual.
+        </p>
+        <p className={styles.heroDestinationPreviewContext}>
+          {heroIsCurrentlyFeatured
+            ? "El juego ya forma parte del Hero público actual; aquí queda enfocado para revisar su destino 3:1 sin cambiar la curaduría."
+            : "El juego no forma parte del Hero público actual; se coloca primero únicamente para validar cómo quedaría su destino 3:1 antes de decidir cualquier cambio de curaduría."}
+        </p>
+        <div className={styles.heroDestinationPreviewGrid}>
+          <div
+            className={`${styles.heroDestinationPreviewItem} ${styles.heroDesktopPreview}`}
+            data-hero-preview-device="desktop"
+          >
+            <span>Escritorio</span>
+            <HomeHeroLivePreview
+              games={heroPreviewGames}
+              presentation={publicHomeConfig.heroPresentation}
+              device="desktop"
+              playing={false}
+              showToolbar={false}
+            />
+          </div>
+          <div
+            className={styles.heroDestinationPreviewItem}
+            data-hero-preview-device="tablet"
+          >
+            <span>Tableta</span>
+            <HomeHeroLivePreview
+              games={heroPreviewGames}
+              presentation={publicHomeConfig.heroPresentation}
+              device="tablet"
+              playing={false}
+              showToolbar={false}
+            />
+          </div>
+          <div
+            className={`${styles.heroDestinationPreviewItem} ${styles.heroMobilePreview}`}
+            data-hero-preview-device="mobile"
+          >
+            <span>Móvil</span>
+            <HomeHeroLivePreview
+              games={heroPreviewGames}
+              presentation={publicHomeConfig.heroPresentation}
+              device="mobile"
+              playing={false}
+              showToolbar={false}
+            />
+          </div>
+        </div>
+        <p className={styles.heroDestinationPreviewFootnote}>
+          Video, Imagen + hover, reduced motion, foco, visibilidad de pestaña,
+          recorte y fallback siguen el runtime público. Esta vista no publica
+          el juego ni modifica Inicio.
+        </p>
+      </section>
 
       <section
         className={`${styles.panel} ${styles.cardPreviewPanel}`}
