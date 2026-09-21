@@ -470,7 +470,8 @@ assert(
 assert(
   has(
     backgroundRuntime,
-    'mode === "video"',
+    'effectiveMode === "video"',
+    "normalizeGameMediaMode",
     "prefers-reduced-motion: reduce",
     "documentVisible",
     "failedVideo"
