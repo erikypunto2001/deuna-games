@@ -19,11 +19,10 @@ import {
 } from "lucide-react";
 
 import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
-import GameGalleryVideo from "@/components/games/GameGalleryVideo";
+import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameCoverMedia from "@/components/ui/GameCoverMedia";
-import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
@@ -40,11 +39,6 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
-  getGameGalleryAccessibleFallback,
-} from "@/lib/media/game-media-accessibility";
-import {
-  galleryImageViewport,
-  galleryVideoAspectRatio,
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
 import {
@@ -52,9 +46,6 @@ import {
   resolveGameDestinationMediaMode,
   resolveGameDetailImageViewport,
 } from "@/lib/media/game-video-media";
-import {
-  resolveGameImageCropAspectRatio,
-} from "@/lib/media/image-viewport";
 import {
   absoluteUrl,
 } from "@/lib/site";
@@ -571,51 +562,7 @@ export default async function GameDetailPage({
               </h2>
             </div>
 
-            <div className={styles.galleryGrid}>
-              {gallery.map((item, index) => {
-                const accessibleLabel = getGameGalleryAccessibleFallback(
-                  game,
-                  item,
-                  index
-                );
-
-                if (item.kind === "image") {
-                  const viewport = galleryImageViewport(game, item);
-                  return (
-                    <figure
-                      key={`image:${item.src}`}
-                      className={styles.galleryItem}
-                      style={{
-                        aspectRatio: resolveGameImageCropAspectRatio(viewport),
-                      }}
-                    >
-                      <GameMedia
-                        src={item.src}
-                        alt={accessibleLabel}
-                        sizes="(max-width: 700px) 100vw, 33vw"
-                        viewport={viewport}
-                      />
-                    </figure>
-                  );
-                }
-
-                return (
-                  <figure
-                    key={`video:${item.src}`}
-                    className={styles.galleryItem}
-                    style={{
-                      aspectRatio: galleryVideoAspectRatio(item.viewport),
-                    }}
-                  >
-                    <GameGalleryVideo
-                      src={item.src}
-                      viewport={item.viewport}
-                      label={accessibleLabel}
-                    />
-                  </figure>
-                );
-              })}
-            </div>
+            <GameDetailGalleryGrid game={game} gallery={gallery} />
           </section>
         )}
 
