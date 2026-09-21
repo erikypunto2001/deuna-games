@@ -110,6 +110,7 @@ async function publishFixtureGame(
   const fixtureMedia = mode === "video" ? await writeFixtureWebm(current.slug) : null;
   const otherVideoMedia = { ...(current.videoMedia ?? {}) };
   delete otherVideoMedia.card;
+  if (mode === "video") delete otherVideoMedia.detail;
   const videoMedia =
     mode === "video" && fixtureMedia
       ? {
@@ -126,6 +127,17 @@ async function publishFixtureGame(
             },
             playback: "always" as const,
           },
+          detail: {
+            clip: fixtureMedia.publicPath,
+            viewport: {
+              x: 0.5,
+              y: 0.5,
+              zoom: 1,
+              aspect: "source" as const,
+              confirmed: true,
+            },
+            playback: "always" as const,
+          },
         }
       : Object.keys(otherVideoMedia).length > 0
         ? otherVideoMedia
@@ -135,6 +147,7 @@ async function publishFixtureGame(
     mediaModes: {
       ...(current.mediaModes ?? {}),
       card: mode,
+      ...(mode === "video" ? { detail: "video" as const } : {}),
     },
     videoMedia,
   });
@@ -171,7 +184,7 @@ async function publishFixtureGame(
       item.item_key,
       JSON.stringify({
         revision: nextRevision,
-        fixture: `card-${mode}-browser-runtime`,
+        fixture: `card-detail-${mode}-browser-runtime`,
       }),
     ]
   );
@@ -227,7 +240,7 @@ async function publishFixtureGame(
         publicationNumber: nextPublication,
         revision: nextRevision,
         firstVisibility: false,
-        fixture: `card-${mode}-browser-runtime`,
+        fixture: `card-detail-${mode}-browser-runtime`,
       }),
     ]
   );
@@ -324,7 +337,7 @@ async function main() {
     );
 
     console.log(
-      `Card media visual fixture: OK (video=${videoFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
+      `Card/detail media visual fixture: OK (video=${videoFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
