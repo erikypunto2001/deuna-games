@@ -52,15 +52,23 @@ assert.deepEqual(
   "Un snapshot legacy sin coverArtworkSource no debe marcar cambio cuando resuelve semánticamente a Card."
 );
 
+const explicitCustomWithDistinctCover = game({
+  coverArtworkSource: "custom",
+  coverImage: "/images/games/elden-ring/cover.webp",
+  cardImage: "/images/games/elden-ring/card.webp",
+});
 const legacyCustom = game({
   coverArtworkSource: undefined,
   coverImage: "/images/games/elden-ring/cover.webp",
   cardImage: "/images/games/elden-ring/card.webp",
 });
 assert.deepEqual(
-  evaluateGamePublicationChanges(draftCustom, legacyCustom),
+  evaluateGamePublicationChanges(
+    explicitCustomWithDistinctCover,
+    legacyCustom
+  ),
   [],
-  "Un snapshot legacy con Portada distinta de Card debe resolver semánticamente a custom."
+  "Un snapshot legacy con Portada distinta de Card debe resolver semánticamente a custom sin inventar diferencias de recurso."
 );
 
 console.log(
