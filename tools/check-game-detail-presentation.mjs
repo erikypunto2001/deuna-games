@@ -17,11 +17,15 @@ const [
   publicPage,
   previewPage,
   previewCss,
+  homeHeroLivePreview,
+  homeHeroRenderer,
 ] = await Promise.all([
   source("src/lib/games/game-detail-presentation.ts"),
   source("src/app/juegos/[slug]/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
+  source("src/components/admin/HomeHeroLivePreview.tsx"),
+  source("src/components/home/HeroSection.tsx"),
 ]);
 
 assert(
@@ -60,6 +64,31 @@ for (const [label, page] of [
     `${label} debe consumir la presentación compartida sin reconstruir requisitos ni descargas.`
   );
 }
+
+assert(
+  previewPage.includes(
+    'import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview"'
+  ) &&
+    previewPage.includes("buildHomeGameCollections") &&
+    previewPage.includes("getPublicHomeConfig") &&
+    previewPage.includes('data-game-hero-public-preview="true"') &&
+    (previewPage.match(/<HomeHeroLivePreview/g) ?? []).length === 3 &&
+    previewPage.includes('device="desktop"') &&
+    previewPage.includes('device="tablet"') &&
+    previewPage.includes('device="mobile"') &&
+    previewPage.includes("playing={false}") &&
+    previewPage.includes("showToolbar={false}") &&
+    homeHeroLivePreview.includes(
+      'import HeroSection from "@/components/home/HeroSection"'
+    ) &&
+    homeHeroLivePreview.includes("<HeroSection") &&
+    homeHeroLivePreview.includes("showToolbar = true") &&
+    homeHeroRenderer.includes(
+      'resolveGameDestinationMediaMode(activeGame, "hero")'
+    ) &&
+    homeHeroRenderer.includes("<HeroVideoLayer"),
+  "Vista previa debe validar Hero 3:1 con el renderer público real, el contexto público efectivo y los tres viewports sin duplicar su lógica."
+);
 
 assert(
   publicPage.includes("<dd>{genreSummaryLabel}</dd>") &&
@@ -116,5 +145,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Presentación compartida de ficha: OK (Preview y web usan requisitos, taxonomía, clasificación y resumen desde una única fuente)."
+  "Presentación compartida de ficha: OK (Preview y web comparten presentación; Hero 3:1 usa el renderer público real en escritorio, tableta y móvil)."
 );
