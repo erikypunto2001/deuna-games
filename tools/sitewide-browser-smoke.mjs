@@ -481,25 +481,27 @@ async function auditPage(cdp, page, viewport) {
       const badTextTokens = ["undefined", "[object Object]", "NaN"]
         .filter((token) => text.includes(token));
       const visibleH1 = Array.from(document.querySelectorAll("h1")).filter(visible);
-      const adminGamesMobileReady =
-        pageId !== "admin-games" || !mobile || (() => {
-          const mobileList = document.querySelector('[data-admin-games-mobile-list="true"]');
+      const adminGamesCompact =
+        pageId === "admin-games" && viewportWidth <= 1180;
+      const adminGamesCompactReady =
+        !adminGamesCompact || (() => {
+          const compactList = document.querySelector('[data-admin-games-mobile-list="true"]');
           const desktopTable = document.querySelector('[data-admin-games-table="true"]');
-          const mobileActions = mobileList?.querySelector('[data-mobile-actions="true"]');
-          return mobileList instanceof HTMLElement &&
-            visible(mobileList) &&
+          const compactActions = compactList?.querySelector('[data-mobile-actions="true"]');
+          return compactList instanceof HTMLElement &&
+            visible(compactList) &&
             (!desktopTable || !visible(desktopTable)) &&
-            mobileActions instanceof HTMLElement &&
-            visible(mobileActions);
+            compactActions instanceof HTMLElement &&
+            visible(compactActions);
         })();
-      const adminGamesMobileCardCount =
-        pageId === "admin-games" && mobile
+      const adminGamesCompactCardCount =
+        adminGamesCompact
           ? Array.from(document.querySelectorAll('[data-admin-games-mobile-card="true"]'))
               .filter((element) => element instanceof HTMLElement && visible(element))
               .length
           : null;
-      const adminGamesMobilePaginationReady =
-        pageId !== "admin-games" || !mobile || (() => {
+      const adminGamesCompactPaginationReady =
+        !adminGamesCompact || (() => {
           const pagination = document.querySelector(
             '[data-admin-games-mobile-pagination="true"]'
           );
@@ -676,9 +678,9 @@ async function auditPage(cdp, page, viewport) {
         duplicateIds,
         brokenImages,
         badTextTokens,
-        adminGamesMobileReady,
-        adminGamesMobileCardCount,
-        adminGamesMobilePaginationReady,
+        adminGamesCompactReady,
+        adminGamesCompactCardCount,
+        adminGamesCompactPaginationReady,
         homeContentSingleStep,
         taxonomyVisibleRows,
         gameValuationNavigationReady,
@@ -842,19 +844,19 @@ function validateAudit(result, failures) {
   if (audit.badTextTokens.length) {
     failures.push(`${prefix}: tokens de render inválidos: ${audit.badTextTokens.join(", ")}.`);
   }
-  if (!audit.adminGamesMobileReady) {
-    failures.push(`${prefix}: Juegos móvil no expone su lista y acciones canónicas sin tabla horizontal.`);
+  if (!audit.adminGamesCompactReady) {
+    failures.push(`${prefix}: Juegos compacto no expone su lista y acciones canónicas sin tabla horizontal.`);
   }
   if (
-    audit.adminGamesMobileCardCount !== null &&
-    audit.adminGamesMobileCardCount > 8
+    audit.adminGamesCompactCardCount !== null &&
+    audit.adminGamesCompactCardCount > 8
   ) {
     failures.push(
-      `${prefix}: Juegos móvil muestra ${audit.adminGamesMobileCardCount} cards; el máximo operativo es 8.`
+      `${prefix}: Juegos compacto muestra ${audit.adminGamesCompactCardCount} cards; el máximo operativo es 8.`
     );
   }
-  if (!audit.adminGamesMobilePaginationReady) {
-    failures.push(`${prefix}: Juegos móvil perdió la paginación operativa.`);
+  if (!audit.adminGamesCompactPaginationReady) {
+    failures.push(`${prefix}: Juegos compacto perdió la paginación operativa.`);
   }
   if (!audit.homeContentSingleStep) {
     failures.push(`${prefix}: Resto de Inicio debe mostrar un único paso de edición a la vez.`);
