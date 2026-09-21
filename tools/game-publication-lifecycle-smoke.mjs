@@ -248,6 +248,21 @@ function firstH1(html) {
     .trim();
 }
 
+function assertImageViewport(html, expected, label) {
+  const position = `${(expected.x * 100).toFixed(2)}% ${(expected.y * 100).toFixed(2)}%`;
+  const decoded = decodeHtml(html);
+  const positionNeedle = `--game-image-position:${position}`;
+  const zoomPattern = new RegExp(
+    `--game-image-zoom:\\s*${String(expected.zoom).replace(".", "\\.")}(?:;|\\")`
+  );
+
+  if (!decoded.includes(positionNeedle) || !zoomPattern.test(decoded)) {
+    throw new Error(
+      `${label} no expuso el viewport multimedia esperado ${JSON.stringify(expected)}.`
+    );
+  }
+}
+
 function attributeValue(tag, attribute) {
   const pattern = new RegExp(
     `\\b${attribute}="([^"]*)"`,
@@ -843,7 +858,12 @@ for (const target of ["hero", "card", "detail"]) {
   }
 }
 
-async function confirmCrop(target, aspect, resource) {
+async function confirmCrop(
+  target,
+  aspect,
+  resource,
+  viewport = { x: 0.5, y: 0.5, zoom: 1 }
+) {
   const crop = await postAdminForm(
     `/api/admin/content/games/${encodeURIComponent(slug)}/image-layout`,
     `${editorPath}?seccion=multimedia`,
@@ -851,9 +871,9 @@ async function confirmCrop(target, aspect, resource) {
     {
       expectedRevision: String(revision),
       target,
-      viewportX: "0.5",
-      viewportY: "0.5",
-      viewportZoom: "1",
+      viewportX: String(viewport.x),
+      viewportY: String(viewport.y),
+      viewportZoom: String(viewport.zoom),
       ...(aspect !== null ? { viewportAspect: aspect } : {}),
       ...(target === "gallery"
         ? {
@@ -877,7 +897,9 @@ async function confirmCrop(target, aspect, resource) {
 await confirmCrop("cover", "4:5");
 await confirmCrop("hero", "3:1");
 await confirmCrop("card", "3:2");
-await confirmCrop("detail", null);
+const detailViewportA = { x: 0.41, y: 0.58, zoom: 1.15 };
+const detailViewportB = { x: 0.67, y: 0.32, zoom: 1.35 };
+await confirmCrop("detail", null, undefined, detailViewportA);
 await confirmCrop("gallery", "16:9", libraryImage);
 
 media = await mediaSnapshot(slug, cookie);
