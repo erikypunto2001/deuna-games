@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia";
 import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
 import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame";
 import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
@@ -32,6 +33,9 @@ import {
 import {
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
+import {
+  resolveGameBackgroundMediaMode,
+} from "@/lib/media/game-media-requirements";
 import type {
   GameDownloadSourceStatus,
 } from "@/types/game";
@@ -104,6 +108,7 @@ export default async function AdminGamePreviewPage({
   } = resolveGameDetailPresentation(game);
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
+  const backgroundMode = resolveGameBackgroundMediaMode(game);
   const distributionChannelLabel = download?.channel
     ? distributionChannelLabels[download.channel]
     : "A confirmar";
@@ -240,6 +245,56 @@ export default async function AdminGamePreviewPage({
           <dd>{sizeLabel}</dd>
         </div>
       </dl>
+
+      {backgroundMode && (
+        <section
+          className={`${styles.panel} ${styles.backgroundPreviewPanel}`}
+          data-game-background-preview="true"
+          aria-labelledby="game-background-preview-title"
+        >
+          <div className={styles.sectionHeading}>
+            <span>FONDO DEL JUEGO · BORRADOR</span>
+            <h2 id="game-background-preview-title">
+              Renderer público real
+            </h2>
+          </div>
+          <p className={styles.backgroundPreviewSummary}>
+            Estas ventanas montan la misma capa que usa la ficha pública:
+            recorte adaptable, fallback, video, color y sombreado. El marco
+            sólo limita el viewport para que el Fondo no invada el panel Admin.
+          </p>
+
+          <div className={styles.backgroundPreviewGrid}>
+            <div className={styles.backgroundPreviewItem}>
+              <span>Escritorio · {backgroundMode === "video" ? "Video" : "Imagen"}</span>
+              <div
+                className={`${styles.backgroundPreviewFrame} ${styles.backgroundPreviewDesktop}`}
+                data-game-background-preview-viewport="desktop"
+              >
+                <GameDetailBackgroundMedia
+                  game={game}
+                  position="contained"
+                  sizes="900px"
+                />
+              </div>
+            </div>
+
+            <div className={styles.backgroundPreviewItem}>
+              <span>Móvil</span>
+              <div
+                className={`${styles.backgroundPreviewFrame} ${styles.backgroundPreviewMobile}`}
+                data-game-background-preview-viewport="mobile"
+              >
+                <GameDetailBackgroundMedia
+                  game={game}
+                  position="contained"
+                  sizes="220px"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section
         className={`${styles.panel} ${styles.cardPreviewPanel}`}
