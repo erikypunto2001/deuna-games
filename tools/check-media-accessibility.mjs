@@ -86,12 +86,16 @@ assert(
   files.service.includes("saveGameMediaAccessibilitySection") &&
     files.service.includes("compactMediaAccessibility") &&
     files.service.includes("galleryKeys") &&
+    files.service.includes("resolveGameCoverImage(game)") &&
+    files.service.includes("resolveGameCardBaseImage(game)") &&
+    files.service.includes('resolveGameDestinationImage(game, "detail")') &&
+    !files.service.includes("game.cardImage ?? game.coverImage") &&
     files.service.includes('"media-accessibility"') &&
     files.service.includes("FOR UPDATE") &&
     files.service.includes("editorial_revisions") &&
     files.service.includes("admin_audit_log") &&
     !/\bDELETE\s+FROM\b/i.test(files.service),
-  "Guardar accesibilidad debe reutilizar concurrencia, revisiones y auditoría sin operaciones destructivas."
+  "Guardar accesibilidad debe reutilizar resolvers canónicos, concurrencia, revisiones y auditoría sin perder metadata de snapshots históricos."
 );
 
 assert(
@@ -130,8 +134,21 @@ assert(
   files.accessibility.includes("getGameGalleryAccessibilityLabel") &&
     files.accessibility.includes("getGameGalleryAccessibleFallback") &&
     files.accessibility.includes("hasCompleteContextualMediaAccessibility") &&
-    files.accessibility.includes('resolveGameDestinationMediaMode(game, "card")'),
-  "La resolución pública y el readiness deben compartir una sola lógica de accesibilidad contextual."
+    files.accessibility.includes(
+      'import {\n  resolveGameCardBaseImage,\n} from "@/lib/media/game-card-presentation";'
+    ) &&
+    files.accessibility.includes("resolveGameCardBaseImage(game)") &&
+    !files.accessibility.includes('resolveGameDestinationMediaMode(game, "card")'),
+  "La resolución pública y el readiness deben compartir la imagen base canónica de Card sin ignorarla en modo Video."
+);
+
+assert(
+  files.editor.includes("const hasCard = Boolean(assignments.cardImage);") &&
+    !files.editor.includes('assignments.cardMode !== "video"') &&
+    files.editor.includes("En modo Video sigue siendo el respaldo obligatorio") &&
+    files.cardPresentation.includes("resolveGameCardBaseImage(game)") &&
+    files.cardPresentation.includes("game.mediaAccessibility?.card ?? game.imageAlt"),
+  "Admin, readiness y renderer público deben mantener accesibilidad contextual para la imagen 3:2 de Card también cuando Video es el medio principal."
 );
 
 assert(
@@ -202,6 +219,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Accesibilidad multimedia contextual: OK (snapshot versionado, edición segura, fallbacks históricos, Galería por recurso y capas decorativas separadas)."
+    "Accesibilidad multimedia contextual: OK (snapshot versionado, edición segura, fallbacks históricos, Card accesible también en Video, Galería por recurso y capas decorativas separadas)."
   );
 }

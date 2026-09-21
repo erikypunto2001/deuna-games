@@ -11,6 +11,13 @@ import type {
   GameMediaAccessibility,
   GamePlatform,
 } from "@/types/game";
+import {
+  resolveGameCardBaseImage,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
+  resolveGameDestinationImage,
+} from "@/lib/media/game-video-media";
 
 import {
   hashEditorialPayload,
@@ -143,13 +150,14 @@ function compactMediaAccessibility(
   const hero = accessibility.hero?.trim();
   const card = accessibility.card?.trim();
   const detail = accessibility.detail?.trim();
+  const coverImage = resolveGameCoverImage(game);
+  const cardImage = resolveGameCardBaseImage(game);
+  const detailImage = resolveGameDestinationImage(game, "detail");
   const compact: GameMediaAccessibility = {
-    ...(game.coverImage && cover ? { cover } : {}),
+    ...(coverImage && cover ? { cover } : {}),
     ...(game.heroImage && hero ? { hero } : {}),
-    ...((game.cardImage ?? game.coverImage) && card ? { card } : {}),
-    ...((game.detailImage ?? game.heroImage ?? game.coverImage) && detail
-      ? { detail }
-      : {}),
+    ...(cardImage && card ? { card } : {}),
+    ...(detailImage && detail ? { detail } : {}),
     ...(gallery?.length ? { gallery } : {}),
   };
 
