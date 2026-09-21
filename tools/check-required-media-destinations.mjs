@@ -67,7 +67,7 @@ const [
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailContainerMedia.tsx"),
-  source("src/components/games/GameDetailBackground.tsx"),
+  source("src/components/games/GameDetailBackgroundMedia.tsx"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
