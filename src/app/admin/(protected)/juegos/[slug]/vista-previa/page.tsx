@@ -384,71 +384,72 @@ export default async function AdminGamePreviewPage({
         </section>
       )}
 
-      <section className={styles.twoColumns}>
-        <article className={styles.panel}>
-          <div className={styles.sectionHeading}>
-            <span>MULTIMEDIA</span>
-            <h2>Galería del borrador</h2>
+      <article
+        className={styles.panel}
+        data-game-detail-gallery-preview="true"
+      >
+        <div className={styles.sectionHeading}>
+          <span>MULTIMEDIA</span>
+          <h2>Galería del borrador</h2>
+        </div>
+
+        {gallery.length > 0 ? (
+          <>
+            <p className={styles.gallerySummary}>
+              {galleryHasVideo
+                ? "Capturas y videos con el mismo orden, recorte y renderer de la ficha pública."
+                : "Imágenes con el mismo orden, recorte y renderer de la ficha pública."}
+            </p>
+            <GameDetailGalleryGrid game={game} gallery={gallery} />
+          </>
+        ) : (
+          <div className={styles.emptyState}>
+            <ImageIcon size={22} aria-hidden="true" />
+            No hay capturas ni videos configurados.
           </div>
+        )}
+      </article>
 
-          {gallery.length > 0 ? (
-            <>
-              <p className={styles.gallerySummary}>
-                {galleryHasVideo
-                  ? "Capturas y videos con el mismo orden, recorte y renderer de la ficha pública."
-                  : "Imágenes con el mismo orden, recorte y renderer de la ficha pública."}
-              </p>
-              <GameDetailGalleryGrid game={game} gallery={gallery} />
-            </>
-          ) : (
-            <div className={styles.emptyState}>
-              <ImageIcon size={22} aria-hidden="true" />
-              No hay capturas ni videos configurados.
-            </div>
-          )}
-        </article>
+      <article className={styles.panel}>
+        <div className={styles.sectionHeading}>
+          <span>DESCARGAS</span>
+          <h2>Paquete y fuentes visibles</h2>
+        </div>
 
-        <article className={styles.panel}>
-          <div className={styles.sectionHeading}>
-            <span>DESCARGAS</span>
-            <h2>Paquete y fuentes visibles</h2>
+        <dl className={styles.details}>
+          <div>
+            <dt>Canal</dt>
+            <dd>{distributionChannelLabel}</dd>
           </div>
+          <div>
+            <dt>SHA-256</dt>
+            <dd style={{ overflowWrap: "anywhere" }}>
+              {download?.checksumSha256 ?? "Sin definir"}
+            </dd>
+          </div>
+        </dl>
 
-          <dl className={styles.details}>
-            <div>
-              <dt>Canal</dt>
-              <dd>{distributionChannelLabel}</dd>
-            </div>
-            <div>
-              <dt>SHA-256</dt>
-              <dd style={{ overflowWrap: "anywhere" }}>
-                {download?.checksumSha256 ?? "Sin definir"}
-              </dd>
-            </div>
-          </dl>
-
-          {sources.length > 0 ? (
-            <div className={styles.sources}>
-              {sources.map((source) => (
-                <div key={source.id}>
-                  <div>
-                    <strong>{source.name}</strong>
-                    <span>{downloadHost(source.href)}</span>
-                  </div>
-                  <span>
-                    {downloadStatusLabels[source.status]} · {source.label}
-                  </span>
+        {sources.length > 0 ? (
+          <div className={styles.sources}>
+            {sources.map((source) => (
+              <div key={source.id}>
+                <div>
+                  <strong>{source.name}</strong>
+                  <span>{downloadHost(source.href)}</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.emptyState}>
-              <Download size={22} aria-hidden="true" />
-              No hay fuentes activas en este borrador.
-            </div>
-          )}
-        </article>
-      </section>
+                <span>
+                  {downloadStatusLabels[source.status]} · {source.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            <Download size={22} aria-hidden="true" />
+            No hay fuentes activas en este borrador.
+          </div>
+        )}
+      </article>
     </>
   );
 }
