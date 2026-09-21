@@ -248,6 +248,21 @@ function firstH1(html) {
     .trim();
 }
 
+function assertImageViewport(html, expected, label) {
+  const position = `${(expected.x * 100).toFixed(2)}% ${(expected.y * 100).toFixed(2)}%`;
+  const decoded = decodeHtml(html);
+  const positionNeedle = `--game-image-position:${position}`;
+  const zoomPattern = new RegExp(
+    `--game-image-zoom:\\s*${String(expected.zoom).replace(".", "\\.")}(?:;|\\")`
+  );
+
+  if (!decoded.includes(positionNeedle) || !zoomPattern.test(decoded)) {
+    throw new Error(
+      `${label} no expuso el viewport multimedia esperado ${JSON.stringify(expected)}.`
+    );
+  }
+}
+
 function attributeValue(tag, attribute) {
   const pattern = new RegExp(
     `\\b${attribute}="([^"]*)"`,
@@ -843,7 +858,12 @@ for (const target of ["hero", "card", "detail"]) {
   }
 }
 
-async function confirmCrop(target, aspect, resource) {
+async function confirmCrop(
+  target,
+  aspect,
+  resource,
+  viewport = { x: 0.5, y: 0.5, zoom: 1 }
+) {
   const crop = await postAdminForm(
     `/api/admin/content/games/${encodeURIComponent(slug)}/image-layout`,
     `${editorPath}?seccion=multimedia`,
@@ -851,9 +871,9 @@ async function confirmCrop(target, aspect, resource) {
     {
       expectedRevision: String(revision),
       target,
-      viewportX: "0.5",
-      viewportY: "0.5",
-      viewportZoom: "1",
+      viewportX: String(viewport.x),
+      viewportY: String(viewport.y),
+      viewportZoom: String(viewport.zoom),
       ...(aspect !== null ? { viewportAspect: aspect } : {}),
       ...(target === "gallery"
         ? {
@@ -877,7 +897,9 @@ async function confirmCrop(target, aspect, resource) {
 await confirmCrop("cover", "4:5");
 await confirmCrop("hero", "3:1");
 await confirmCrop("card", "3:2");
-await confirmCrop("detail", null);
+const detailViewportA = { x: 0.41, y: 0.58, zoom: 1.15 };
+const detailViewportB = { x: 0.67, y: 0.32, zoom: 1.35 };
+await confirmCrop("detail", null, undefined, detailViewportA);
 await confirmCrop("gallery", "16:9", libraryImage);
 
 media = await mediaSnapshot(slug, cookie);
@@ -970,6 +992,11 @@ if (!firstH1(publicA.body).includes(markerA)) {
     `La web pública no mostró el snapshot A. H1=${JSON.stringify(firstH1(publicA.body))}.`
   );
 }
+assertImageViewport(
+  publicA.body,
+  detailViewportA,
+  "El snapshot público A"
+);
 
 editorHtml = requirePage(
   await request(`${editorPath}?seccion=ficha`, { headers: { cookie } }),
@@ -1010,6 +1037,10 @@ if (revision <= revisionA) {
     `El borrador B no avanzó revisión (${revisionA} -> ${revision}).`
   );
 }
+
+await confirmCrop("detail", null, undefined, detailViewportB);
+media = await mediaSnapshot(slug, cookie);
+revision = media.revision;
 const revisionB = revision;
 
 const previewB = requirePage(
@@ -1019,6 +1050,11 @@ const previewB = requirePage(
 if (!visibleText(previewB.body).includes(markerB)) {
   throw new Error("La vista previa no reflejó el borrador B.");
 }
+assertImageViewport(
+  previewB.body,
+  detailViewportB,
+  "La Vista previa del borrador B"
+);
 
 const publicStillA = requirePage(
   await request(publicPath),
@@ -1033,6 +1069,11 @@ if (
     `Guardar B filtró el borrador a la web pública: ${JSON.stringify(publicStillAH1)}.`
   );
 }
+assertImageViewport(
+  publicStillA.body,
+  detailViewportA,
+  "La web pública mientras B sigue en borrador"
+);
 
 const secondPublish = await postAdminForm(
   `/api/admin/content/games/${encodeURIComponent(slug)}/publish`,
@@ -1068,6 +1109,11 @@ const publicB = requirePage(
 if (!firstH1(publicB.body).includes(markerB)) {
   throw new Error("La web pública no reflejó el snapshot B.");
 }
+assertImageViewport(
+  publicB.body,
+  detailViewportB,
+  "El snapshot público B"
+);
 
 const restoreA = await postAdminForm(
   restorePublicationA,
@@ -1104,6 +1150,11 @@ if (!firstH1(publicRestoredA.body).includes(markerA)) {
     "Restaurar A no cambió el snapshot público al contenido histórico esperado."
   );
 }
+assertImageViewport(
+  publicRestoredA.body,
+  detailViewportA,
+  "El snapshot público restaurado A"
+);
 
 const previewAfterRestore = requirePage(
   await request(`${editorPath}/vista-previa`, { headers: { cookie } }),
@@ -1114,6 +1165,11 @@ if (!visibleText(previewAfterRestore.body).includes(markerB)) {
     "Restaurar una publicación histórica reescribió o perdió el borrador B."
   );
 }
+assertImageViewport(
+  previewAfterRestore.body,
+  detailViewportB,
+  "El borrador B después de restaurar A"
+);
 
 publicationHtml = await publicationPage(slug, cookie);
 const revisionAfterRestore = positiveInputNumber(
@@ -1155,6 +1211,11 @@ if (!firstH1(publicResyncedB.body).includes(markerB)) {
     "Republicar el borrador B no resincronizó la web pública."
   );
 }
+assertImageViewport(
+  publicResyncedB.body,
+  detailViewportB,
+  "El snapshot público B resincronizado"
+);
 
 const updateRedirect = await postAdminForm(
   `/api/admin/content/games/${encodeURIComponent(slug)}/publish-update`,
@@ -1256,5 +1317,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );
