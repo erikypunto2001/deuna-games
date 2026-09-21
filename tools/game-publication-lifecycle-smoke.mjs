@@ -994,6 +994,68 @@ if (media.requirements?.ready !== true) {
   );
 }
 
+const coverViewportBeforeSourceRoundtrip = JSON.stringify(
+  media.assignments?.imageMedia?.cover ?? null
+);
+const customSameMaster = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    target: "cover-image",
+    resource: libraryImage,
+  },
+  "El cambio de Portada shared a custom con el mismo master"
+);
+assertRedirectState(
+  customSameMaster,
+  "recurso-asignado",
+  "Portada custom con el mismo master"
+);
+media = await mediaSnapshot(slug, cookie);
+if (
+  media.revision <= revision ||
+  media.assignments?.coverArtworkSource !== "custom" ||
+  JSON.stringify(media.assignments?.imageMedia?.cover ?? null) !==
+    coverViewportBeforeSourceRoundtrip
+) {
+  throw new Error(
+    "Cambiar Portada a custom con el mismo master no preservó el crop 4:5 confirmado."
+  );
+}
+revision = media.revision;
+
+const sharedSameMaster = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    target: "cover-source",
+    resource: "card",
+  },
+  "El regreso de Portada custom a Card con el mismo master"
+);
+assertRedirectState(
+  sharedSameMaster,
+  "recurso-asignado",
+  "Portada compartida con el mismo master"
+);
+media = await mediaSnapshot(slug, cookie);
+if (
+  media.revision <= revision ||
+  media.assignments?.coverArtworkSource !== "card" ||
+  JSON.stringify(media.assignments?.imageMedia?.cover ?? null) !==
+    coverViewportBeforeSourceRoundtrip ||
+  media.requirements?.cover?.cropReady !== true
+) {
+  throw new Error(
+    "Cambiar Portada a Card con el mismo master no preservó el crop 4:5 confirmado."
+  );
+}
+revision = media.revision;
+
 const stableMultimediaRevision = revision;
 const stableImageMedia = JSON.stringify(
   media.assignments?.imageMedia ?? null
@@ -1548,5 +1610,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom→Card, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );
