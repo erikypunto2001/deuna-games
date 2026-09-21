@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
-import GameMedia from "@/components/ui/GameMedia";
+import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia";
 import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import type { PreviewViewport } from "@/lib/media/preview-video-policy";
@@ -26,14 +26,6 @@ type Props = {
   onSaved: () => void | Promise<void>;
 };
 
-function adaptiveVideoStyle(viewport: PreviewViewport) {
-  const position = `${(viewport.x * 100).toFixed(2)}% ${(viewport.y * 100).toFixed(2)}%`;
-  return {
-    position,
-    transform: `scale(${viewport.zoom})`,
-  };
-}
-
 function AdaptivePreview({
   kind,
   src,
@@ -43,63 +35,55 @@ function AdaptivePreview({
   src: string;
   viewport: PreviewViewport;
 }) {
-  const videoStyle = adaptiveVideoStyle(viewport);
   const imageViewport: GameImageViewport = {
     x: viewport.x,
     y: viewport.y,
     zoom: viewport.zoom,
+    confirmed: true,
+  };
+  const videoViewport: GameVideoViewport = {
+    x: viewport.x,
+    y: viewport.y,
+    zoom: viewport.zoom,
+    aspect: "source",
+    confirmed: true,
   };
 
   return (
-    <section className={styles.adaptivePreview} aria-label="Previsualización adaptable del fondo">
+    <section
+      className={styles.adaptivePreview}
+      aria-label="Previsualización adaptable del fondo"
+    >
       <div className={styles.previewHeading}>
         <div>
           <span>PREVISUALIZACIÓN ADAPTABLE</span>
           <strong>Un recorte, distintas pantallas</strong>
         </div>
         <p>
-          Estas dos ventanas usan la misma posición y zoom que se publicarán.
-          El fondo se adapta al viewport sin crear otro archivo.
+          Estas dos ventanas usan la misma capa, posición, zoom, color y sombra
+          que se publicarán. El fondo se adapta sin crear otro archivo.
         </p>
       </div>
 
       <div className={styles.previewGrid}>
         {([
-          ["Escritorio", styles.desktopFrame],
-          ["Móvil", styles.mobileFrame],
-        ] as const).map(([label, frameClass]) => (
+          ["Escritorio", styles.desktopFrame, "420px", false],
+          ["Móvil", styles.mobileFrame, "150px", true],
+        ] as const).map(([label, frameClass, sizes, mobilePreview]) => (
           <div key={label} className={styles.previewItem}>
             <span>{label}</span>
             <div className={`${styles.previewFrame} ${frameClass}`}>
-              {kind === "image" ? (
-                <GameMedia
-                  src={src}
-                  alt=""
-                  sizes={label === "Escritorio" ? "420px" : "150px"}
-                  viewport={imageViewport}
-                />
-              ) : (
-                <span
-                  className={styles.videoViewport}
-                  style={{
-                    transform: videoStyle.transform,
-                    transformOrigin: videoStyle.position,
-                  }}
-                >
-                  <video
-                    src={src}
-                    muted
-                    playsInline
-                    preload="auto"
-                    disablePictureInPicture
-                    disableRemotePlayback
-                    className={styles.video}
-                    style={{ objectPosition: videoStyle.position }}
-                    aria-hidden="true"
-                  />
-                </span>
-              )}
-              <span className={styles.previewShade} aria-hidden="true" />
+              <GameDetailBackgroundMedia
+                sizes={sizes}
+                mobilePreview={mobilePreview}
+                override={{
+                  mode: kind,
+                  imageSrc: kind === "image" ? src : null,
+                  imageViewport: kind === "image" ? imageViewport : null,
+                  videoSrc: kind === "video" ? src : null,
+                  videoViewport: kind === "video" ? videoViewport : null,
+                }}
+              />
             </div>
           </div>
         ))}

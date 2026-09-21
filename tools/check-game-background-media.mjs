@@ -24,7 +24,10 @@ const [
   viewport,
   publicBackground,
   publicBackgroundCss,
+  backgroundMedia,
+  backgroundMediaCss,
   publicLayout,
+  adminPreview,
   multimediaEditor,
   assignmentsWorkspace,
   galleryManager,
@@ -43,7 +46,10 @@ const [
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
   source("src/components/games/GameDetailBackground.module.css"),
+  source("src/components/games/GameDetailBackgroundMedia.tsx"),
+  source("src/components/games/GameDetailBackgroundMedia.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameGalleryMediaManager.tsx"),
@@ -215,41 +221,65 @@ assert(
     "PREVISUALIZACIÓN ADAPTABLE",
     "Escritorio",
     "Móvil",
-    "GameMedia",
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "<GameDetailBackgroundMedia",
+    "mobilePreview={mobilePreview}",
     "Un recorte, distintas pantallas",
     "Confirmar recorte adaptable",
     'action: kind === "image" ? "layout-image" : "layout-video"'
-  ),
-  "Fondo debe reutilizar el mismo motor espacial y añadir sólo previews adaptables de salida."
+  ) &&
+    !viewport.includes("<GameMedia") &&
+    !viewport.includes("<video"),
+  "El editor de Fondo debe conservar el motor espacial y previsualizar la salida con la misma capa pública, sin renderer paralelo."
 );
 
 assert(
   has(
     publicBackground,
-    "resolveGameBackgroundMediaMode",
-    "REDUCED_MOTION_MEDIA",
-    "motionAllowed",
-    'mode === "video"',
-    "game.backgroundImage",
-    "game?.videoMedia?.background",
-    "mediaStyle(",
-    '"--game-background-position"',
-    '"--game-background-zoom"',
-    "autoPlay",
-    "documentVisible",
-    "failedVideo"
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "<GameDetailBackgroundMedia game={game} />",
+    "styles.backdrop",
+    "styles.content"
   ) &&
-    !publicBackground.includes("FINE_POINTER_MEDIA") &&
-    !publicBackground.includes("hoverActive") &&
-    !publicBackground.includes("onPointerEnter") &&
-    !publicBackground.includes("onPointerLeave") &&
     has(
       publicBackgroundCss,
+      "position: fixed",
+      "pointer-events: none",
+      ".content {",
+      "z-index: 1"
+    ) &&
+    has(
+      backgroundMedia,
+      "resolveGameBackgroundMediaMode",
+      "REDUCED_MOTION_MEDIA",
+      "motionAllowed",
+      'mode === "video"',
+      "game?.backgroundImage",
+      "game?.videoMedia?.background?.clip",
+      "mediaStyle(",
+      '"--game-background-position"',
+      '"--game-background-zoom"',
+      "autoPlay",
+      "documentVisible",
+      "failedVideo",
+      'data-game-detail-background-media="true"',
+      "mobilePreview = false"
+    ) &&
+    !backgroundMedia.includes("FINE_POINTER_MEDIA") &&
+    !backgroundMedia.includes("hoverActive") &&
+    !backgroundMedia.includes("onPointerEnter") &&
+    !backgroundMedia.includes("onPointerLeave") &&
+    has(
+      backgroundMediaCss,
       "object-position: var(--game-background-position, 50% 50%)",
       "transform-origin: var(--game-background-position, 50% 50%)",
-      "transform: scale(var(--game-background-zoom, 1))"
+      "transform: scale(var(--game-background-zoom, 1))",
+      ".colorWash {",
+      ".readabilityShade {",
+      ".mobilePreview .imageLayer",
+      ".mobilePreview .readabilityShade"
     ),
-  "El runtime público debe usar Imagen/Video por referencia, sin activación por hover, respetando reduced-motion, visibilidad, error y X/Y/zoom adaptables."
+  "El runtime público debe delegar Imagen/Video, crops, reduced-motion, visibilidad, error, wash y shade a una única capa compartida."
 );
 
 assert(
@@ -260,6 +290,21 @@ assert(
     "children"
   ),
   "El override de Fondo debe limitarse al layout de la ficha /juegos/[slug]."
+);
+
+assert(
+  has(
+    adminPreview,
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "resolveGameBackgroundMediaMode(game)",
+    'data-game-detail-background-preview="true"',
+    '<GameDetailBackgroundMedia game={game} sizes="900px" />',
+    'sizes="220px"',
+    "mobilePreview",
+    "FONDO DE LA FICHA · BORRADOR",
+    "Salida pública adaptable"
+  ),
+  "La Vista previa editorial debe mostrar el Fondo del borrador con la misma capa pública en escritorio y móvil."
 );
 
 assert(
