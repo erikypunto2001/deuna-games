@@ -386,7 +386,9 @@
 
 .mobileCardHeading > a {
   min-width: 0;
+  min-height: 44px;
   display: grid;
+  align-content: center;
   gap: 4px;
   color: inherit;
   text-decoration: none;
@@ -536,12 +538,6 @@
   }
 
   .tableViewport {
-    max-height: none;
-  }
-}
-
-@media (max-width: 720px) {
-  .tableViewport {
     display: none;
   }
 
@@ -559,7 +555,9 @@
     border-top: 1px solid #2e3a47;
     background: #0b121a;
   }
+}
 
+@media (max-width: 720px) {
   .toolbar {
     padding: 12px;
   }
