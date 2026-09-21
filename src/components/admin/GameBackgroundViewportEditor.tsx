@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
-import GameMedia from "@/components/ui/GameMedia";
+import { GameDetailBackgroundMediaLayer } from "@/components/games/GameDetailBackgroundMedia";
 import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import type { PreviewViewport } from "@/lib/media/preview-video-policy";
@@ -26,14 +26,6 @@ type Props = {
   onSaved: () => void | Promise<void>;
 };
 
-function adaptiveVideoStyle(viewport: PreviewViewport) {
-  const position = `${(viewport.x * 100).toFixed(2)}% ${(viewport.y * 100).toFixed(2)}%`;
-  return {
-    position,
-    transform: `scale(${viewport.zoom})`,
-  };
-}
-
 function AdaptivePreview({
   kind,
   src,
@@ -43,13 +35,6 @@ function AdaptivePreview({
   src: string;
   viewport: PreviewViewport;
 }) {
-  const videoStyle = adaptiveVideoStyle(viewport);
-  const imageViewport: GameImageViewport = {
-    x: viewport.x,
-    y: viewport.y,
-    zoom: viewport.zoom,
-  };
-
   return (
     <section className={styles.adaptivePreview} aria-label="Previsualización adaptable del fondo">
       <div className={styles.previewHeading}>
@@ -71,35 +56,33 @@ function AdaptivePreview({
           <div key={label} className={styles.previewItem}>
             <span>{label}</span>
             <div className={`${styles.previewFrame} ${frameClass}`}>
-              {kind === "image" ? (
-                <GameMedia
-                  src={src}
-                  alt=""
-                  sizes={label === "Escritorio" ? "420px" : "150px"}
-                  viewport={imageViewport}
-                />
-              ) : (
-                <span
-                  className={styles.videoViewport}
-                  style={{
-                    transform: videoStyle.transform,
-                    transformOrigin: videoStyle.position,
-                  }}
-                >
-                  <video
-                    src={src}
-                    muted
-                    playsInline
-                    preload="auto"
-                    disablePictureInPicture
-                    disableRemotePlayback
-                    className={styles.video}
-                    style={{ objectPosition: videoStyle.position }}
-                    aria-hidden="true"
-                  />
-                </span>
-              )}
-              <span className={styles.previewShade} aria-hidden="true" />
+              <GameDetailBackgroundMediaLayer
+                mode={kind}
+                imageSrc={kind === "image" ? src : undefined}
+                imageViewport={
+                  kind === "image"
+                    ? {
+                        x: viewport.x,
+                        y: viewport.y,
+                        zoom: viewport.zoom,
+                      }
+                    : undefined
+                }
+                videoSrc={kind === "video" ? src : undefined}
+                videoViewport={
+                  kind === "video"
+                    ? {
+                        x: viewport.x,
+                        y: viewport.y,
+                        zoom: viewport.zoom,
+                        aspect: "source",
+                      }
+                    : undefined
+                }
+                requireConfirmed={false}
+                position="contained"
+                sizes={label === "Escritorio" ? "420px" : "150px"}
+              />
             </div>
           </div>
         ))}
