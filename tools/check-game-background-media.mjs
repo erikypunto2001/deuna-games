@@ -160,6 +160,20 @@ assert(
 
 assert(
   has(
+    api,
+    "resolveGameBackgroundMediaMode(current) === mode.data",
+    "current.backgroundImage === match.src",
+    "current.videoMedia?.background?.clip === match.src",
+    'current.videoMedia.background.playback === "always"',
+    "currentViewport?.confirmed === true",
+    "background.viewport.confirmed === true",
+    "{ ok: true, revision: item.revision }"
+  ),
+  "Fondo debe tratar modo/recurso/crop repetidos como no-op para preservar revisión y viewport confirmados."
+);
+
+assert(
+  has(
     mediaWorkspace,
     "resolveGameBackgroundMediaMode",
     "backgroundImage: game.backgroundImage ?? null",
