@@ -92,7 +92,19 @@ const navigationGroups = [
   },
 ] as const;
 
+function isLegacyGameUpdatePath(pathname: string) {
+  return pathname === "/admin/actualizaciones" ||
+    pathname.startsWith("/admin/actualizaciones/");
+}
+
 function isActive(pathname: string, href: string) {
+  if (
+    href === "/admin/juegos" &&
+    isLegacyGameUpdatePath(pathname)
+  ) {
+    return true;
+  }
+
   return href === "/admin"
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
