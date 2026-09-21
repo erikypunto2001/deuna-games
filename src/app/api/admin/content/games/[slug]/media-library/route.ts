@@ -329,6 +329,18 @@ export async function POST(
         redirectPath(slug, "solicitud")
       );
     }
+    if (source.data === "card" && !resolveGameCardBaseImage(current)) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    if (resolveGameCoverArtworkSource(current) === source.data) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
+      );
+    }
     update = coverSourceUpdate(current, source.data);
     if (!update) {
       return adminRedirect(
@@ -354,6 +366,25 @@ export async function POST(
         redirectPath(slug, "solicitud")
       );
     }
+    const playback: "hover" | "always" =
+      destination === "hero" && mode.data === "hover-video"
+        ? "hover"
+        : "always";
+    const destinationVideo =
+      destination === "hero"
+        ? current.videoMedia?.hero
+        : destination === "card"
+          ? current.videoMedia?.card
+          : current.videoMedia?.detail;
+    if (
+      resolveGameDestinationMediaMode(current, destination) === mode.data &&
+      (!destinationVideo || destinationVideo.playback === playback)
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
+      );
+    }
     update = mediaModeUpdate(current, destination, mode.data);
   }
 
@@ -364,6 +395,17 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+    const sameCoverImage =
+      resolveGameCoverImage(current) === imageResource.src;
+    if (
+      sameCoverImage &&
+      resolveGameCoverArtworkSource(current) === "custom"
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
+      );
+    }
     update = mediaUpdate(
       {
         coverArtworkSource: "custom",
@@ -371,7 +413,9 @@ export async function POST(
       },
       {
         ...current.imageMedia,
-        cover: pendingImageViewport(imageResource.src),
+        cover: sameCoverImage && current.imageMedia?.cover
+          ? current.imageMedia.cover
+          : pendingImageViewport(imageResource.src),
       }
     );
   }
@@ -381,6 +425,12 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-invalido")
+      );
+    }
+    if (current.heroImage === imageResource.src) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
       );
     }
     update = mediaUpdate(
@@ -400,6 +450,12 @@ export async function POST(
       );
     }
     const sharesCover = resolveGameCoverArtworkSource(current) === "card";
+    if (resolveGameCardBaseImage(current) === imageResource.src) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
+      );
+    }
     update = mediaUpdate(
       {
         cardImage: imageResource.src,
@@ -427,6 +483,12 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+    if (current.detailImage === imageResource.src) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
+      );
+    }
     update = mediaUpdate(
       { detailImage: imageResource.src },
       {
@@ -441,6 +503,12 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-invalido")
+      );
+    }
+    if (current.videoMedia?.hero?.clip === videoResource.src) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
       );
     }
     const mode = resolveGameDestinationMediaMode(current, "hero");
@@ -463,6 +531,15 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+    if (
+      current.videoMedia?.card?.source === "independent" &&
+      current.videoMedia.card.clip === videoResource.src
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
+      );
+    }
     update = {
       videoMedia: {
         ...current.videoMedia,
@@ -482,6 +559,12 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-invalido")
+      );
+    }
+    if (current.videoMedia?.detail?.clip === videoResource.src) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-asignado")
       );
     }
     update = {
