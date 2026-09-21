@@ -216,7 +216,6 @@ function coverSourceUpdate(
     if (!cardImage) return null;
 
     const canPreserveCrop =
-      currentSource === "card" &&
       resolveGameCoverImage(game) === cardImage;
 
     return mediaUpdate(
