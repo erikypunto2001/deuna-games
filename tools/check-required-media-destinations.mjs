@@ -37,6 +37,7 @@ const [
   backgroundViewportEditor,
   detailRuntime,
   backgroundRuntime,
+  backgroundMediaRuntime,
   publicationReadiness,
   publicationWorkspace,
   publishRoute,
@@ -68,6 +69,7 @@ const [
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailContainerMedia.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
+  source("src/components/games/GameDetailBackgroundMedia.tsx"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
@@ -470,16 +472,21 @@ assert(
 assert(
   has(
     backgroundRuntime,
-    'mode === "video"',
-    "prefers-reduced-motion: reduce",
-    "documentVisible",
-    "failedVideo"
+    'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
+    "<GameDetailBackgroundMedia game={game} />"
   ) &&
-    !backgroundRuntime.includes("hoverActive") &&
-    !backgroundRuntime.includes("FINE_POINTER_MEDIA") &&
-    !backgroundRuntime.includes("onPointerEnter") &&
-    !backgroundRuntime.includes("onPointerLeave"),
-  "El runtime del Fondo no debe conservar activación por hover."
+    has(
+      backgroundMediaRuntime,
+      'mode === "video"',
+      "prefers-reduced-motion: reduce",
+      "documentVisible",
+      "failedVideo"
+    ) &&
+    !backgroundMediaRuntime.includes("hoverActive") &&
+    !backgroundMediaRuntime.includes("FINE_POINTER_MEDIA") &&
+    !backgroundMediaRuntime.includes("onPointerEnter") &&
+    !backgroundMediaRuntime.includes("onPointerLeave"),
+  "El runtime del Fondo no debe conservar activación por hover y debe vivir en la capa compartida."
 );
 
 assert(
