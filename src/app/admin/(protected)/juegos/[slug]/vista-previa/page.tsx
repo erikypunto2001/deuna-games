@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
+import GameHeroDestinationPreview from "@/components/admin/GameHeroDestinationPreview";
 import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia";
 import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
 import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame";
@@ -327,7 +327,7 @@ export default async function AdminGamePreviewPage({
           </h2>
         </div>
         <p className={styles.heroDestinationPreviewSummary}>
-          Estas ventanas montan el mismo HeroSection de la Home con la
+          Esta vista monta el mismo HeroSection de la Home con la
           configuración pública efectiva de Inicio. El primer slide usa esta
           revisión privada del juego; los laterales, cuando existen, usan
           snapshots ya publicados sólo para conservar el contexto visual.
@@ -337,47 +337,10 @@ export default async function AdminGamePreviewPage({
             ? "El juego ya forma parte del Hero público actual; aquí queda enfocado para revisar su destino 3:1 sin cambiar la curaduría."
             : "El juego no forma parte del Hero público actual; se coloca primero únicamente para validar cómo quedaría su destino 3:1 antes de decidir cualquier cambio de curaduría."}
         </p>
-        <div className={styles.heroDestinationPreviewGrid}>
-          <div
-            className={`${styles.heroDestinationPreviewItem} ${styles.heroDesktopPreview}`}
-            data-hero-preview-device="desktop"
-          >
-            <span>Escritorio</span>
-            <HomeHeroLivePreview
-              games={heroPreviewGames}
-              presentation={publicHomeConfig.heroPresentation}
-              device="desktop"
-              playing={false}
-              showToolbar={false}
-            />
-          </div>
-          <div
-            className={styles.heroDestinationPreviewItem}
-            data-hero-preview-device="tablet"
-          >
-            <span>Tableta</span>
-            <HomeHeroLivePreview
-              games={heroPreviewGames}
-              presentation={publicHomeConfig.heroPresentation}
-              device="tablet"
-              playing={false}
-              showToolbar={false}
-            />
-          </div>
-          <div
-            className={`${styles.heroDestinationPreviewItem} ${styles.heroMobilePreview}`}
-            data-hero-preview-device="mobile"
-          >
-            <span>Móvil</span>
-            <HomeHeroLivePreview
-              games={heroPreviewGames}
-              presentation={publicHomeConfig.heroPresentation}
-              device="mobile"
-              playing={false}
-              showToolbar={false}
-            />
-          </div>
-        </div>
+        <GameHeroDestinationPreview
+          games={heroPreviewGames}
+          presentation={publicHomeConfig.heroPresentation}
+        />
         <p className={styles.heroDestinationPreviewFootnote}>
           Video, Imagen + hover, reduced motion, foco, visibilidad de pestaña,
           recorte y fallback siguen el runtime público. Esta vista no publica
