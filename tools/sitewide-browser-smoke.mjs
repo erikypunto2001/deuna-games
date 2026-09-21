@@ -536,6 +536,29 @@ async function auditPage(cdp, page, viewport) {
               return Number(actions.getBoundingClientRect().height.toFixed(2));
             })()
           : null;
+      const gamePreviewGalleryWidthRatio =
+        pageId === "admin-game-preview"
+          ? (() => {
+              const galleryPanel = document.querySelector(
+                '[data-game-detail-gallery-preview="true"]'
+              );
+              const hero = document.querySelector(
+                '[data-game-detail-media-scope]'
+              );
+              if (
+                !(galleryPanel instanceof HTMLElement) ||
+                !(hero instanceof HTMLElement) ||
+                !visible(galleryPanel) ||
+                !visible(hero)
+              ) {
+                return null;
+              }
+              const galleryWidth = galleryPanel.getBoundingClientRect().width;
+              const heroWidth = hero.getBoundingClientRect().width;
+              if (galleryWidth <= 0 || heroWidth <= 0) return null;
+              return Number((galleryWidth / heroWidth).toFixed(3));
+            })()
+          : null;
 
       return {
         url: location.href,
@@ -561,6 +584,7 @@ async function auditPage(cdp, page, viewport) {
         taxonomyVisibleRows,
         gameValuationNavigationReady,
         gameEditorSaveBarHeight,
+        gamePreviewGalleryWidthRatio,
       };
     })()
   `);
@@ -756,6 +780,17 @@ function validateAudit(result, failures) {
   ) {
     failures.push(
       `${prefix}: la barra fija de guardado mide ${audit.gameEditorSaveBarHeight}px y tapa demasiado contenido móvil.`
+    );
+  }
+  if (
+    result.page === "admin-game-preview" &&
+    (
+      audit.gamePreviewGalleryWidthRatio === null ||
+      audit.gamePreviewGalleryWidthRatio < 0.9
+    )
+  ) {
+    failures.push(
+      `${prefix}: la Galería de Vista previa ocupa sólo ${audit.gamePreviewGalleryWidthRatio ?? "ancho desconocido"}x del Hero; debe usar el ancho de la ficha pública.`
     );
   }
   if (result.runtimeIssues.length) {
