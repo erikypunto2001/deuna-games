@@ -425,6 +425,33 @@ async function mediaSnapshot(slug, cookie) {
   );
 }
 
+async function backgroundSnapshot(slug, cookie) {
+  return parseJson(
+    await request(
+      `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`,
+      { headers: { cookie } }
+    ),
+    `Fondo multimedia de ${slug}`
+  );
+}
+
+async function postAdminJsonForm(
+  pathname,
+  referer,
+  cookie,
+  fields,
+  label
+) {
+  return parseJson(
+    await request(pathname, {
+      method: "POST",
+      headers: formHeaders(referer, cookie),
+      body: new URLSearchParams(fields).toString(),
+    }),
+    label
+  );
+}
+
 async function publicationPage(slug, cookie) {
   return requirePage(
     await request(
@@ -967,6 +994,165 @@ if (media.requirements?.ready !== true) {
   );
 }
 
+const stableMultimediaRevision = revision;
+const stableImageMedia = JSON.stringify(
+  media.assignments?.imageMedia ?? null
+);
+for (const [target, resource] of [
+  ["cover-source", "card"],
+  ["hero-mode", "image"],
+  ["card-mode", "image"],
+  ["detail-mode", "image"],
+  ["hero-image", libraryImage],
+  ["card-image", libraryImage],
+  ["detail-image", libraryImage],
+]) {
+  const repeated = await postAdminForm(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+    `${editorPath}?seccion=multimedia`,
+    cookie,
+    {
+      expectedRevision: String(stableMultimediaRevision),
+      target,
+      resource,
+    },
+    `La reasignación idempotente ${target}`
+  );
+  assertRedirectState(
+    repeated,
+    "recurso-asignado",
+    `Reasignación idempotente ${target}`
+  );
+  media = await mediaSnapshot(slug, cookie);
+  if (media.revision !== stableMultimediaRevision) {
+    throw new Error(
+      `Repetir ${target} avanzó una revisión sin cambio (${stableMultimediaRevision} -> ${media.revision}).`
+    );
+  }
+}
+if (
+  JSON.stringify(media.assignments?.imageMedia ?? null) !==
+    stableImageMedia ||
+  media.requirements?.ready !== true
+) {
+  throw new Error(
+    "Repetir asignaciones equivalentes alteró crops confirmados o readiness multimedia."
+  );
+}
+revision = stableMultimediaRevision;
+
+let background = await backgroundSnapshot(slug, cookie);
+if (background.revision !== revision) {
+  throw new Error(
+    `Fondo partió de una revisión distinta (${revision} -> ${background.revision}).`
+  );
+}
+
+const selectedBackground = await postAdminJsonForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    action: "select-image",
+    resource: libraryImage,
+  },
+  "La asignación de Fondo"
+);
+if (!Number.isInteger(selectedBackground.revision) || selectedBackground.revision <= revision) {
+  throw new Error(
+    `Asignar Fondo no avanzó revisión (${revision} -> ${selectedBackground.revision}).`
+  );
+}
+revision = selectedBackground.revision;
+
+const backgroundViewport = { x: 0.36, y: 0.62, zoom: 1.22 };
+const savedBackgroundCrop = await postAdminJsonForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    action: "layout-image",
+    resource: libraryImage,
+    viewportX: String(backgroundViewport.x),
+    viewportY: String(backgroundViewport.y),
+    viewportZoom: String(backgroundViewport.zoom),
+  },
+  "El crop adaptable del Fondo"
+);
+if (!Number.isInteger(savedBackgroundCrop.revision) || savedBackgroundCrop.revision <= revision) {
+  throw new Error(
+    `Confirmar el Fondo no avanzó revisión (${revision} -> ${savedBackgroundCrop.revision}).`
+  );
+}
+revision = savedBackgroundCrop.revision;
+background = await backgroundSnapshot(slug, cookie);
+const stableBackgroundViewport = JSON.stringify(
+  background.assignment?.imageViewport ?? null
+);
+if (
+  background.assignment?.mode !== "image" ||
+  background.assignment?.image !== libraryImage ||
+  background.assignment?.imageViewport?.confirmed !== true
+) {
+  throw new Error(
+    `El Fondo no quedó confirmado antes de probar idempotencia: ${JSON.stringify(background.assignment)}.`
+  );
+}
+
+for (const [action, resource, extra] of [
+  ["select-image", libraryImage, {}],
+  ["mode", "image", {}],
+  [
+    "layout-image",
+    libraryImage,
+    {
+      viewportX: String(backgroundViewport.x),
+      viewportY: String(backgroundViewport.y),
+      viewportZoom: String(backgroundViewport.zoom),
+    },
+  ],
+]) {
+  const repeatedBackground = await postAdminJsonForm(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`,
+    `${editorPath}?seccion=multimedia`,
+    cookie,
+    {
+      expectedRevision: String(revision),
+      action,
+      resource,
+      ...extra,
+    },
+    `La operación idempotente de Fondo ${action}`
+  );
+  if (repeatedBackground.revision !== revision) {
+    throw new Error(
+      `Repetir ${action} en Fondo avanzó revisión (${revision} -> ${repeatedBackground.revision}).`
+    );
+  }
+}
+background = await backgroundSnapshot(slug, cookie);
+if (
+  background.revision !== revision ||
+  JSON.stringify(background.assignment?.imageViewport ?? null) !==
+    stableBackgroundViewport
+) {
+  throw new Error(
+    "Repetir operaciones equivalentes de Fondo alteró su revisión o crop confirmado."
+  );
+}
+media = await mediaSnapshot(slug, cookie);
+if (media.revision !== revision || media.requirements?.ready !== true) {
+  throw new Error(
+    `La idempotencia de Fondo dejó Multimedia inconsistente: ${JSON.stringify({
+      revision,
+      mediaRevision: media.revision,
+      ready: media.requirements?.ready,
+    })}.`
+  );
+}
+
 const previewA = requirePage(
   await request(`${editorPath}/vista-previa`, { headers: { cookie } }),
   "Vista previa A"
@@ -1362,5 +1548,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom→Card, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom→Card, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );
