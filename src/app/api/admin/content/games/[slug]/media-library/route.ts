@@ -504,20 +504,24 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    if (current.videoMedia?.hero?.clip === videoResource.src) {
+    const mode = resolveGameDestinationMediaMode(current, "hero");
+    const playback = mode === "hover-video" ? "hover" : "always";
+    if (
+      current.videoMedia?.hero?.clip === videoResource.src &&
+      current.videoMedia.hero.playback === playback
+    ) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-asignado")
       );
     }
-    const mode = resolveGameDestinationMediaMode(current, "hero");
     update = {
       videoMedia: {
         ...current.videoMedia,
         hero: {
           clip: videoResource.src,
           viewport: requiredVideoViewport("hero"),
-          playback: mode === "hover-video" ? "hover" : "always",
+          playback,
         },
       },
     };
@@ -532,7 +536,8 @@ export async function POST(
     }
     if (
       current.videoMedia?.card?.source === "independent" &&
-      current.videoMedia.card.clip === videoResource.src
+      current.videoMedia.card.clip === videoResource.src &&
+      current.videoMedia.card.playback === "always"
     ) {
       return adminRedirect(
         authorized.adminOrigin,
@@ -560,7 +565,10 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    if (current.videoMedia?.detail?.clip === videoResource.src) {
+    if (
+      current.videoMedia?.detail?.clip === videoResource.src &&
+      current.videoMedia.detail.playback === "always"
+    ) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-asignado")
