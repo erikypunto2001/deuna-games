@@ -65,6 +65,7 @@ export default function HomeHeroLivePreview({
   playing,
   background,
   showSpacingGuide = false,
+  showToolbar = true,
   onNavigationPositionChange,
 }: {
   games: Game[];
@@ -78,6 +79,7 @@ export default function HomeHeroLivePreview({
     "children" | "previewPathname"
   >;
   showSpacingGuide?: boolean;
+  showToolbar?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const lastPlaybackKey = useRef<string | null>(null);
@@ -293,35 +295,37 @@ export default function HomeHeroLivePreview({
 
   return (
     <div ref={container} className={styles.livePreview}>
-      <div className={styles.previewToolbar}>
-        <p className={styles.help}>
-          {playing
-            ? "Prueba interactiva"
-            : "Vista real · avance automático detenido para editar"}
-          {" · "}
-          {deviceLabel} {Math.round(width)} × {Math.round(height)} px
-          {followsBrowserViewport
-            ? " · sincronizado con tu ventana"
-            : " · viewport recomendado"}
-        </p>
-        <div>
-          <span role="status">
-            Movimiento global {motionLabel}: se aplica a escritorio,
-            tableta y móvil. Guardar conserva el borrador; los cambios
-            editoriales que hagas aquí llegan a la Home pública sólo al
-            publicar Inicio.
-          </span>
-          {playing && games.length > 1 && (
-            <button
-              type="button"
-              className={styles.breakpoint}
-              onClick={replayTransition}
-            >
-              Repetir movimiento ahora
-            </button>
-          )}
+      {showToolbar && (
+        <div className={styles.previewToolbar}>
+          <p className={styles.help}>
+            {playing
+              ? "Prueba interactiva"
+              : "Vista real · avance automático detenido para editar"}
+            {" · "}
+            {deviceLabel} {Math.round(width)} × {Math.round(height)} px
+            {followsBrowserViewport
+              ? " · sincronizado con tu ventana"
+              : " · viewport recomendado"}
+          </p>
+          <div>
+            <span role="status">
+              Movimiento global {motionLabel}: se aplica a escritorio,
+              tableta y móvil. Guardar conserva el borrador; los cambios
+              editoriales que hagas aquí llegan a la Home pública sólo al
+              publicar Inicio.
+            </span>
+            {playing && games.length > 1 && (
+              <button
+                type="button"
+                className={styles.breakpoint}
+                onClick={replayTransition}
+              >
+                Repetir movimiento ahora
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       <div
         style={{
           height: visiblePreviewHeight * scale,
