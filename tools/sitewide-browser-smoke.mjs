@@ -559,6 +559,48 @@ async function auditPage(cdp, page, viewport) {
               return Number((galleryWidth / heroWidth).toFixed(3));
             })()
           : null;
+      const publicGameBackgroundReady =
+        pageId !== "public-game-detail" || (() => {
+          const layer = document.querySelector(
+            '[data-game-background-media="true"][data-game-background-positioning="fixed"]'
+          );
+          return layer instanceof HTMLElement &&
+            visible(layer) &&
+            layer.dataset.gameBackgroundMode === "image";
+        })();
+      const adminGameBackgroundPreviewReady =
+        pageId !== "admin-game-preview" || (() => {
+          const panel = document.querySelector(
+            '[data-game-background-preview="true"]'
+          );
+          const desktop = document.querySelector(
+            '[data-game-background-preview-viewport="desktop"]'
+          );
+          const mobileFrame = document.querySelector(
+            '[data-game-background-preview-viewport="mobile"]'
+          );
+          if (
+            !(panel instanceof HTMLElement) ||
+            !(desktop instanceof HTMLElement) ||
+            !(mobileFrame instanceof HTMLElement) ||
+            !visible(panel) ||
+            !visible(desktop) ||
+            !visible(mobileFrame)
+          ) {
+            return false;
+          }
+          const layers = [desktop, mobileFrame].map((frame) =>
+            frame.querySelector(
+              '[data-game-background-media="true"][data-game-background-positioning="contained"]'
+            )
+          );
+          return layers.every(
+            (layer) =>
+              layer instanceof HTMLElement &&
+              visible(layer) &&
+              layer.dataset.gameBackgroundMode === "image"
+          );
+        })();
 
       return {
         url: location.href,
@@ -585,6 +627,8 @@ async function auditPage(cdp, page, viewport) {
         gameValuationNavigationReady,
         gameEditorSaveBarHeight,
         gamePreviewGalleryWidthRatio,
+        publicGameBackgroundReady,
+        adminGameBackgroundPreviewReady,
       };
     })()
   `);
@@ -793,6 +837,16 @@ function validateAudit(result, failures) {
       `${prefix}: la Galería de Vista previa ocupa sólo ${audit.gamePreviewGalleryWidthRatio ?? "ancho desconocido"}x del Hero; debe usar el ancho de la ficha pública.`
     );
   }
+  if (!audit.publicGameBackgroundReady) {
+    failures.push(
+      `${prefix}: la ficha pública no montó el Fondo Imagen confirmado del fixture con positioning=fixed.`
+    );
+  }
+  if (!audit.adminGameBackgroundPreviewReady) {
+    failures.push(
+      `${prefix}: Vista previa no montó el mismo Fondo Imagen confirmado en sus marcos desktop/mobile contenidos.`
+    );
+  }
   if (result.runtimeIssues.length) {
     failures.push(`${prefix}: runtime/red: ${result.runtimeIssues.join(" | ")}.`);
   }
@@ -833,6 +887,8 @@ async function writeReport(results, sweeps, failures) {
         unlabeledControls: result.audit.unlabeledControls,
         outsideViewport: result.audit.outsideViewport,
         runtimeIssues: result.runtimeIssues,
+        publicGameBackgroundReady: result.audit.publicGameBackgroundReady,
+        adminGameBackgroundPreviewReady: result.audit.adminGameBackgroundPreviewReady,
         truncated: result.capture.truncated,
       }, null, 2))}</pre>
     </article>
