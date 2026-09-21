@@ -249,6 +249,63 @@
   font-size: 19px;
 }
 
+.heroDestinationPreviewPanel {
+  overflow: hidden;
+}
+
+.heroDestinationPreviewSummary,
+.heroDestinationPreviewContext,
+.heroDestinationPreviewFootnote {
+  max-width: 860px;
+  color: #8f9dac;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.heroDestinationPreviewSummary {
+  margin-top: 12px;
+}
+
+.heroDestinationPreviewContext {
+  margin-top: 7px;
+  color: #a9b5c2;
+}
+
+.heroDestinationPreviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 390px);
+  align-items: start;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.heroDestinationPreviewItem {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.heroDestinationPreviewItem > span {
+  color: #a8b6c4;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.heroDesktopPreview {
+  grid-column: 1 / -1;
+}
+
+.heroMobilePreview {
+  width: min(100%, 390px);
+  justify-self: end;
+}
+
+.heroDestinationPreviewFootnote {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #2c3844;
+}
+
 .cardPreviewPanel {
   overflow: hidden;
 }
@@ -508,8 +565,17 @@
     width: fit-content;
   }
 
-  .cardPreviewLayout {
+  .cardPreviewLayout,
+  .heroDestinationPreviewGrid {
     grid-template-columns: 1fr;
+  }
+
+  .heroDesktopPreview {
+    grid-column: auto;
+  }
+
+  .heroMobilePreview {
+    justify-self: start;
   }
 
   .cardPreviewFrame {
