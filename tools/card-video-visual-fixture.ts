@@ -126,6 +126,17 @@ async function publishFixtureGame(
             },
             playback: "always" as const,
           },
+          detail: {
+            clip: fixtureMedia.publicPath,
+            viewport: {
+              x: 0.5,
+              y: 0.5,
+              zoom: 1,
+              aspect: "source" as const,
+              confirmed: true,
+            },
+            playback: "always" as const,
+          },
         }
       : Object.keys(otherVideoMedia).length > 0
         ? otherVideoMedia
@@ -135,6 +146,7 @@ async function publishFixtureGame(
     mediaModes: {
       ...(current.mediaModes ?? {}),
       card: mode,
+      ...(mode === "video" ? { detail: "video" as const } : {}),
     },
     videoMedia,
   });
@@ -324,7 +336,7 @@ async function main() {
     );
 
     console.log(
-      `Card media visual fixture: OK (video=${videoFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
+      `Card + Contenedor video visual fixture: OK (video=${videoFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

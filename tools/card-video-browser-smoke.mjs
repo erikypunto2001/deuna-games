@@ -20,6 +20,10 @@ const screenshotPath = path.join(
   outputRoot,
   "card-video-active-desktop.png"
 );
+const detailScreenshotPath = path.join(
+  outputRoot,
+  "detail-container-video-active-desktop.png"
+);
 
 function assertVisualCiOnly() {
   if (
@@ -338,6 +342,31 @@ function playingVideoExpression(lookup) {
   })()`;
 }
 
+function detailPlayingVideoExpression() {
+  return `(() => {
+    const scope = document.querySelector("[data-game-detail-media-scope]");
+    const video = scope?.querySelector("video");
+    if (!(video instanceof HTMLVideoElement)) return false;
+    if (
+      video.paused ||
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+      return false;
+    }
+    return {
+      src: new URL(video.currentSrc || video.src, location.href).pathname,
+      autoplay: video.autoplay,
+      muted: video.muted,
+      loop: video.loop,
+      playsInline: video.playsInline,
+      readyState: video.readyState,
+      paused: video.paused,
+      hidden: document.hidden,
+      reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+  })()`;
+}
+
 async function main() {
   assertVisualCiOnly();
   const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
@@ -591,12 +620,119 @@ async function main() {
       );
     }
 
+    await cdp.send("Target.activateTarget", { targetId: target.id });
+    await waitFor(
+      cdp,
+      "document.hidden === false && document.visibilityState === 'visible'",
+      "La pestaña principal no volvió a visible antes de probar Contenedor"
+    );
+    await navigate(cdp, `${baseUrl}/juegos/${fixture.slug}`);
+
+    const detailVisibleState = await waitFor(
+      cdp,
+      detailPlayingVideoExpression(),
+      "El Contenedor publicado no llegó a reproducir el WebM"
+    );
+    if (
+      detailVisibleState.src !== fixture.clip ||
+      !detailVisibleState.autoplay ||
+      !detailVisibleState.muted ||
+      !detailVisibleState.loop ||
+      !detailVisibleState.playsInline ||
+      detailVisibleState.paused ||
+      detailVisibleState.readyState < 2 ||
+      detailVisibleState.hidden ||
+      detailVisibleState.reduced
+    ) {
+      throw new Error(
+        `El video del Contenedor no respeta el contrato público: ${JSON.stringify(detailVisibleState)}.`
+      );
+    }
+
+    const detailCapture = await cdp.send("Page.captureScreenshot", {
+      format: "png",
+      fromSurface: true,
+    });
+    await writeFile(
+      detailScreenshotPath,
+      Buffer.from(detailCapture.data, "base64")
+    );
+
+    await cdp.send("Emulation.setEmulatedMedia", {
+      features: [
+        { name: "prefers-reduced-motion", value: "reduce" },
+      ],
+    });
+    await waitFor(
+      cdp,
+      `(() => {
+        const scope = document.querySelector("[data-game-detail-media-scope]");
+        return Boolean(
+          scope &&
+          matchMedia("(prefers-reduced-motion: reduce)").matches &&
+          !scope.querySelector("video") &&
+          scope.querySelector("img")
+        );
+      })()`,
+      "Reduced-motion no desmontó el video del Contenedor o perdió su imagen fallback"
+    );
+
+    await cdp.send("Emulation.setEmulatedMedia", {
+      features: [
+        { name: "prefers-reduced-motion", value: "no-preference" },
+      ],
+    });
+    const detailResumedState = await waitFor(
+      cdp,
+      detailPlayingVideoExpression(),
+      "El Contenedor no reanudó el video al restaurar movimiento"
+    );
+    if (
+      detailResumedState.src !== fixture.clip ||
+      detailResumedState.paused ||
+      detailResumedState.readyState < 2 ||
+      detailResumedState.reduced
+    ) {
+      throw new Error(
+        `El Contenedor no reanudó correctamente tras reduced-motion: ${JSON.stringify(detailResumedState)}.`
+      );
+    }
+
+    await cdp.send("Target.activateTarget", {
+      targetId: backgroundTarget.targetId,
+    });
+    const hiddenDetailState = await waitFor(
+      cdp,
+      `(() => {
+        const scope = document.querySelector("[data-game-detail-media-scope]");
+        if (!scope) return false;
+        if (!document.hidden || document.visibilityState !== "hidden") {
+          return false;
+        }
+        if (scope.querySelector("video")) return false;
+        return {
+          hidden: document.hidden,
+          visibilityState: document.visibilityState,
+          hasVideo: false,
+        };
+      })()`,
+      "La pestaña oculta mantuvo el video del Contenedor"
+    );
+    if (
+      !hiddenDetailState.hidden ||
+      hiddenDetailState.visibilityState !== "hidden" ||
+      hiddenDetailState.hasVideo
+    ) {
+      throw new Error(
+        `La pestaña oculta no desmontó el video del Contenedor: ${JSON.stringify(hiddenDetailState)}.`
+      );
+    }
+
     console.log(
-      "Card video browser smoke: OK " +
+      "Card + Contenedor video browser smoke: OK " +
         `(slug=${fixture.slug}, bytes=${asset.bytes}, ` +
-        `readyState=${visibleState.readyState}, rest=portada, ` +
-        `hover=reproduciendo, leave=sin video, ` +
-        "reduced-motion=sin video, restored=reproduciendo, hidden=sin video)."
+        `cardReady=${visibleState.readyState}, detailReady=${detailVisibleState.readyState}, ` +
+        "Card hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
     );
   } catch (error) {
     if (browserError.trim()) {
