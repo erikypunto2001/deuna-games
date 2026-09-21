@@ -91,6 +91,22 @@ function confirmedViewport(
   };
 }
 
+function sameImageViewport(
+  current: GameImageViewport | undefined,
+  next: GameImageViewport
+) {
+  return Boolean(
+    current &&
+    current.x === next.x &&
+    current.y === next.y &&
+    current.zoom === next.zoom &&
+    current.aspect === next.aspect &&
+    current.aspectRatio === next.aspectRatio &&
+    current.source === next.source &&
+    current.confirmed === next.confirmed
+  );
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
@@ -200,6 +216,16 @@ export async function POST(
   }
 
   const savedViewport = confirmedViewport(viewport, source);
+  const currentViewport = target.data === "gallery"
+    ? item.payload.imageMedia?.gallery?.[resource]
+    : item.payload.imageMedia?.[target.data];
+  if (sameImageViewport(currentViewport, savedViewport)) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      redirectPath(slug, "imagen-encuadre-guardado")
+    );
+  }
+
   const imageMedia: GameImageMedia = target.data === "gallery"
     ? {
         ...item.payload.imageMedia,

@@ -95,6 +95,20 @@ function sameGalleryOrder(
   );
 }
 
+function sameVideoViewport(
+  current: GameVideoViewport | undefined,
+  next: GameVideoViewport
+) {
+  return Boolean(
+    current &&
+    current.x === next.x &&
+    current.y === next.y &&
+    current.zoom === next.zoom &&
+    current.aspect === next.aspect &&
+    current.confirmed === next.confirmed
+  );
+}
+
 async function libraryResources(slug: string, game: Game) {
   const imageReferences = listGameImageReferences(game);
   const [editorial, bundled] = await Promise.all([
@@ -331,6 +345,19 @@ export async function POST(
       aspect: viewport.aspect,
       confirmed: true,
     };
+    const currentVideo = currentGallery.find(
+      (candidate) =>
+        candidate.kind === "video" && candidate.src === resource
+    );
+    if (
+      currentVideo?.kind === "video" &&
+      sameVideoViewport(currentVideo.viewport, confirmedViewport)
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "preview-diseno-guardado")
+      );
+    }
     update = galleryUpdate(
       current,
       withGalleryVideoViewport(current, resource, confirmedViewport)

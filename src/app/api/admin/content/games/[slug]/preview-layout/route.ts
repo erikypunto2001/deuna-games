@@ -167,6 +167,28 @@ export async function POST(
     );
   }
 
+  const currentTargetVideo =
+    target === "hero"
+      ? item.payload.videoMedia?.hero
+      : target === "card"
+        ? item.payload.videoMedia?.card
+        : item.payload.videoMedia?.detail;
+  const nextTargetVideo =
+    target === "hero"
+      ? videoMedia.hero
+      : target === "card"
+        ? videoMedia.card
+        : videoMedia.detail;
+  if (
+    JSON.stringify(currentTargetVideo ?? null) ===
+    JSON.stringify(nextTargetVideo ?? null)
+  ) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      `${redirectTarget}?estado=preview-diseno-guardado&seccion=multimedia`
+    );
+  }
+
   const result = await saveGameMediaDraft(
     slug,
     revision.data,

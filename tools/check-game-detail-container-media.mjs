@@ -189,6 +189,16 @@ assert(
 
 assert(
   has(
+    libraryRoute,
+    "current.detailImage === imageResource.src",
+    "current.videoMedia?.detail?.clip === videoResource.src",
+    'current.videoMedia.detail.playback === "always"'
+  ),
+  "Contenedor debe tratar la misma imagen/video como no-op y preservar su viewport confirmado."
+);
+
+assert(
+  has(
     imageLayoutRoute,
     'target === "detail"',
     "return game.detailImage",
