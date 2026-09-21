@@ -588,6 +588,26 @@ async function auditPage(cdp, page, viewport) {
               getComputedStyle(layer).position === "absolute";
           });
         })();
+      const adminGameHeroPreviewReady =
+        pageId !== "admin-game-preview" || (() => {
+          const panel = document.querySelector(
+            '[data-game-hero-public-preview="true"]'
+          );
+          if (!(panel instanceof HTMLElement) || !visible(panel)) return false;
+          const devices = ["desktop", "tablet", "mobile"];
+          return devices.every((device) => {
+            const host = panel.querySelector(
+              `[data-hero-preview-device="${device}"]`
+            );
+            if (!(host instanceof HTMLElement) || !visible(host)) return false;
+            const frames = Array.from(host.querySelectorAll("iframe"));
+            return frames.length === 1 &&
+              frames[0] instanceof HTMLIFrameElement &&
+              visible(frames[0]) &&
+              frames[0].title.startsWith("Hero real en ");
+          });
+        })();
+
 
       return {
         url: location.href,
@@ -616,6 +636,7 @@ async function auditPage(cdp, page, viewport) {
         gamePreviewGalleryWidthRatio,
         publicGameBackgroundReady,
         adminGameBackgroundPreviewReady,
+        adminGameHeroPreviewReady,
       };
     })()
   `);
@@ -834,6 +855,11 @@ function validateAudit(result, failures) {
       `${prefix}: Vista previa no montó exactamente dos Fondos contenidos con el renderer canónico.`
     );
   }
+  if (!audit.adminGameHeroPreviewReady) {
+    failures.push(
+      `${prefix}: Vista previa no montó el Hero público real en escritorio, tableta y móvil.`
+    );
+  }
   if (result.runtimeIssues.length) {
     failures.push(`${prefix}: runtime/red: ${result.runtimeIssues.join(" | ")}.`);
   }
@@ -876,6 +902,7 @@ async function writeReport(results, sweeps, failures) {
         runtimeIssues: result.runtimeIssues,
         publicGameBackgroundReady: result.audit.publicGameBackgroundReady,
         adminGameBackgroundPreviewReady: result.audit.adminGameBackgroundPreviewReady,
+        adminGameHeroPreviewReady: result.audit.adminGameHeroPreviewReady,
         truncated: result.capture.truncated,
       }, null, 2))}</pre>
     </article>
