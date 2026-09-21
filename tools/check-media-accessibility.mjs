@@ -157,6 +157,7 @@ assert(
 assert(
   files.adminPreview.includes("resolvePublicGameGalleryItems(game)") &&
     files.adminPreview.includes('import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid"') &&
+    files.adminPreview.includes('data-game-detail-gallery-preview="true"') &&
     files.adminPreview.includes("<GameDetailGalleryGrid game={game} gallery={gallery} />") &&
     !files.adminPreview.includes("<GameGalleryVideo") &&
     !files.adminPreview.includes("gallery.map(") &&
