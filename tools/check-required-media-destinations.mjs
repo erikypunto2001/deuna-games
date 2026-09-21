@@ -227,6 +227,31 @@ assert(
 
 assert(
   has(
+    utilityRail,
+    "const essentialMediaStates = requirements",
+    "requirements.cover.cropReady",
+    "requirements.hero.cropReady",
+    "requirements.card.cropReady",
+    "requirements.detail.cropReady",
+    "requirements.gallery.cropReady",
+    "requirements.background.active",
+    "requirements.background.cropReady",
+    "const essentialMediaReadyCount =",
+    "essentialMediaStates.filter(Boolean).length",
+    "const essentialMediaTotal = essentialMediaStates.length",
+    'Destinos esenciales activos',
+    'Al activar un Fondo propio pasa a ser un destino esencial para publicar'
+  ) &&
+    utilityRail.includes(
+      '${essentialMediaReadyCount}/${essentialMediaTotal}'
+    ) &&
+    !utilityRail.includes("mandatoryReadyCount") &&
+    !utilityRail.includes("/5`"),
+  "El rail multimedia debe mostrar 5 esenciales con Fondo global y 6 cuando un Fondo propio activo entra al gate de publicación."
+);
+
+assert(
+  has(
     gameVideoMedia,
     'hero: "hover-video"',
     'card: "image"',
@@ -529,6 +554,9 @@ assert(
 assert(
   publicationReadiness.includes("complete: media.detail.cropReady") &&
     publicationReadiness.includes("complete: media.gallery.cropReady") &&
+    publicationReadiness.includes('id: "background-media"') &&
+    publicationReadiness.includes("complete: media.background.cropReady") &&
+    publicationReadiness.includes('priority: "essential"') &&
     publicationWorkspace.includes("!readiness.essentialsReady") &&
     has(
       publishRoute,
@@ -542,7 +570,7 @@ assert(
       "readiness.essentialsReady",
       "restauracion-incompleta"
     ),
-  "Publicación y restauración deben seguir bloqueando destinos multimedia esenciales incompletos."
+  "Publicación, restauración y el score del rail deben compartir los mismos destinos multimedia esenciales, incluido Fondo cuando está activo."
 );
 
 if (failures.length) {
