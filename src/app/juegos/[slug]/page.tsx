@@ -18,11 +18,10 @@ import {
   Star,
 } from "lucide-react";
 
-import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
 import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
+import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
@@ -41,11 +40,6 @@ import {
 import {
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
-import {
-  resolveGameDestinationImage,
-  resolveGameDestinationMediaMode,
-  resolveGameDetailImageViewport,
-} from "@/lib/media/game-video-media";
 import {
   absoluteUrl,
 } from "@/lib/site";
@@ -167,9 +161,6 @@ export default async function GameDetailPage({
     versionLabel,
   } = resolveGameDetailPresentation(game);
   const recentGameUpdates = gameUpdates.slice(0, 3);
-  const detailImage = resolveGameDestinationImage(game, "detail");
-  const detailImageViewport = resolveGameDetailImageViewport(game);
-  const detailMode = resolveGameDestinationMediaMode(game, "detail");
 
   const relatedGames = games
     .filter(
@@ -260,33 +251,8 @@ export default async function GameDetailPage({
           <span aria-current="page">{game.title}</span>
         </nav>
 
-        <section
-          className={styles.hero}
-          aria-labelledby="game-title"
-          data-game-detail-media-scope
-        >
-          <div
-            className={styles.heroMedia}
-            aria-hidden="true"
-          >
-            <GameDetailContainerMedia
-              mode={detailMode}
-              imageSrc={detailImage}
-              imageViewport={detailImageViewport}
-              video={game.videoMedia?.detail}
-            />
-            <div className={styles.heroShade} />
-          </div>
-
-          <div className={styles.heroInner}>
-            <div className={styles.cover}>
-              <GameCoverMedia
-                game={game}
-                sizes="(max-width: 700px) 52vw, 260px"
-              />
-            </div>
-
-            <div className={styles.heroContent}>
+        <GameDetailHeroFrame game={game} ariaLabelledby="game-title">
+          <div className={styles.heroContent}>
               <span className={styles.heroEyebrow}>
                 FICHA DEL JUEGO
               </span>
@@ -378,9 +344,8 @@ export default async function GameDetailPage({
                   </Link>
                 )}
               </div>
-            </div>
           </div>
-        </section>
+        </GameDetailHeroFrame>
 
         <section
           className={styles.overviewBar}

@@ -12,33 +12,55 @@ const assert = (condition, message) => {
 const has = (text, ...needles) =>
   needles.every((needle) => text.includes(needle));
 
-const [previewPage, previewCss, catalog] = await Promise.all([
+const [
+  previewPage,
+  previewCss,
+  heroFrame,
+  coverRenderer,
+  catalog,
+] = await Promise.all([
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
+  source("src/components/games/GameDetailHeroFrame.tsx"),
+  source("src/components/ui/GameCoverMedia.tsx"),
   source("src/components/games/GameCatalogClient.tsx"),
 ]);
 
 assert(
   has(
     previewPage,
-    'import GameCoverMedia from "@/components/ui/GameCoverMedia"',
+    'import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame"',
     'import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase"',
     'const game = item.payload',
-    '<GameCoverMedia game={game} sizes="220px" />',
-    '<UniversalGameCardBase',
+    '<GameDetailHeroFrame',
     'game={game}',
+    '<UniversalGameCardBase',
     'variant="standard"',
     'CARD PÚBLICA · BORRADOR',
     'mismo renderer base que usan las Cards públicas',
     'snapshot publicado'
-  ),
-  "La vista previa Admin debe montar el borrador en los renderers canónicos de Portada y Card y explicar la frontera draft/público."
+  ) &&
+    has(
+      heroFrame,
+      'import GameCoverMedia from "@/components/ui/GameCoverMedia"',
+      "<GameCoverMedia",
+      "game={game}"
+    ),
+  "La vista previa Admin debe montar el borrador en los renderers canónicos de Hero/Portada y Card y explicar la frontera draft/público."
 );
 
 assert(
   !previewPage.includes('src={game.coverImage}\n') &&
-    has(previewCss, ".cover {", "aspect-ratio: 4 / 5", ".cardPreviewFrame"),
-  "La vista previa no debe volver a dibujar Portada directamente ni usar una relación distinta de 4:5."
+    !previewPage.includes("<GameCoverMedia") &&
+    has(
+      coverRenderer,
+      "resolveGameCoverImage(game)",
+      'aspectRatio: "4 / 5"',
+      "<GameMedia",
+      "viewport={game.imageMedia?.cover}"
+    ) &&
+    has(previewCss, ".cardPreviewFrame"),
+  "La Portada de Vista previa debe delegarse al renderer canónico 4:5 sin volver a dibujarse ni duplicar su geometría local."
 );
 
 assert(
@@ -59,5 +81,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Admin game Card preview: OK (borrador -> GameCoverMedia 4:5 + UniversalGameCardBase estándar; snapshot público separado)."
+  "Admin game Card preview: OK (borrador -> Hero/Portada canónicos + UniversalGameCardBase estándar; crop 4:5 y snapshot público separados)."
 );

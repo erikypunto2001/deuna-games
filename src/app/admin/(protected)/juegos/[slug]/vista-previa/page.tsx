@@ -13,9 +13,8 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
 import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
-import GameCoverMedia from "@/components/ui/GameCoverMedia";
+import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame";
 import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
@@ -33,11 +32,6 @@ import {
 import {
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
-import {
-  resolveGameDestinationImage,
-  resolveGameDestinationMediaMode,
-  resolveGameDetailImageViewport,
-} from "@/lib/media/game-video-media";
 import type {
   GameDownloadSourceStatus,
 } from "@/types/game";
@@ -108,9 +102,6 @@ export default async function AdminGamePreviewPage({
     sizeLabel,
     versionLabel,
   } = resolveGameDetailPresentation(game);
-  const detailImage = resolveGameDestinationImage(game, "detail");
-  const detailImageViewport = resolveGameDetailImageViewport(game);
-  const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
   const distributionChannelLabel = download?.channel
@@ -175,23 +166,12 @@ export default async function AdminGamePreviewPage({
         </div>
       </header>
 
-      <section className={styles.hero}>
-        <div className={styles.heroBackground} aria-hidden="true">
-          <GameDetailContainerMedia
-            mode={detailMode}
-            imageSrc={detailImage}
-            imageViewport={detailImageViewport}
-            video={game.videoMedia?.detail}
-          />
-          <div className={styles.heroShade} />
-        </div>
-
-        <div className={styles.heroInner}>
-          <div className={styles.cover}>
-            <GameCoverMedia game={game} sizes="220px" />
-          </div>
-
-          <div className={styles.heroCopy}>
+      <GameDetailHeroFrame
+        game={game}
+        ariaLabelledby="preview-game-title"
+        className={styles.heroPreview}
+      >
+        <div className={styles.heroCopy}>
             <div className={styles.chips}>
               <span>{game.category}</span>
               {platforms.map((platform) => (
@@ -199,7 +179,7 @@ export default async function AdminGamePreviewPage({
               ))}
             </div>
 
-            <h2>{game.title}</h2>
+            <h2 id="preview-game-title">{game.title}</h2>
 
             {visibleTags.length > 0 && (
               <div className={styles.tags}>
@@ -224,9 +204,8 @@ export default async function AdminGamePreviewPage({
                 )}
               </div>
             )}
-          </div>
         </div>
-      </section>
+      </GameDetailHeroFrame>
 
       <dl
         className={styles.factGrid}

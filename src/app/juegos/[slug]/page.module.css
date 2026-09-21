@@ -40,90 +40,6 @@
   white-space: nowrap;
 }
 
-.hero {
-  position: relative;
-  min-height: 478px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--text-soft) 15%, transparent);
-  border-radius: var(--radius-xl);
-  background:
-    radial-gradient(
-      760px 440px at 85% 18%,
-      color-mix(in srgb, var(--brand) 10%, transparent),
-      transparent 68%
-    ),
-    var(--surface);
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
-  isolation: isolate;
-}
-
-.hero::after {
-  position: absolute;
-  z-index: 1;
-  right: 8%;
-  bottom: -110px;
-  width: 540px;
-  height: 220px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--brand) 13%, transparent);
-  filter: blur(76px);
-  content: "";
-  pointer-events: none;
-}
-
-.heroMedia {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.heroShade {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(
-      90deg,
-      rgba(3, 5, 9, 0.99) 0%,
-      rgba(3, 5, 9, 0.92) 30%,
-      rgba(3, 5, 9, 0.65) 62%,
-      rgba(3, 5, 9, 0.79) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(3, 5, 9, 0.03),
-      rgba(3, 5, 9, 0.82)
-    );
-}
-
-.heroInner {
-  position: relative;
-  z-index: 2;
-  min-height: 478px;
-  display: grid;
-  grid-template-columns: 238px minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(30px, 4vw, 64px);
-  padding: clamp(34px, 4vw, 58px);
-}
-
-.cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--text-soft) 22%, transparent);
-  border-radius: var(--radius-large);
-  background: var(--surface-2);
-  box-shadow:
-    0 24px 55px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(255, 255, 255, 0.035),
-    0 0 46px color-mix(in srgb, var(--brand) 9%, transparent);
-  transform: rotate(-0.65deg);
-  transition:
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 420ms ease;
-}
-
 .heroContent {
   min-width: 0;
   max-width: 860px;
@@ -919,14 +835,6 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .hero:hover .cover {
-    box-shadow:
-      0 30px 70px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.045),
-      0 0 58px color-mix(in srgb, var(--brand) 13%, transparent);
-    transform: translateY(-4px) rotate(0deg);
-  }
-
   .primaryAction:hover,
   .secondaryAction:hover,
   .compatibilityAction:hover,
@@ -948,10 +856,6 @@
 }
 
 @media (max-width: 1180px) {
-  .heroInner {
-    grid-template-columns: 215px minmax(0, 1fr);
-  }
-
   .overviewBar {
     grid-template-columns: 1fr;
   }
@@ -1001,33 +905,6 @@
   .breadcrumb {
     margin-bottom: 12px;
     font-size: var(--font-xs);
-  }
-
-  .hero {
-    min-height: 0;
-    border-radius: 17px;
-  }
-
-  .heroShade {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(3, 5, 9, 0.34) 0%,
-        rgba(3, 5, 9, 0.8) 35%,
-        rgba(3, 5, 9, 0.99) 73%
-      );
-  }
-
-  .heroInner {
-    min-height: 0;
-    grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 28px 20px 22px;
-  }
-
-  .cover {
-    width: min(52vw, 210px);
-    transform: none;
   }
 
   .heroContent h1 {
@@ -1194,7 +1071,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cover,
   .primaryAction,
   .secondaryAction,
   .compatibilityAction,
@@ -1202,7 +1078,4 @@
     transition: none;
   }
 
-  .hero:hover .cover {
-    transform: none;
-  }
 }
