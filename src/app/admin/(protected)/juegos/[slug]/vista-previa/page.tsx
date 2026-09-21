@@ -243,7 +243,11 @@ export default async function AdminGamePreviewPage({
               <div
                 className={`${styles.backgroundPreviewFrame} ${styles.backgroundMobileFrame}`}
               >
-                <GameDetailBackgroundMedia game={game} sizes="220px" />
+                <GameDetailBackgroundMedia
+                  game={game}
+                  sizes="220px"
+                  mobilePreview
+                />
               </div>
             </div>
           </div>
