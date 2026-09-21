@@ -169,12 +169,15 @@ assert(
     navigation.includes("activeItem?.label") &&
     navigation.includes('aria-current={active ? "page" : undefined}') &&
     navigation.includes("mobileNavPanel") &&
+    navigation.includes("isLegacyGameUpdatePath") &&
+    navigation.includes('href === "/admin/juegos"') &&
+    navigation.includes('pathname.startsWith("/admin/actualizaciones/")') &&
     contextBar.includes("<details") &&
     contextBar.includes("mobileLabel") &&
     contextBar.includes('aria-current={item.active ? "page" : undefined}') &&
     contextBar.includes('aria-current={child.active ? "page" : undefined}') &&
     contextBar.includes("contextMobilePanel"),
-  "Las navegaciones móviles deben exponer la opción activa, conservar aria-current y ofrecer una estructura desplegable accesible."
+  "Las navegaciones móviles deben exponer la opción activa, conservar aria-current, mantener Juegos como contexto de actualizaciones legacy y ofrecer una estructura desplegable accesible."
 );
 
 assert(
