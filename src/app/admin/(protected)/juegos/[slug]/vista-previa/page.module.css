@@ -386,6 +386,52 @@
   line-height: 1.55;
 }
 
+.backgroundPreviewSummary {
+  max-width: 760px;
+  margin-top: 12px;
+  color: #8f9dac;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.backgroundPreviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
+  align-items: start;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.backgroundPreviewItem {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.backgroundPreviewItem > span {
+  color: #a8b6c4;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.backgroundPreviewFrame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #314354;
+  border-radius: 10px;
+  background: #020407;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.backgroundDesktopFrame {
+  aspect-ratio: 16 / 9;
+}
+
+.backgroundMobileFrame {
+  aspect-ratio: 9 / 16;
+}
+
 .sources {
   display: grid;
   gap: 9px;
@@ -474,6 +520,10 @@
     grid-template-columns: 1fr;
   }
 
+  .backgroundPreviewGrid {
+    grid-template-columns: minmax(0, 1fr) 132px;
+  }
+
   .requirementsHead,
   .requirementsRow {
     grid-template-columns: 1fr;
@@ -494,6 +544,14 @@
 @media (max-width: 520px) {
   .factGrid {
     grid-template-columns: 1fr;
+  }
+
+  .backgroundPreviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .backgroundMobileFrame {
+    width: min(58vw, 220px);
   }
 
   .sources > div {
