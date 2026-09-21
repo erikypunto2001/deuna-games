@@ -169,15 +169,21 @@ export default function GameMultimediaUtilityRail({
     (hygiene?.reserved ?? 0) +
     (hygiene?.publishedOnly ?? 0) +
     (hygiene?.historical ?? 0);
-  const mandatoryReadyCount = requirements
+  const essentialMediaStates = requirements
     ? [
         requirements.cover.cropReady,
         requirements.hero.cropReady,
         requirements.card.cropReady,
         requirements.detail.cropReady,
         requirements.gallery.cropReady,
-      ].filter(Boolean).length
-    : 0;
+        ...(requirements.background.active
+          ? [requirements.background.cropReady]
+          : []),
+      ]
+    : [];
+  const essentialMediaReadyCount =
+    essentialMediaStates.filter(Boolean).length;
+  const essentialMediaTotal = essentialMediaStates.length;
 
   function resourceBySrc(src: string | null | undefined) {
     return src
@@ -421,11 +427,11 @@ export default function GameMultimediaUtilityRail({
             <span className={shellStyles.utilityIcon}><CheckCircle2 size={17} aria-hidden="true" /></span>
             <div>
               <strong>Estado multimedia</strong>
-              <small>Obligatorios y Galería</small>
+              <small>Destinos esenciales activos</small>
             </div>
           </div>
           <strong className={requirements?.ready ? railStyles.statusScoreReady : railStyles.statusScorePending}>
-            {requirements ? `${mandatoryReadyCount}/5` : "—"}
+            {requirements ? `${essentialMediaReadyCount}/${essentialMediaTotal}` : "—"}
           </strong>
         </div>
 
@@ -467,9 +473,12 @@ export default function GameMultimediaUtilityRail({
               <span><strong>Galería · {requirements.gallery.count}/8</strong><small>{requirements.gallery.imageCount} img · {requirements.gallery.videoCount} video</small></span>
               {requirements.gallery.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
-            <div data-ready={!requirements.background.active || requirements.background.cropReady} data-optional="true">
+            <div
+              data-ready={!requirements.background.active || requirements.background.cropReady}
+              data-optional={requirements.background.active ? undefined : "true"}
+            >
               <span className={railStyles.statusOptionalIcon}><Sparkles size={15} aria-hidden="true" /></span>
-              <span><strong>Fondo</strong><small>{requirements.background.active ? `${modeLabel(assignments?.backgroundMode)} · adaptable` : "Global · opcional"}</small></span>
+              <span><strong>Fondo</strong><small>{requirements.background.active ? `${modeLabel(assignments?.backgroundMode)} · esencial activo` : "Global · opcional"}</small></span>
               {!requirements.background.active || requirements.background.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
           </div>
@@ -541,7 +550,7 @@ export default function GameMultimediaUtilityRail({
             <div><ImageIcon size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 3:1</strong><span>Modos disponibles: {modeOptionsLabel("hero")}. Imagen + hover exige ambos recursos y sus recortes.</span></p></div>
             <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>La imagen base 3:2 es obligatoria. Modos disponibles: {modeOptionsLabel("card")}. Video agrega un WebM con recorte 3:2 propio.</span></p></div>
-            <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Modos disponibles: {modeOptionsLabel("background")}; también puede volver al fondo global.</span></p></div>
+            <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional mientras usa el fondo global. Al activar un Fondo propio pasa a ser un destino esencial para publicar. Modos disponibles: {modeOptionsLabel("background")}.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero. Modos disponibles: {modeOptionsLabel("detail")}; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>
             <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin ninguna referencia de borrador, publicación actual ni historial restaurable es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
