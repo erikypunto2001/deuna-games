@@ -347,6 +347,11 @@ assert(
   "El editor de juego debe compartir un contrato canónico, incluir Valoración en la navegación y evitar una segunda navegación completa en el overview."
 );
 
+const compactGamesCatalogCss =
+  /@media \(max-width: 1180px\) \{[\s\S]*?\.tableViewport \{[\s\S]*?display: none;[\s\S]*?\.mobileList \{[\s\S]*?display: grid;[\s\S]*?\.mobilePagination \{[\s\S]*?display: flex;/.test(
+    catalogCss
+  );
+
 assert(
   gamesCatalog.includes("MOBILE_GAMES_PER_PAGE = 8") &&
     gamesCatalog.includes('data-admin-games-mobile-list="true"') &&
@@ -354,11 +359,8 @@ assert(
     gamesCatalog.includes('data-admin-games-mobile-pagination="true"') &&
     gamesCatalog.includes('data-admin-games-table="true"') &&
     gamesCatalog.includes('data-mobile-actions={mobile ? "true" : undefined}') &&
-    catalogCss.includes(".mobileList") &&
-    catalogCss.includes(".mobilePagination") &&
-    catalogCss.includes(".tableViewport") &&
-    catalogCss.includes("display: none;"),
-  "Juegos debe ofrecer una presentación móvil paginada con acciones visibles, no depender de desplazar una tabla de 980px ni renderizar el catálogo completo en una sola columna."
+    compactGamesCatalogCss,
+  "Juegos debe usar la presentación compacta paginada con acciones visibles también en tablet, sin depender de desplazar horizontalmente una tabla de 980px."
 );
 
 assert(
