@@ -473,7 +473,10 @@ export default function GameMultimediaUtilityRail({
               <span><strong>Galería · {requirements.gallery.count}/8</strong><small>{requirements.gallery.imageCount} img · {requirements.gallery.videoCount} video</small></span>
               {requirements.gallery.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
-            <div data-ready={!requirements.background.active || requirements.background.cropReady} data-optional="true">
+            <div
+              data-ready={!requirements.background.active || requirements.background.cropReady}
+              data-optional={requirements.background.active ? undefined : "true"}
+            >
               <span className={railStyles.statusOptionalIcon}><Sparkles size={15} aria-hidden="true" /></span>
               <span><strong>Fondo</strong><small>{requirements.background.active ? `${modeLabel(assignments?.backgroundMode)} · esencial activo` : "Global · opcional"}</small></span>
               {!requirements.background.active || requirements.background.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
