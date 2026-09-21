@@ -27,12 +27,14 @@ type Props =
       override?: never;
       sizes?: string;
       className?: string;
+      mobilePreview?: boolean;
     }
   | {
       game?: never;
       override: OverrideProps;
       sizes?: string;
       className?: string;
+      mobilePreview?: boolean;
     };
 
 function mediaStyle(x: number, y: number, zoom: number) {
@@ -48,6 +50,7 @@ export default function GameDetailBackgroundMedia({
   override,
   sizes = "100vw",
   className,
+  mobilePreview = false,
 }: Props) {
   const mode = override?.mode ?? (game ? resolveGameBackgroundMediaMode(game) : null);
   const [motionAllowed, setMotionAllowed] = useState(false);
@@ -109,7 +112,7 @@ export default function GameDetailBackgroundMedia({
 
   return (
     <div
-      className={`${styles.backdrop} ${className ?? ""}`}
+      className={`${styles.backdrop} ${mobilePreview ? styles.mobilePreview : ""} ${className ?? ""}`}
       aria-hidden="true"
       data-game-detail-background-media="true"
     >
