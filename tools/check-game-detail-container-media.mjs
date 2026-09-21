@@ -36,6 +36,8 @@ const [
   heroFrameCss,
   publicRuntime,
   publicRuntimeCss,
+  visualFixture,
+  visualBrowser,
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
@@ -62,6 +64,8 @@ const [
   source("src/components/games/GameDetailHeroFrame.module.css"),
   source("src/components/games/GameDetailContainerMedia.tsx"),
   source("src/components/games/GameDetailContainerMedia.module.css"),
+  source("tools/card-video-visual-fixture.ts"),
+  source("tools/card-video-browser-smoke.mjs"),
 ]);
 
 assert(
@@ -382,6 +386,25 @@ assert(
       "@media (prefers-reduced-motion: reduce)"
     ),
   "Runtime debe mantener imagen fallback y montar video sólo en modo Video, respetando reduced-motion, visibilidad y error sin listeners de hover."
+);
+
+assert(
+  has(
+    visualFixture,
+    "detail: {",
+    'aspect: "source" as const',
+    '...(mode === "video" ? { detail: "video" as const } : {})'
+  ) &&
+    has(
+      visualBrowser,
+      "detailPlayingVideoExpression",
+      "detail-container-video-active-desktop.png",
+      "[data-game-detail-media-scope]",
+      "Reduced-motion no desmontó el video del Contenedor",
+      "La pestaña oculta mantuvo el video del Contenedor",
+      "Card + Contenedor video browser smoke: OK"
+    ),
+  "El Contenedor Video debe conservar un fixture publicado y una prueba browser real de reproducción, reduced-motion, fallback y visibility."
 );
 
 if (failures.length) {
