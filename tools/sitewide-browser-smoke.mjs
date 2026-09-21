@@ -594,18 +594,56 @@ async function auditPage(cdp, page, viewport) {
             '[data-game-hero-public-preview="true"]'
           );
           if (!(panel instanceof HTMLElement) || !visible(panel)) return false;
-          const devices = ["desktop", "tablet", "mobile"];
-          return devices.every((device) => {
-            const host = panel.querySelector(
-              '[data-hero-preview-device="' + device + '"]'
-            );
-            if (!(host instanceof HTMLElement) || !visible(host)) return false;
-            const frames = Array.from(host.querySelectorAll("iframe"));
-            return frames.length === 1 &&
-              frames[0] instanceof HTMLIFrameElement &&
-              visible(frames[0]) &&
-              frames[0].title.startsWith("Hero real en ");
-          });
+          const responsivePreview = panel.querySelector(
+            '[data-game-hero-responsive-preview="true"]'
+          );
+          if (
+            !(responsivePreview instanceof HTMLElement) ||
+            !visible(responsivePreview)
+          ) {
+            return false;
+          }
+          const options = Array.from(
+            responsivePreview.querySelectorAll(
+              '[data-hero-preview-device-option]'
+            )
+          ).filter((element) =>
+            element instanceof HTMLButtonElement && visible(element)
+          );
+          const expectedDevices = new Set([
+            "desktop",
+            "tablet",
+            "mobile",
+          ]);
+          const optionDevices = new Set(
+            options.map((element) =>
+              element.getAttribute("data-hero-preview-device-option")
+            )
+          );
+          const activeOptions = options.filter(
+            (element) => element.getAttribute("aria-pressed") === "true"
+          );
+          const host = responsivePreview.querySelector(
+            '[data-hero-preview-device]'
+          );
+          if (!(host instanceof HTMLElement) || !visible(host)) return false;
+          const activeDevice = host.getAttribute(
+            "data-hero-preview-device"
+          );
+          const frames = Array.from(host.querySelectorAll("iframe"));
+          return options.length === 3 &&
+            expectedDevices.size === optionDevices.size &&
+            Array.from(expectedDevices).every(
+              (device) => optionDevices.has(device)
+            ) &&
+            activeOptions.length === 1 &&
+            activeOptions[0].getAttribute(
+              "data-hero-preview-device-option"
+            ) === activeDevice &&
+            frames.length === 1 &&
+            frames[0] instanceof HTMLIFrameElement &&
+            visible(frames[0]) &&
+            frames[0].title.startsWith("Hero real en ");
         })();
 
 
@@ -857,7 +895,7 @@ function validateAudit(result, failures) {
   }
   if (!audit.adminGameHeroPreviewReady) {
     failures.push(
-      `${prefix}: Vista previa no montó el Hero público real en escritorio, tableta y móvil.`
+      `${prefix}: Vista previa no montó el Hero público real con su selector de escritorio, tableta y móvil.`
     );
   }
   if (result.runtimeIssues.length) {
