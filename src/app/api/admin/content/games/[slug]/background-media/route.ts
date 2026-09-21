@@ -178,12 +178,35 @@ export async function POST(
 
   if (action.data === "global") {
     if (resource !== "global") return jsonError("Solicitud de fondo global inválida.");
+    if (
+      resolveGameBackgroundMediaMode(current) === null &&
+      !current.backgroundImage &&
+      !current.imageMedia?.background &&
+      !current.videoMedia?.background &&
+      current.mediaModes?.background === undefined
+    ) {
+      return NextResponse.json(
+        { ok: true, revision: item.revision },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
     update = clearBackgroundUpdate(current);
   }
 
   if (action.data === "mode") {
     const mode = mediaModeSchema.safeParse(resource);
     if (!mode.success) return jsonError("Modo de fondo inválido.");
+
+    if (
+      resolveGameBackgroundMediaMode(current) === mode.data &&
+      (!current.videoMedia?.background ||
+        current.videoMedia.background.playback === "always")
+    ) {
+      return NextResponse.json(
+        { ok: true, revision: item.revision },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
 
     update = {
       mediaModes: {
@@ -213,6 +236,12 @@ export async function POST(
     }
 
     if (kind === "image") {
+      if (current.backgroundImage === match.src) {
+        return NextResponse.json(
+          { ok: true, revision: item.revision },
+          { headers: { "Cache-Control": "no-store" } }
+        );
+      }
       const mode: GameDestinationMediaMode = normalizeGameMediaMode(
         "background",
         current.mediaModes?.background ?? "image"
@@ -229,6 +258,12 @@ export async function POST(
         },
       };
     } else {
+      if (current.videoMedia?.background?.clip === match.src) {
+        return NextResponse.json(
+          { ok: true, revision: item.revision },
+          { headers: { "Cache-Control": "no-store" } }
+        );
+      }
       const mode: GameDestinationMediaMode = normalizeGameMediaMode(
         "background",
         current.mediaModes?.background ?? "video"
@@ -261,6 +296,19 @@ export async function POST(
     );
     if (!viewport) return jsonError("Recorte adaptable de imagen inválido.");
 
+    const currentViewport = current.imageMedia?.background;
+    if (
+      currentViewport?.confirmed === true &&
+      currentViewport.x === viewport.x &&
+      currentViewport.y === viewport.y &&
+      currentViewport.zoom === viewport.zoom
+    ) {
+      return NextResponse.json(
+        { ok: true, revision: item.revision },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
     update = {
       imageMedia: {
         ...current.imageMedia,
@@ -285,6 +333,19 @@ export async function POST(
     );
     if (!viewport || viewport.aspect === "free") {
       return jsonError("Recorte adaptable de video inválido.");
+    }
+
+    if (
+      background.viewport.confirmed === true &&
+      background.viewport.x === viewport.x &&
+      background.viewport.y === viewport.y &&
+      background.viewport.zoom === viewport.zoom &&
+      background.viewport.aspect === viewport.aspect
+    ) {
+      return NextResponse.json(
+        { ok: true, revision: item.revision },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     update = {
