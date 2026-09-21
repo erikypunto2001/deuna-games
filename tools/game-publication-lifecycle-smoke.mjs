@@ -757,6 +757,51 @@ for (const target of [
   revision = media.revision;
 }
 
+if (
+  media.assignments?.coverArtworkSource !== "custom" ||
+  media.assignments?.coverImage !== libraryImage ||
+  media.assignments?.cardImage !== libraryImage
+) {
+  throw new Error(
+    `Asignar Portada y Card por separado no preservó la intención custom previa al cambio de fuente: ${JSON.stringify(media.assignments)}.`
+  );
+}
+
+const sharedCoverSource = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    target: "cover-source",
+    resource: "card",
+  },
+  "La fuente compartida de Portada"
+);
+assertRedirectState(
+  sharedCoverSource,
+  "recurso-asignado",
+  "Fuente compartida de Portada"
+);
+media = await mediaSnapshot(slug, cookie);
+if (
+  media.revision <= revision ||
+  media.assignments?.coverArtworkSource !== "card" ||
+  media.assignments?.coverImage !== libraryImage ||
+  media.assignments?.coverImage !== media.assignments?.cardImage
+) {
+  throw new Error(
+    `Portada no quedó compartiendo el master de Card: ${JSON.stringify({
+      previousRevision: revision,
+      revision: media.revision,
+      coverArtworkSource: media.assignments?.coverArtworkSource,
+      coverImage: media.assignments?.coverImage,
+      cardImage: media.assignments?.cardImage,
+    })}.`
+  );
+}
+revision = media.revision;
+
 const revisionBeforeRejectedGalleryLibraryTarget = revision;
 const rejectedGalleryLibraryTarget = await postAdminForm(
   `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
@@ -1317,5 +1362,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom→Card, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );
