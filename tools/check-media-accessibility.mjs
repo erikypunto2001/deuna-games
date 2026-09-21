@@ -86,12 +86,16 @@ assert(
   files.service.includes("saveGameMediaAccessibilitySection") &&
     files.service.includes("compactMediaAccessibility") &&
     files.service.includes("galleryKeys") &&
+    files.service.includes("resolveGameCoverImage(game)") &&
+    files.service.includes("resolveGameCardBaseImage(game)") &&
+    files.service.includes('resolveGameDestinationImage(game, "detail")') &&
+    !files.service.includes("game.cardImage ?? game.coverImage") &&
     files.service.includes('"media-accessibility"') &&
     files.service.includes("FOR UPDATE") &&
     files.service.includes("editorial_revisions") &&
     files.service.includes("admin_audit_log") &&
     !/\bDELETE\s+FROM\b/i.test(files.service),
-  "Guardar accesibilidad debe reutilizar concurrencia, revisiones y auditoría sin operaciones destructivas."
+  "Guardar accesibilidad debe reutilizar resolvers canónicos, concurrencia, revisiones y auditoría sin perder metadata de snapshots históricos."
 );
 
 assert(
