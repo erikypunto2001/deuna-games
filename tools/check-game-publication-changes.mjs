@@ -1,0 +1,76 @@
+import assert from "node:assert/strict";
+
+import "./register-ts-paths.mjs";
+
+const {
+  evaluateGamePublicationChanges,
+} = await import("@/lib/admin/game-publication-changes");
+
+function game(overrides = {}) {
+  return {
+    id: "publication-cover-source-check",
+    slug: "publication-cover-source-check",
+    title: "Juego de prueba",
+    description: "Contrato mínimo para cambios de publicación.",
+    category: "Acción",
+    imageAlt: "Arte de prueba",
+    coverImage: "/images/games/elden-ring/card.webp",
+    cardImage: "/images/games/elden-ring/card.webp",
+    ...overrides,
+  };
+}
+
+const publishedCard = game({
+  coverArtworkSource: "card",
+});
+const draftCustom = game({
+  coverArtworkSource: "custom",
+});
+
+assert.deepEqual(
+  evaluateGamePublicationChanges(publishedCard, publishedCard),
+  [],
+  "Un snapshot sin cambios no debe generar diferencias de publicación."
+);
+
+const sourceChange = evaluateGamePublicationChanges(
+  draftCustom,
+  publishedCard
+);
+assert.deepEqual(
+  sourceChange.map(({ id, section }) => ({ id, section })),
+  [{ id: "media", section: "multimedia" }],
+  "Cambiar sólo la fuente de Portada debe aparecer como cambio Multimedia."
+);
+
+const legacyEquivalent = game({
+  coverArtworkSource: undefined,
+});
+assert.deepEqual(
+  evaluateGamePublicationChanges(publishedCard, legacyEquivalent),
+  [],
+  "Un snapshot legacy sin coverArtworkSource no debe marcar cambio cuando resuelve semánticamente a Card."
+);
+
+const explicitCustomWithDistinctCover = game({
+  coverArtworkSource: "custom",
+  coverImage: "/images/games/elden-ring/cover.webp",
+  cardImage: "/images/games/elden-ring/card.webp",
+});
+const legacyCustom = game({
+  coverArtworkSource: undefined,
+  coverImage: "/images/games/elden-ring/cover.webp",
+  cardImage: "/images/games/elden-ring/card.webp",
+});
+assert.deepEqual(
+  evaluateGamePublicationChanges(
+    explicitCustomWithDistinctCover,
+    legacyCustom
+  ),
+  [],
+  "Un snapshot legacy con Portada distinta de Card debe resolver semánticamente a custom sin inventar diferencias de recurso."
+);
+
+console.log(
+  "Cambios de publicación multimedia: OK (fuente de Portada explícita + compatibilidad legacy)."
+);
