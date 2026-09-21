@@ -21,6 +21,7 @@ const [
   mediaLibraryRoute,
   mediaWorkspace,
   admin,
+  adminCss,
   viewport,
   publicBackground,
   publicBackgroundCss,
@@ -48,6 +49,7 @@ const [
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/lib/admin/game-media-workspace.ts"),
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
+  source("src/components/admin/GameBackgroundMediaEditor.module.css"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
   source("src/components/games/GameDetailBackground.module.css"),
@@ -219,8 +221,9 @@ assert(
     !admin.includes("Falta ajustar el foco de la imagen") &&
     !admin.includes("Foco adaptable de imagen confirmado") &&
     !admin.includes("useEffect(") &&
-    !admin.includes('fetch(endpoint, {\n          credentials: "same-origin"'),
-  "Fondo debe verse como un destino Imagen/Video, usar terminología de recorte y reutilizar revisión/recursos del workspace sin una segunda lectura de biblioteca."
+    !admin.includes('fetch(endpoint, {\n          credentials: "same-origin"') &&
+    /@media \(max-width: 1100px\)[\s\S]*?\.resourcePanel\s*\{[\s\S]*?position:\s*static;[\s\S]*?max-width:\s*100%;/s.test(adminCss),
+  "Fondo debe verse como un destino Imagen/Video, reutilizar revisión/recursos del workspace y contener su selector dentro del viewport tablet."
 );
 
 assert(
