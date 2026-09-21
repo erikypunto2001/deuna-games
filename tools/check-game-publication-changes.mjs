@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 
-import {
+import "./register-ts-paths.mjs";
+
+const {
   evaluateGamePublicationChanges,
-} from "../src/lib/admin/game-publication-changes.ts";
+} = await import("@/lib/admin/game-publication-changes");
 
 function game(overrides = {}) {
   return {
