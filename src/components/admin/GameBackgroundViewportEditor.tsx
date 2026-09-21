@@ -67,14 +67,15 @@ function AdaptivePreview({
 
       <div className={styles.previewGrid}>
         {([
-          ["Escritorio", styles.desktopFrame, "420px"],
-          ["Móvil", styles.mobileFrame, "150px"],
-        ] as const).map(([label, frameClass, sizes]) => (
+          ["Escritorio", styles.desktopFrame, "420px", false],
+          ["Móvil", styles.mobileFrame, "150px", true],
+        ] as const).map(([label, frameClass, sizes, mobilePreview]) => (
           <div key={label} className={styles.previewItem}>
             <span>{label}</span>
             <div className={`${styles.previewFrame} ${frameClass}`}>
               <GameDetailBackgroundMedia
                 sizes={sizes}
+                mobilePreview={mobilePreview}
                 override={{
                   mode: kind,
                   imageSrc: kind === "image" ? src : null,
