@@ -223,6 +223,7 @@ assert(
     "Móvil",
     'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
     "<GameDetailBackgroundMedia",
+    "mobilePreview={mobilePreview}",
     "Un recorte, distintas pantallas",
     "Confirmar recorte adaptable",
     'action: kind === "image" ? "layout-image" : "layout-video"'
@@ -261,7 +262,8 @@ assert(
       "autoPlay",
       "documentVisible",
       "failedVideo",
-      'data-game-detail-background-media="true"'
+      'data-game-detail-background-media="true"',
+      "mobilePreview = false"
     ) &&
     !backgroundMedia.includes("FINE_POINTER_MEDIA") &&
     !backgroundMedia.includes("hoverActive") &&
@@ -273,7 +275,9 @@ assert(
       "transform-origin: var(--game-background-position, 50% 50%)",
       "transform: scale(var(--game-background-zoom, 1))",
       ".colorWash {",
-      ".readabilityShade {"
+      ".readabilityShade {",
+      ".mobilePreview .imageLayer",
+      ".mobilePreview .readabilityShade"
     ),
   "El runtime público debe delegar Imagen/Video, crops, reduced-motion, visibilidad, error, wash y shade a una única capa compartida."
 );
@@ -295,20 +299,11 @@ assert(
     "resolveGameBackgroundMediaMode(game)",
     'data-game-detail-background-preview="true"',
     '<GameDetailBackgroundMedia game={game} sizes="900px" />',
-    '<GameDetailBackgroundMedia game={game} sizes="220px" />',
+    'sizes="220px"',
+    "mobilePreview",
     "FONDO DE LA FICHA · BORRADOR",
-    "Salidas públicas adaptables"
-  ) ||
-    has(
-      adminPreview,
-      'import GameDetailBackgroundMedia from "@/components/games/GameDetailBackgroundMedia"',
-      "resolveGameBackgroundMediaMode(game)",
-      'data-game-detail-background-preview="true"',
-      '<GameDetailBackgroundMedia game={game} sizes="900px" />',
-      '<GameDetailBackgroundMedia game={game} sizes="220px" />',
-      "FONDO DE LA FICHA · BORRADOR",
-      "Salida pública adaptable"
-    ),
+    "Salida pública adaptable"
+  ),
   "La Vista previa editorial debe mostrar el Fondo del borrador con la misma capa pública en escritorio y móvil."
 );
 
