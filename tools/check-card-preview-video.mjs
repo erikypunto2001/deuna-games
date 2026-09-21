@@ -324,6 +324,22 @@ assert(
 
 assert(
   has(
+    libraryRoute,
+    "resolveGameCoverArtworkSource(current) === source.data",
+    "const sameCoverImage =",
+    "sameCoverImage && current.imageMedia?.cover",
+    "current.heroImage === imageResource.src",
+    "resolveGameCardBaseImage(current) === imageResource.src",
+    "current.videoMedia?.hero?.clip === videoResource.src",
+    'current.videoMedia?.card?.source === "independent"',
+    "current.videoMedia.card.clip === videoResource.src",
+    'current.videoMedia.card.playback === "always"'
+  ),
+  "Portada/Hero/Card deben preservar crops y evitar revisiones al reasignar el mismo recurso, sin impedir normalizar playback legacy."
+);
+
+assert(
+  has(
     imageLayoutRoute,
     "function confirmedViewport",
     "source: string",
