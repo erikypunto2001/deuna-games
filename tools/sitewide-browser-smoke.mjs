@@ -559,6 +559,35 @@ async function auditPage(cdp, page, viewport) {
               return Number((galleryWidth / heroWidth).toFixed(3));
             })()
           : null;
+      const publicGameBackgroundReady =
+        pageId !== "public-game-detail" || (() => {
+          const layer = document.querySelector(
+            '[data-game-detail-background-media="true"]'
+          );
+          if (!(layer instanceof HTMLElement) || !visible(layer)) return false;
+          const host = layer.parentElement;
+          return host instanceof HTMLElement &&
+            getComputedStyle(host).position === "fixed";
+        })();
+      const adminGameBackgroundPreviewReady =
+        pageId !== "admin-game-preview" || (() => {
+          const panel = document.querySelector(
+            '[data-game-detail-background-preview="true"]'
+          );
+          if (!(panel instanceof HTMLElement) || !visible(panel)) return false;
+          const layers = Array.from(
+            panel.querySelectorAll('[data-game-detail-background-media="true"]')
+          ).filter((element) =>
+            element instanceof HTMLElement && visible(element)
+          );
+          if (layers.length !== 2) return false;
+          return layers.every((layer) => {
+            const host = layer.parentElement;
+            return host instanceof HTMLElement &&
+              getComputedStyle(host).position === "relative" &&
+              getComputedStyle(layer).position === "absolute";
+          });
+        })();
 
       return {
         url: location.href,
@@ -585,6 +614,8 @@ async function auditPage(cdp, page, viewport) {
         gameValuationNavigationReady,
         gameEditorSaveBarHeight,
         gamePreviewGalleryWidthRatio,
+        publicGameBackgroundReady,
+        adminGameBackgroundPreviewReady,
       };
     })()
   `);
@@ -793,6 +824,16 @@ function validateAudit(result, failures) {
       `${prefix}: la Galería de Vista previa ocupa sólo ${audit.gamePreviewGalleryWidthRatio ?? "ancho desconocido"}x del Hero; debe usar el ancho de la ficha pública.`
     );
   }
+  if (!audit.publicGameBackgroundReady) {
+    failures.push(
+      `${prefix}: la ficha pública no montó el Fondo confirmado dentro del host fixed canónico.`
+    );
+  }
+  if (!audit.adminGameBackgroundPreviewReady) {
+    failures.push(
+      `${prefix}: Vista previa no montó exactamente dos Fondos contenidos con el renderer canónico.`
+    );
+  }
   if (result.runtimeIssues.length) {
     failures.push(`${prefix}: runtime/red: ${result.runtimeIssues.join(" | ")}.`);
   }
@@ -833,6 +874,8 @@ async function writeReport(results, sweeps, failures) {
         unlabeledControls: result.audit.unlabeledControls,
         outsideViewport: result.audit.outsideViewport,
         runtimeIssues: result.runtimeIssues,
+        publicGameBackgroundReady: result.audit.publicGameBackgroundReady,
+        adminGameBackgroundPreviewReady: result.audit.adminGameBackgroundPreviewReady,
         truncated: result.capture.truncated,
       }, null, 2))}</pre>
     </article>

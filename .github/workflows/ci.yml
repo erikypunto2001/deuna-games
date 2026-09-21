@@ -383,6 +383,11 @@ jobs:
           export DEUNA_ADMIN_OWNER_PASSWORD="$DEUNA_VISUAL_ADMIN_PASSWORD"
           node ./tools/admin/create-owner.ts
 
+      - name: Create game background visual fixture
+        env:
+          DEUNA_GAME_BACKGROUND_VISUAL_FIXTURE: "1"
+        run: npm run visual:game-background-fixture
+
       - name: Create historical update visual fixture
         env:
           DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE: "1"

@@ -85,7 +85,8 @@
     "visual:admin-accounts-lifecycle": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-accounts-lifecycle-smoke.ts",
     "visual:admin-historical-update-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/admin-historical-update-visual-fixture.ts",
     "admin:purge-media-junk:check": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts",
-    "admin:purge-media-junk": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply"
+    "admin:purge-media-junk": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply",
+    "visual:game-background-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/game-background-visual-fixture.ts"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
