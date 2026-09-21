@@ -30,6 +30,10 @@ const [
   videoEditor,
   publicPage,
   adminPreview,
+  publicPageCss,
+  adminPreviewCss,
+  heroFrame,
+  heroFrameCss,
   publicRuntime,
   publicRuntimeCss,
 ] = await Promise.all([
@@ -52,6 +56,10 @@ const [
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/app/juegos/[slug]/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
+  source("src/app/juegos/[slug]/page.module.css"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
+  source("src/components/games/GameDetailHeroFrame.tsx"),
+  source("src/components/games/GameDetailHeroFrame.module.css"),
   source("src/components/games/GameDetailContainerMedia.tsx"),
   source("src/components/games/GameDetailContainerMedia.module.css"),
 ]);
@@ -278,33 +286,64 @@ assert(
 
 assert(
   has(
-    publicPage,
+    heroFrame,
     'import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia"',
+    'import GameCoverMedia from "@/components/ui/GameCoverMedia"',
     'resolveGameDestinationImage(game, "detail")',
-    'resolveGameDestinationMediaMode(game, "detail")',
     "resolveGameDetailImageViewport(game)",
+    'resolveGameDestinationMediaMode(game, "detail")',
     "data-game-detail-media-scope",
     "<GameDetailContainerMedia",
-    "video={game.videoMedia?.detail}"
+    "video={game.videoMedia?.detail}",
+    "<GameCoverMedia"
   ) &&
-    !publicPage.includes("const detailImageViewport = game.imageMedia?.detail") &&
-    !publicPage.includes('src={game.heroImage ?? game.coverImage}\n              alt=""\n              sizes="100vw"\n              priority'),
-  "La ficha pública debe consumir imagen, modo y viewport del Contenedor desde resolvers compartidos."
+    has(
+      heroFrameCss,
+      ".hero {",
+      "min-height: 478px",
+      ".inner {",
+      "grid-template-columns: 238px minmax(0, 1fr)",
+      ".cover {",
+      "aspect-ratio: 3 / 4",
+      "@media (max-width: 1180px)",
+      "grid-template-columns: 215px minmax(0, 1fr)",
+      "@media (max-width: 700px)",
+      "width: min(52vw, 210px)",
+      "@media (prefers-reduced-motion: reduce)"
+    ),
+  "El Hero de la ficha debe resolver multimedia y geometría pública en un único frame compartido."
+);
+
+assert(
+  has(
+    publicPage,
+    'import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame"',
+    '<GameDetailHeroFrame game={game} ariaLabelledby="game-title">'
+  ) &&
+    !publicPage.includes("GameDetailContainerMedia") &&
+    !publicPage.includes("resolveGameDestinationImage") &&
+    !publicPage.includes("resolveGameDetailImageViewport") &&
+    !publicPageCss.includes(".hero {") &&
+    !publicPageCss.includes(".heroInner"),
+  "La ficha pública debe delegar Contenedor, Portada y geometría del Hero al frame canónico."
 );
 
 assert(
   has(
     adminPreview,
-    'import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia"',
-    'resolveGameDestinationImage(game, "detail")',
-    'resolveGameDestinationMediaMode(game, "detail")',
-    "resolveGameDetailImageViewport(game)",
-    "<GameDetailContainerMedia",
-    "video={game.videoMedia?.detail}"
+    'import GameDetailHeroFrame from "@/components/games/GameDetailHeroFrame"',
+    "<GameDetailHeroFrame",
+    'ariaLabelledby="preview-game-title"',
+    "className={styles.heroPreview}",
+    'id="preview-game-title"'
   ) &&
-    !adminPreview.includes("const detailImageViewport = game.imageMedia?.detail") &&
-    !adminPreview.includes("src={game.heroImage ?? game.coverImage}"),
-  "La Vista previa editorial debe consumir el mismo Contenedor y resolver su viewport con la misma fuente de verdad que la ficha pública."
+    !adminPreview.includes("GameDetailContainerMedia") &&
+    !adminPreview.includes("resolveGameDestinationImage") &&
+    !adminPreview.includes("resolveGameDetailImageViewport") &&
+    !adminPreviewCss.includes(".hero {") &&
+    !adminPreviewCss.includes(".heroInner") &&
+    has(adminPreviewCss, ".heroPreview {", "margin-top: 22px"),
+  "La Vista previa editorial debe montar el Hero público real y conservar sólo su separación editorial externa."
 );
 
 assert(
