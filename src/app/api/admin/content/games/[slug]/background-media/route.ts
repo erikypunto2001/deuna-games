@@ -258,7 +258,10 @@ export async function POST(
         },
       };
     } else {
-      if (current.videoMedia?.background?.clip === match.src) {
+      if (
+        current.videoMedia?.background?.clip === match.src &&
+        current.videoMedia.background.playback === "always"
+      ) {
         return NextResponse.json(
           { ok: true, revision: item.revision },
           { headers: { "Cache-Control": "no-store" } }
