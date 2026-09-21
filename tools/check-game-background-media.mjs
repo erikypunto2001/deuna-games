@@ -28,6 +28,10 @@ const [
   publicBackgroundMediaCss,
   adminPreview,
   adminPreviewCss,
+  visualFixture,
+  visualWorkflow,
+  sitewideBrowser,
+  packageJson,
   publicLayout,
   multimediaEditor,
   assignmentsWorkspace,
@@ -51,6 +55,10 @@ const [
   source("src/components/games/GameDetailBackgroundMedia.module.css"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.module.css"),
+  source("tools/game-background-visual-fixture.ts"),
+  source(".github/workflows/ci.yml"),
+  source("tools/sitewide-browser-smoke.mjs"),
+  source("package.json"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
@@ -316,6 +324,46 @@ assert(
     !adminPreview.includes("<video") &&
     !adminPreview.includes("GameMedia"),
   "Vista previa debe mostrar el Fondo del borrador en marcos desktop/mobile usando el renderer público real, sin imitar su media."
+);
+
+assert(
+  has(
+    visualFixture,
+    'const FIXTURE_FLAG = "DEUNA_GAME_BACKGROUND_VISUAL_FIXTURE"',
+    'const FIXTURE_SLUG = "elden-ring"',
+    "process.env.CI",
+    "process.env.GITHUB_ACTIONS",
+    'published_payload ->> \'slug\' = $1',
+    "backgroundImage: image",
+    "background: {",
+    "confirmed: true",
+    'background: "image"',
+    "editorial_revisions",
+    "editorial_publications",
+    "game-background-fixture.json"
+  ) &&
+    has(
+      visualWorkflow,
+      "Create game background visual fixture",
+      'DEUNA_GAME_BACKGROUND_VISUAL_FIXTURE: "1"',
+      "npm run visual:game-background-fixture"
+    ) &&
+    has(
+      packageJson,
+      '"visual:game-background-fixture"',
+      "./tools/game-background-visual-fixture.ts"
+    ) &&
+    has(
+      sitewideBrowser,
+      'data-game-background-positioning="fixed"',
+      'data-game-background-preview="true"',
+      'data-game-background-preview-viewport="desktop"',
+      'data-game-background-preview-viewport="mobile"',
+      'data-game-background-positioning="contained"',
+      "publicGameBackgroundReady",
+      "adminGameBackgroundPreviewReady"
+    ),
+  "CI visual debe publicar un Fondo Imagen sólo en PostgreSQL efímera y verificar el renderer real en web pública y Vista previa."
 );
 
 assert(
