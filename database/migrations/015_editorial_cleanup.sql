@@ -20,6 +20,7 @@ DECLARE
   insight_count integer := 0;
   home_draft_refs integer := 0;
   home_published_refs integer := 0;
+  home_history_refs integer := 0;
 BEGIN
   IF p_game_slug IS NULL
      OR p_game_slug !~ '^[a-z0-9][a-z0-9._-]{0,159}$'
@@ -91,6 +92,36 @@ BEGIN
       'outcome', 'home_reference',
       'draftReferences', home_draft_refs,
       'publishedReferences', home_published_refs
+    );
+  END IF;
+
+  SELECT count(*)::integer
+    INTO home_history_refs
+    FROM (
+      SELECT revision.payload
+        FROM deuna_admin.editorial_revisions AS revision
+        INNER JOIN deuna_admin.editorial_items AS home
+          ON home.id = revision.item_id
+       WHERE home.item_type = 'home_config'
+         AND home.item_key = 'home'
+      UNION ALL
+      SELECT publication.payload
+        FROM deuna_admin.editorial_publications AS publication
+        INNER JOIN deuna_admin.editorial_items AS home
+          ON home.id = publication.item_id
+       WHERE home.item_type = 'home_config'
+         AND home.item_key = 'home'
+    ) AS history
+   WHERE
+     COALESCE(history.payload -> 'heroSlugs', '[]'::jsonb) ? p_game_slug
+     OR COALESCE(history.payload -> 'popularSlugs', '[]'::jsonb) ? p_game_slug
+     OR COALESCE(history.payload -> 'lowSpecSlugs', '[]'::jsonb) ? p_game_slug
+     OR COALESCE(history.payload -> 'recommendedSlugs', '[]'::jsonb) ? p_game_slug;
+
+  IF home_history_refs > 0 THEN
+    RETURN jsonb_build_object(
+      'outcome', 'home_history_reference',
+      'historicalReferences', home_history_refs
     );
   END IF;
 
