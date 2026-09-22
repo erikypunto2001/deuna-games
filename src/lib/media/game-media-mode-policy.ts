@@ -35,14 +35,27 @@ export function isGameMediaModeAllowed(
 /**
  * Compatibilidad de lectura para snapshots antiguos.
  *
- * Desde septiembre de 2026 sólo Hero conserva Imagen + hover. Los demás
- * destinos interpretan ese modo histórico como Imagen: preserva el estado
- * estable que existía antes de la interacción y evita volver a activar hover
- * al leer borradores o publicaciones viejas.
+ * Desde septiembre de 2026 sólo Hero conserva Imagen + hover como opción
+ * editable. Card migra ese modo histórico a Video para no perder un WebM que
+ * ya estaba publicado; el runtime moderno sigue activándolo por interacción en
+ * Cards normales y como video visible en filas de detalle estático. Contenedor
+ * y Fondo conservan la degradación a Imagen porque ya no tienen interacción
+ * multimedia por hover.
  */
 export function normalizeGameMediaMode(
   target: GameMediaModeTarget,
   mode: GameDestinationMediaMode
 ): GameDestinationMediaMode {
-  return isGameMediaModeAllowed(target, mode) ? mode : "image";
+  if (isGameMediaModeAllowed(target, mode)) {
+    return mode;
+  }
+
+  if (
+    target === "card" &&
+    mode === "hover-video"
+  ) {
+    return "video";
+  }
+
+  return "image";
 }
