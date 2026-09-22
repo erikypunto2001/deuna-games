@@ -245,7 +245,32 @@ const notices = {
   "mantenimiento-confirmacion": {
     kind: "error",
     message:
-      "La compactación no se ejecutó porque la frase de confirmación no coincide exactamente.",
+      "La compactación no se ejecutó porque la confirmación, contraseña o snapshot esperado no son válidos.",
+  },
+  "mantenimiento-conflicto": {
+    kind: "warning",
+    message:
+      "El historial cambió después de cargar esta pantalla. No se eliminó ninguna versión. Recarga Mantenimiento y revisa nuevamente los conteos.",
+  },
+  "inicio-mantenimiento-confirmacion": {
+    kind: "error",
+    message:
+      "La compactación de Inicio no se ejecutó porque la confirmación, contraseña o snapshot esperado no son válidos.",
+  },
+  "inicio-mantenimiento-conflicto": {
+    kind: "warning",
+    message:
+      "El historial de Inicio cambió después de cargar esta pantalla. No se eliminó ninguna versión. Recarga antes de volver a confirmar.",
+  },
+  "inicio-historial-compactado": {
+    kind: "success",
+    message:
+      "Historial de Inicio compactado a un baseline actual sin modificar los historiales de juegos ni otras superficies editoriales.",
+  },
+  reauth: {
+    kind: "error",
+    message:
+      "La contraseña actual del Owner no pudo verificarse. La operación crítica no se ejecutó.",
   },
 } as const;
 
