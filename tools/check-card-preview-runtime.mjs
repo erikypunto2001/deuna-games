@@ -32,7 +32,8 @@ assert(
 assert(
   hoverPreview.includes("const [playing, setPlaying] = useState(false)") &&
     hoverPreview.includes("function ensurePlayback(video: HTMLVideoElement)") &&
-    hoverPreview.includes("if (!video.paused) return;") &&
+    hoverPreview.includes("requestAnimationFrame(() => {") &&
+    hoverPreview.includes("if (!video.isConnected || !video.paused) return;") &&
     hoverPreview.includes("void video.play().catch(() => {") &&
     hoverPreview.includes(
       "onCanPlay={(event) => ensurePlayback(event.currentTarget)}"
@@ -42,7 +43,7 @@ assert(
     hoverPreview.includes("onWaiting={() => setPlaying(false)}") &&
     hoverPreview.includes("onStalled={() => setPlaying(false)}") &&
     hoverPreview.includes("onError={() => setPlaying(false)}"),
-  "La Card debe reintentar el autoplay al quedar reproducible y la imagen sólo puede ceder cuando el WebM realmente está avanzando."
+  "La Card debe dejar un frame al autoplay nativo antes de reintentar reproducción y la imagen sólo puede ceder cuando el WebM realmente está avanzando."
 );
 
 if (failures.length > 0) {
@@ -52,5 +53,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Card preview runtime: OK (sin video antes de hidratación -> documento visible -> reduced-motion respetado -> autoplay reintentado -> videoReady sólo al reproducir)."
+  "Card preview runtime: OK (sin video antes de hidratación -> documento visible -> reduced-motion respetado -> autoplay nativo primero/reintento diferido -> videoReady sólo al reproducir)."
 );
