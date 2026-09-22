@@ -16,7 +16,7 @@ import "server-only";
  * deuna_admin.editorial_publications.
  */
 export const PUBLIC_EXPOSURE_PUBLICATION_SQL = `(
-  publication.action IN ('published', 'rollback')
+  publication.action IN ('published', 'rollback', 'baseline')
   OR (
     publication.action = 'bootstrap'
     AND NOT EXISTS (
