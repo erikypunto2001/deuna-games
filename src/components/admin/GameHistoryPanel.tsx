@@ -4,6 +4,10 @@ import {
   Send,
 } from "lucide-react";
 
+import GameHistoryCleanupPanel from "@/components/admin/GameHistoryCleanupPanel";
+import type {
+  EditorialItemHistoryOverview,
+} from "@/lib/admin/editorial-maintenance-service";
 import type {
   GameHistoryEvent,
 } from "@/lib/admin/game-history";
@@ -40,9 +44,13 @@ function formatDate(date: Date) {
 export default function GameHistoryPanel({
   events,
   currentRevision,
+  slug,
+  maintenanceOverview,
 }: {
   events: GameHistoryEvent[];
   currentRevision: number;
+  slug: string;
+  maintenanceOverview?: EditorialItemHistoryOverview | null;
 }) {
   return (
     <section className={`${adminStyles.historyPanel} admin-editorial-history`}>
@@ -123,6 +131,14 @@ export default function GameHistoryPanel({
             );
           })}
         </ol>
+      )}
+
+      {maintenanceOverview && (
+        <GameHistoryCleanupPanel
+          slug={slug}
+          mode="full"
+          overview={maintenanceOverview}
+        />
       )}
     </section>
   );
