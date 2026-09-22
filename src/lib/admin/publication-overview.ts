@@ -278,12 +278,9 @@ export async function listPublicationStates(
            item.public_visible = false OR
            item.draft_payload IS DISTINCT FROM item.published_payload
          ) AS has_unpublished_changes,
-         EXISTS (
-           SELECT 1
-           FROM deuna_admin.editorial_revisions AS revision
-           WHERE revision.item_id = item.id
-             AND revision.revision = 1
-             AND revision.action = 'draft_saved'
+         (
+           item.source_present = false
+           AND item.source_payload = '{}'::jsonb
          ) AS panel_created,
          EXISTS (
            SELECT 1
@@ -326,12 +323,9 @@ export async function getGamePublicationIdentity(
            item.public_visible = false OR
            item.draft_payload IS DISTINCT FROM item.published_payload
          ) AS has_unpublished_changes,
-         EXISTS (
-           SELECT 1
-           FROM deuna_admin.editorial_revisions AS revision
-           WHERE revision.item_id = item.id
-             AND revision.revision = 1
-             AND revision.action = 'draft_saved'
+         (
+           item.source_present = false
+           AND item.source_payload = '{}'::jsonb
          ) AS panel_created,
          EXISTS (
            SELECT 1
