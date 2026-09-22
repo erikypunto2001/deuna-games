@@ -11,8 +11,10 @@ const STAGING_DIRECTORY = "deuna-preview-sources";
 const STAGING_FILE_PATTERN =
   /^[a-f0-9]{48}\.(?:json|video|video\.part|proxy\.webm|proxy\.webm\.part)$/;
 const STAGING_TRIM_DIRECTORY_PATTERN = /^\.trim-[A-Za-z0-9_-]{6}$/;
-const TOP_LEVEL_TEMPORARY_DIRECTORY_PATTERN =
-  /^deuna-(?:preview-upload|media-import-worker)-[A-Za-z0-9_-]{6}$/;
+const PREVIEW_UPLOAD_DIRECTORY_PATTERN =
+  /^deuna-preview-upload-[A-Za-z0-9_-]{6}$/;
+const MEDIA_IMPORT_WORKER_DIRECTORY_PATTERN =
+  /^deuna-media-import-worker-[A-Za-z0-9_-]{6}$/;
 
 export type SiteTemporaryJunkCandidate = {
   kind: "file" | "directory";
@@ -220,7 +222,12 @@ export async function scanSiteTemporaryJunk(
 
   const topLevelEntries = await readdir(root, { withFileTypes: true });
   for (const entry of topLevelEntries) {
-    if (!TOP_LEVEL_TEMPORARY_DIRECTORY_PATTERN.test(entry.name)) continue;
+    if (
+      !PREVIEW_UPLOAD_DIRECTORY_PATTERN.test(entry.name) &&
+      !MEDIA_IMPORT_WORKER_DIRECTORY_PATTERN.test(entry.name)
+    ) {
+      continue;
+    }
 
     const entryPath = path.join(root, entry.name);
     const label = relativeLabel(root, entryPath);
