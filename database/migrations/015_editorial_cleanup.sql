@@ -230,9 +230,12 @@ BEGIN
   DELETE FROM deuna_admin.editorial_revisions;
   DELETE FROM deuna_admin.editorial_publications;
 
+  UPDATE deuna_admin.editorial_items
+     SET published_from_revision = NULL;
+
   FOR item IN
     SELECT *
-      FROM editorial_history_compaction_state
+      FROM pg_temp.editorial_history_compaction_state
      ORDER BY item_type, item_key
   LOOP
     item_count := item_count + 1;
@@ -286,7 +289,7 @@ BEGIN
       item.publication_number,
       item.published_payload,
       item.published_checksum,
-      item.published_from_revision,
+      NULL,
       publication_action,
       item.published_by,
       item.published_at
