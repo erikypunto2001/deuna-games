@@ -8,8 +8,8 @@ import {
   verifyAdminSession,
 } from "./session";
 import {
-  deleteEditorialMediaResource,
-  listEditorialMediaLibrary,
+  deleteAllEditorialMediaResources,
+  inspectEditorialMediaDeletionInventory,
 } from "@/lib/media/editorial-media-library";
 
 type GameDeletionPreviewRow = {
@@ -35,6 +35,8 @@ export type GameDeletionPreview = {
   reason:
     | "ready"
     | "source_managed"
+    | "still_public"
+    | "media_unverified"
     | "home_reference"
     | "home_history_reference";
   revision: number;
@@ -46,7 +48,8 @@ export type GameDeletionPreview = {
   preferences: number;
   ratings: number;
   insightSnapshots: number;
-  mediaResources: number;
+  mediaResources: number | null;
+  mediaInventoryVerified: boolean;
   homeDraftReferences: number;
   homePublishedReferences: number;
   homeHistoricalReferences: number;
@@ -64,6 +67,7 @@ export type DeletePanelGameResult =
     }
   | { outcome: "not_found" }
   | { outcome: "source_managed" }
+  | { outcome: "still_public" }
   | {
       outcome: "home_reference";
       draftReferences: number;
@@ -231,13 +235,18 @@ export async function getGameDeletionPreview(
 
   if (!row) return null;
 
-  let mediaResources = 0;
+  let mediaResources: number | null = null;
+  let mediaInventoryVerified = false;
+
   try {
-    mediaResources = (
-      await listEditorialMediaLibrary(slug)
-    ).length;
+    const inventory =
+      await inspectEditorialMediaDeletionInventory(slug);
+    mediaResources = inventory.resources;
+    mediaInventoryVerified =
+      inventory.unrecognizedEntries === 0;
   } catch {
-    mediaResources = 0;
+    mediaResources = null;
+    mediaInventoryVerified = false;
   }
 
   const sourcePayload = asRecord(row.source_payload);
@@ -249,11 +258,15 @@ export async function getGameDeletionPreview(
     row.home_published_references > 0;
   const reason = !panelCreated
     ? "source_managed"
-    : hasHomeReference
-      ? "home_reference"
-      : row.home_historical_references > 0
-        ? "home_history_reference"
-        : "ready";
+    : row.public_visible
+      ? "still_public"
+      : !mediaInventoryVerified
+        ? "media_unverified"
+        : hasHomeReference
+          ? "home_reference"
+          : row.home_historical_references > 0
+            ? "home_history_reference"
+            : "ready";
 
   return {
     deletable: reason === "ready",
@@ -268,6 +281,7 @@ export async function getGameDeletionPreview(
     ratings: row.ratings,
     insightSnapshots: row.insight_snapshots,
     mediaResources,
+    mediaInventoryVerified,
     homeDraftReferences:
       row.home_draft_references,
     homePublishedReferences:
@@ -327,6 +341,9 @@ export async function deletePanelGame(
   if (outcome === "source_managed") {
     return { outcome: "source_managed" };
   }
+  if (outcome === "still_public") {
+    return { outcome: "still_public" };
+  }
   if (outcome === "home_reference") {
     return {
       outcome: "home_reference",
@@ -369,16 +386,8 @@ export async function deletePanelGame(
   let mediaCleanupPending = false;
 
   try {
-    const resources =
-      await listEditorialMediaLibrary(slug);
-
-    for (const resource of resources) {
-      await deleteEditorialMediaResource(
-        slug,
-        resource
-      );
-      mediaDeleted += 1;
-    }
+    mediaDeleted =
+      await deleteAllEditorialMediaResources(slug);
   } catch {
     mediaCleanupPending = true;
   }
