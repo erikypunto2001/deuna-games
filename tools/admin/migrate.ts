@@ -596,6 +596,16 @@ async function grantRuntimePrivileges(
                   deuna_admin.admin_audit_log_id_seq
       TO ${role};
 
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.delete_panel_game(
+        text, uuid, integer, integer
+      )
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.compact_editorial_history(uuid)
+      TO ${role};
+
     REVOKE ALL
       ON deuna_admin.schema_migrations
       FROM ${role};
