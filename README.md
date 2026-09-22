@@ -174,9 +174,15 @@ mediante visibilidad o cambios versionados de la fuente. El hard-delete y las
 compactaciones exigen reautenticación del Owner. Mantenimiento permite
 compactar sólo el historial de Inicio cuando ése es el bloqueo, o realizar una
 compactación global; ambas conservan el borrador, el snapshot publicado y la
-visibilidad actuales y dejan un baseline explícito. Antes de usar cualquier
-compactación sobre datos valiosos debe existir un backup verificado; en local
-se puede crear con `npm run admin:backup-local`.
+visibilidad actuales y dejan un baseline explícito. Cada juego ofrece además
+dos limpiezas Owner-only: desde Publicación se pueden eliminar únicamente los
+snapshots antiguos conservando todas las revisiones del borrador, y desde
+Historial se pueden compactar revisiones y publicaciones de ese juego a su
+baseline actual. Estas acciones exigen reautenticación, confirmación del
+identificador y control de concurrencia; no despublican contenido ni borran
+multimedia automáticamente. Antes de usar cualquier compactación sobre datos
+valiosos debe existir un backup verificado; en local se puede crear con
+`npm run admin:backup-local`.
 
 `DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
 
