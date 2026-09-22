@@ -84,13 +84,6 @@ export type DeletePanelGameResult =
       publicationNumber: number;
     };
 
-export type PendingGameMediaCleanup = {
-  slug: string;
-  createdAt: Date;
-  lastAttemptAt: Date | null;
-  attempts: number;
-};
-
 export type EditorialHistoryMaintenanceOverview = {
   items: number;
   revisions: number;
@@ -99,7 +92,6 @@ export type EditorialHistoryMaintenanceOverview = {
   publicationsAfterCompaction: number;
   homeRevisions: number;
   homePublications: number;
-  pendingGameMediaCleanups: PendingGameMediaCleanup[];
 };
 
 export type CompactEditorialHistoryResult =
@@ -523,24 +515,6 @@ export async function getEditorialHistoryMaintenanceOverview():
        ) AS home_publications`
   );
   const row = result.rows[0];
-  const session = await requireOwner();
-  const sessionToken = await readAdminSessionToken();
-  if (!sessionToken) {
-    throw new Error(
-      "La sesión administrativa no está disponible."
-    );
-  }
-
-  const pending = await adminQuery<{
-    game_slug: string;
-    created_at: Date;
-    last_attempt_at: Date | null;
-    attempts: number;
-  }>(
-    `SELECT *
-       FROM deuna_admin.list_game_media_cleanup_queue($1, $2)`,
-    [session.userId, sessionToken]
-  );
 
   return {
     items: row?.items ?? 0,
@@ -550,12 +524,6 @@ export async function getEditorialHistoryMaintenanceOverview():
     publicationsAfterCompaction: row?.items ?? 0,
     homeRevisions: row?.home_revisions ?? 0,
     homePublications: row?.home_publications ?? 0,
-    pendingGameMediaCleanups: pending.rows.map((entry) => ({
-      slug: entry.game_slug,
-      createdAt: entry.created_at,
-      lastAttemptAt: entry.last_attempt_at,
-      attempts: entry.attempts,
-    })),
   };
 }
 
