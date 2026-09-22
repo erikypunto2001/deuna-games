@@ -718,6 +718,104 @@ assertPublicImmutable(
   digest
 );
 
+const historyCounts = await adminQuery(
+  `SELECT
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_revisions
+        WHERE item_id = $1
+     ) AS revisions,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_publications
+        WHERE item_id = $1
+     ) AS publications,
+     revision,
+     publication_number,
+     public_visible
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+const historyState = historyCounts.rows[0];
+if (
+  !historyState ||
+  historyState.revisions <= 1 ||
+  historyState.publications <= 1
+) {
+  throw new Error(
+    "El fixture no conserva suficiente historial para probar la limpieza completa."
+  );
+}
+
+const historyCleanupBody = new URLSearchParams({
+  expectedRevisions: String(historyState.revisions),
+  expectedPublications: String(historyState.publications),
+  confirmSlug: slug,
+  currentPassword: adminPassword,
+}).toString();
+const historyCleanup = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/history/reset`,
+  {
+    method: "POST",
+    headers: formHeaders(
+      `/admin/juegos/${encodeURIComponent(slug)}?seccion=historial`,
+      cookie
+    ),
+    body: historyCleanupBody,
+  }
+);
+expectRedirect(
+  historyCleanup,
+  "La limpieza completa del historial del juego",
+  "historial-limpiado"
+);
+
+const compactedHistory = await adminQuery(
+  `SELECT
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_revisions
+        WHERE item_id = $1
+     ) AS revisions,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_publications
+        WHERE item_id = $1
+     ) AS publications,
+     revision,
+     publication_number,
+     public_visible
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+const compactedState = compactedHistory.rows[0];
+if (
+  !compactedState ||
+  compactedState.revisions !== 1 ||
+  compactedState.publications !== 1 ||
+  compactedState.revision !== historyState.revision ||
+  compactedState.publication_number !== historyState.publication_number ||
+  compactedState.public_visible !== false
+) {
+  throw new Error(
+    "Limpiar el historial completo alteró el estado actual o no dejó un único baseline."
+  );
+}
+
+assertAnonymousPrivate(
+  await request(publicPath),
+  "El asset histórico después de limpiar el historial"
+);
+assertPrivatePreview(
+  await request(publicPath, {
+    headers: { cookie },
+  }),
+  "El asset del borrador después de limpiar el historial",
+  digest
+);
+
 const deleteStateResult = await adminQuery(
   `SELECT revision, publication_number
    FROM deuna_admin.editorial_items
@@ -839,5 +937,5 @@ console.log(
     `(slug=${slug}, bytes=${image.length}, ` +
     "upload=anon404/admin-private, draft=custom-pending-private, " +
     "crop=confirmed-private, published=public-immutable, " +
-    "restored=historical-public, cleanup=hidden, hard-delete=reauth+physical-clean)." 
+    "restored=historical-public, cleanup=hidden, history-clean=baseline, hard-delete=reauth+physical-clean)." 
 );
