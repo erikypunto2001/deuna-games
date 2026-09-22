@@ -44,10 +44,12 @@ function PreviewVideo({
   const [playing, setPlaying] = useState(false);
 
   function ensurePlayback(video: HTMLVideoElement) {
-    if (!video.paused) return;
+    requestAnimationFrame(() => {
+      if (!video.isConnected || !video.paused) return;
 
-    void video.play().catch(() => {
-      setPlaying(false);
+      void video.play().catch(() => {
+        setPlaying(false);
+      });
     });
   }
 
