@@ -120,7 +120,8 @@ assert(
   gameFinder.includes('resolveGameDetailPresentation') &&
     gameFinder.includes('resolveGameDetailPresentation(selectedGame).sizeLabel') &&
     gameFinder.includes('<dt>Espacio requerido</dt>') &&
-    !gameFinder.includes('getPerformanceProfile(selectedGame.slug)'),
+    !gameFinder.includes("getPerformanceProfile(") &&
+    gameFinder.includes("game.performance !== undefined"),
   "Finder debe mostrar almacenamiento desde la misma presentación editorial publicada y no desde perfiles FPS históricos."
 );
 
