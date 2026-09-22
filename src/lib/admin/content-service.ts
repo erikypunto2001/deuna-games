@@ -55,7 +55,8 @@ type EditorialRevisionRow = {
     | "imported"
     | "source_refreshed"
     | "draft_saved"
-    | "draft_restored";
+    | "draft_restored"
+    | "baseline";
   created_at: Date;
 };
 
