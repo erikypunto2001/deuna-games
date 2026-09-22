@@ -4,6 +4,7 @@ import {
   lstat,
   readFile,
   readdir,
+  rmdir,
   unlink,
   writeFile,
 } from "node:fs/promises";
@@ -471,6 +472,22 @@ export async function deleteAllEditorialMediaResources(
         path.join(directory, entry.name)
       );
     }
+  }
+
+  const remaining = await readdir(directory, {
+    withFileTypes: true,
+  });
+
+  if (remaining.length !== 0) {
+    throw new Error(
+      "El namespace multimedia no quedó vacío después de la limpieza exhaustiva."
+    );
+  }
+
+  try {
+    await rmdir(directory);
+  } catch (error) {
+    if (!isMissingPath(error)) throw error;
   }
 
   return deleted;
