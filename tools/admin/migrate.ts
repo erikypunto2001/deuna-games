@@ -603,7 +603,15 @@ async function grantRuntimePrivileges(
       TO ${role};
 
     GRANT EXECUTE
-      ON FUNCTION deuna_admin.compact_editorial_history(uuid, text)
+      ON FUNCTION deuna_admin.compact_editorial_history(
+        uuid, text, integer, integer, integer
+      )
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.compact_editorial_item_history(
+        text, text, uuid, text, integer, integer
+      )
       TO ${role};
 
     REVOKE ALL
