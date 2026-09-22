@@ -138,6 +138,13 @@ export async function POST(
       );
     }
 
+    if (result.outcome === "media_unverified") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=eliminacion-media-no-verificada`
+      );
+    }
+
     if (result.outcome === "home_reference") {
       return adminRedirect(
         authorized.adminOrigin,
