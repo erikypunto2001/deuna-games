@@ -411,10 +411,37 @@ function playingVideoExpression(lookup) {
   return `(() => {
     const card = ${lookup};
     const video = card?.querySelector("video");
-    if (!(video instanceof HTMLVideoElement)) return false;
+    const frame = video?.parentElement;
+    if (
+      !(video instanceof HTMLVideoElement) ||
+      !(frame instanceof HTMLElement)
+    ) {
+      return false;
+    }
+
+    const frameStyle = getComputedStyle(frame);
+    const videoStyle = getComputedStyle(video);
+    const frameRect = frame.getBoundingClientRect();
+    const videoRect = video.getBoundingClientRect();
+    const frameOpacity = Number.parseFloat(frameStyle.opacity);
+    const videoOpacity = Number.parseFloat(videoStyle.opacity);
+    const visuallyExposed =
+      frameStyle.display !== "none" &&
+      frameStyle.visibility !== "hidden" &&
+      videoStyle.display !== "none" &&
+      videoStyle.visibility !== "hidden" &&
+      frameOpacity >= 0.99 &&
+      videoOpacity >= 0.99 &&
+      frameRect.width > 2 &&
+      frameRect.height > 2 &&
+      videoRect.width > 2 &&
+      videoRect.height > 2;
+
     if (
       video.paused ||
-      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+      video.currentTime <= 0.02 ||
+      !visuallyExposed
     ) {
       return false;
     }
@@ -429,6 +456,12 @@ function playingVideoExpression(lookup) {
       currentTime: video.currentTime,
       hidden: document.hidden,
       reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      frameOpacity,
+      videoOpacity,
+      frameWidth: frameRect.width,
+      frameHeight: frameRect.height,
+      videoWidth: videoRect.width,
+      videoHeight: videoRect.height,
     };
   })()`;
 }
@@ -533,25 +566,8 @@ async function verifyHomeInteractionFirstCard(cdp, fixture) {
 
   const playing = await waitFor(
     cdp,
-    `(() => {
-      const card = ${lookup};
-      const video = card?.querySelector("video");
-      if (!(video instanceof HTMLVideoElement)) return false;
-      if (
-        video.paused ||
-        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-        video.currentTime <= 0.02
-      ) {
-        return false;
-      }
-      return {
-        src: new URL(video.currentSrc || video.src, location.href).pathname,
-        readyState: video.readyState,
-        paused: video.paused,
-        currentTime: video.currentTime,
-      };
-    })()`,
-    "Hogwarts primera Card de Home interaction no reprodujo el WebM"
+    playingVideoExpression(lookup),
+    "Hogwarts primera Card de Home interaction no reprodujo un WebM visible"
   );
 
   if (
@@ -653,25 +669,8 @@ async function verifyLegacyCardPlayback(
   await hoverCard(cdp, lookup);
   const playing = await waitFor(
     cdp,
-    `(() => {
-      const card = ${lookup};
-      const video = card?.querySelector("video");
-      if (!(video instanceof HTMLVideoElement)) return false;
-      if (
-        video.paused ||
-        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-        video.currentTime <= 0.02
-      ) {
-        return false;
-      }
-      return {
-        src: new URL(video.currentSrc || video.src, location.href).pathname,
-        readyState: video.readyState,
-        paused: video.paused,
-        currentTime: video.currentTime,
-      };
-    })()`,
-    `${label} montó el video pero no avanzó la reproducción`
+    playingVideoExpression(lookup),
+    `${label} no llegó a reproducir una capa de video visible`
   );
 
   if (
@@ -884,25 +883,8 @@ async function main() {
     await hoverCard(cdp, redDeadLookup);
     const redDeadPlaying = await waitFor(
       cdp,
-      `(() => {
-        const card = ${redDeadLookup};
-        const video = card?.querySelector("video");
-        if (!(video instanceof HTMLVideoElement)) return false;
-        if (
-          video.paused ||
-          video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-          video.currentTime <= 0.02
-        ) {
-          return false;
-        }
-        return {
-          src: new URL(video.currentSrc || video.src, location.href).pathname,
-          readyState: video.readyState,
-          paused: video.paused,
-          currentTime: video.currentTime,
-        };
-      })()`,
-      "RDR2 legacy montó el video pero no avanzó la reproducción"
+      playingVideoExpression(redDeadLookup),
+      "RDR2 legacy no llegó a reproducir una capa de video visible"
     );
     if (
       redDeadPlaying.src !== redDeadFixture.clip ||
