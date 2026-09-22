@@ -16,6 +16,7 @@ import type {
 import styles from "./HoverPreviewMedia.module.css";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const AUTOPLAY_RETRY_DELAY_MS = 250;
 
 type HoverPreviewMediaProps = {
   imageSrc?: string;
@@ -44,13 +45,13 @@ function PreviewVideo({
   const [playing, setPlaying] = useState(false);
 
   function ensurePlayback(video: HTMLVideoElement) {
-    requestAnimationFrame(() => {
+    window.setTimeout(() => {
       if (!video.isConnected || !video.paused) return;
 
       void video.play().catch(() => {
         setPlaying(false);
       });
-    });
+    }, AUTOPLAY_RETRY_DELAY_MS);
   }
 
   useEffect(() => {
