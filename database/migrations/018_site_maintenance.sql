@@ -98,20 +98,39 @@ BEGIN
     INTO orphan_updates_count
     FROM deuna_admin.editorial_items AS update_item
    WHERE update_item.item_type = 'game_update'
-     AND COALESCE(
-       NULLIF(update_item.draft_payload->>'gameSlug', ''),
-       NULLIF(update_item.published_payload->>'gameSlug', ''),
-       NULLIF(update_item.source_payload->>'gameSlug', '')
-     ) IS NOT NULL
-     AND NOT EXISTS (
-       SELECT 1
-         FROM deuna_admin.editorial_items AS game
-        WHERE game.item_type = 'game'
-          AND game.item_key = COALESCE(
-            NULLIF(update_item.draft_payload->>'gameSlug', ''),
-            NULLIF(update_item.published_payload->>'gameSlug', ''),
-            NULLIF(update_item.source_payload->>'gameSlug', '')
-          )
+     AND (
+       (
+         NULLIF(update_item.source_payload->>'gameSlug', '') IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1
+             FROM deuna_admin.editorial_items AS game
+            WHERE game.item_type = 'game'
+              AND game.item_key =
+                update_item.source_payload->>'gameSlug'
+         )
+       )
+       OR
+       (
+         NULLIF(update_item.draft_payload->>'gameSlug', '') IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1
+             FROM deuna_admin.editorial_items AS game
+            WHERE game.item_type = 'game'
+              AND game.item_key =
+                update_item.draft_payload->>'gameSlug'
+         )
+       )
+       OR
+       (
+         NULLIF(update_item.published_payload->>'gameSlug', '') IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1
+             FROM deuna_admin.editorial_items AS game
+            WHERE game.item_type = 'game'
+              AND game.item_key =
+                update_item.published_payload->>'gameSlug'
+         )
+       )
      );
 
   SELECT count(*)::integer
