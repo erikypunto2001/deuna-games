@@ -1,0 +1,151 @@
+.panel {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(255, 105, 136, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 72, 112, 0.035);
+}
+
+.copy {
+  display: grid;
+  gap: 5px;
+}
+
+.copy > span {
+  color: #e49aad;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.copy > strong {
+  color: #f2e7ea;
+  font-size: 15px;
+}
+
+.copy p,
+.note {
+  color: #9f8e95;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.facts > div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(5, 8, 13, 0.34);
+}
+
+.facts span,
+.facts strong {
+  display: block;
+}
+
+.facts span {
+  color: #91838a;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.facts strong {
+  margin-top: 4px;
+  color: #e8dfe2;
+  font-size: 14px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.form label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: #c8bac0;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 11px;
+  color: #f5edf0;
+  border: 1px solid #3b3036;
+  border-radius: 8px;
+  outline: none;
+  background: #090c11;
+  font: inherit;
+  font-size: 13px;
+}
+
+.form input:focus-visible {
+  border-color: #c55f7a;
+  box-shadow: 0 0 0 3px rgba(197, 95, 122, 0.13);
+}
+
+.form button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  color: #ffdbe3;
+  border: 1px solid rgba(255, 95, 130, 0.42);
+  border-radius: 8px;
+  background: rgba(255, 72, 112, 0.11);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.form button:hover,
+.form button:focus-visible {
+  border-color: rgba(255, 119, 148, 0.64);
+  background: rgba(255, 72, 112, 0.17);
+}
+
+.empty {
+  padding: 12px;
+  color: #9e9397;
+  border: 1px dashed rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.note {
+  display: block;
+}
+
+@media (max-width: 860px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .form button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+}
