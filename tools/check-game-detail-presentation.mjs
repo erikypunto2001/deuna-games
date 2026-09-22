@@ -20,6 +20,7 @@ const [
   gameHeroDestinationPreview,
   homeHeroLivePreview,
   homeHeroRenderer,
+  gameFinder,
 ] = await Promise.all([
   source("src/lib/games/game-detail-presentation.ts"),
   source("src/app/juegos/[slug]/page.tsx"),
@@ -28,6 +29,7 @@ const [
   source("src/components/admin/GameHeroDestinationPreview.tsx"),
   source("src/components/admin/HomeHeroLivePreview.tsx"),
   source("src/components/home/HeroSection.tsx"),
+  source("src/features/game-finder/GameFinderClient.tsx"),
 ]);
 
 assert(
@@ -112,6 +114,14 @@ assert(
     ) &&
     homeHeroRenderer.includes("<HeroVideoLayer"),
   "Vista previa debe validar Hero 3:1 con el renderer público real y un selector compacto que conserve escritorio, tableta y móvil sin duplicar su lógica."
+);
+
+assert(
+  gameFinder.includes('resolveGameDetailPresentation') &&
+    gameFinder.includes('resolveGameDetailPresentation(selectedGame).sizeLabel') &&
+    gameFinder.includes('<dt>Espacio requerido</dt>') &&
+    !gameFinder.includes('getPerformanceProfile(selectedGame.slug)'),
+  "Finder debe mostrar almacenamiento desde la misma presentación editorial publicada y no desde perfiles FPS históricos."
 );
 
 assert(
