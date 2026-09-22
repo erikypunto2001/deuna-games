@@ -18,7 +18,7 @@ export type GameHistoryRevision = {
   kind: "revision";
   id: string;
   revision: number;
-  action: "imported" | "source_refreshed" | "draft_saved" | "draft_restored";
+  action: "imported" | "source_refreshed" | "draft_saved" | "draft_restored" | "baseline";
   actor: string | null;
   createdAt: Date;
   changes: GameHistoryChange[];
@@ -29,7 +29,7 @@ export type GameHistoryPublication = {
   id: string;
   publicationNumber: number;
   sourceRevision: number | null;
-  action: "bootstrap" | "published" | "rollback";
+  action: "bootstrap" | "published" | "rollback" | "baseline";
   actor: string | null;
   createdAt: Date;
 };
