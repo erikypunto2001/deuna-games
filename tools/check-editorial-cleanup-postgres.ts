@@ -534,12 +534,13 @@ try {
   );
 
   const queuedCleanup = await client.query<{
+    game_slug: string;
     attempts: number;
   }>(
-    `SELECT attempts
-       FROM deuna_admin.game_media_cleanup_queue
-      WHERE game_slug = $1`,
-    [slug]
+    `SELECT game_slug, attempts
+       FROM deuna_admin.list_game_media_cleanup_queue($1, $2)
+      WHERE game_slug = $3`,
+    [ownerId, sessionToken, slug]
   );
   assert(
     queuedCleanup.rows.length === 1 &&
