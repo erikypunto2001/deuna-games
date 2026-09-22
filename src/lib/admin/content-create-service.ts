@@ -43,6 +43,10 @@ export type CreateEditorialDraftResult =
   | {
       outcome: "exists";
       key: string;
+    }
+  | {
+      outcome: "cleanup_pending";
+      key: string;
     };
 
 async function assertActor(
@@ -183,6 +187,20 @@ export async function createGameDraft(
   };
 
   return withAdminTransaction(async (client) => {
+    const pendingCleanup = await client.query<{
+      pending: boolean;
+    }>(
+      `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
+      [input.slug]
+    );
+
+    if (pendingCleanup.rows[0]?.pending === true) {
+      return {
+        outcome: "cleanup_pending" as const,
+        key: input.slug,
+      };
+    }
+
     const created = await insertHiddenEditorialItem(
       client,
       "game",
