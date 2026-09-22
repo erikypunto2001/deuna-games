@@ -37,6 +37,8 @@ const [
 assert(
   has(
     history,
+    "editorial_revisions",
+    "revision.payload",
     "editorial_publications",
     "publication.payload",
     "PUBLIC_EXPOSURE_PUBLICATION_SQL",
@@ -51,7 +53,7 @@ assert(
       "created_item.source_payload = '{}'::jsonb",
       "NOT EXISTS"
     ),
-  "La higiene debe usar la fuente compartida que protege publicaciones/restauraciones y distinguir el bootstrap privado por su origen persistente, sin depender de revisiones históricas compactables."
+  "La higiene debe proteger tanto revisiones como publicaciones restaurables y distinguir el bootstrap privado por su origen persistente."
 );
 
 assert(
