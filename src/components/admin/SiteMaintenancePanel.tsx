@@ -451,7 +451,7 @@ export default function SiteMaintenancePanel({
           <span>RECUPERACIÓN</span>
           <h3>Limpiezas multimedia pendientes</h3>
           <p>
-            También podés reintentar una
+            También puedes reintentar una
             recuperación individual sin ejecutar
             el resto de la limpieza general.
           </p>
