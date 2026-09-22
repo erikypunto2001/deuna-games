@@ -66,7 +66,7 @@
     "visual:card-video-fixture": "node --conditions=react-server ./tools/card-video-visual-fixture.ts",
     "visual:card-video-legacy-history-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/card-video-legacy-history-fixture.ts",
     "visual:card-video-browser": "node ./tools/card-video-browser-smoke.mjs",
-    "visual:home-row-static-detail-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/home-row-static-detail-visual-fixture.ts",
+    "visual:home-row-static-detail-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/home-row-static-detail-visual-fixture.ts --mode=static-detail",
     "visual:home-row-static-detail-browser": "node ./tools/home-row-static-detail-browser-smoke.mjs",
     "visual:card-video-runtime": "bash ./tools/card-video-visual-runtime-smoke.sh",
     "visual:hero-motion": "node ./tools/hero-motion-browser-smoke.mjs",
@@ -89,7 +89,8 @@
     "admin:purge-media-junk": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply",
     "visual:game-background-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/game-background-visual-fixture.ts",
     "visual:editorial-maintenance": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/editorial-maintenance-lifecycle-smoke.mjs",
-    "check:site-maintenance-postgres": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-site-maintenance-postgres.ts"
+    "check:site-maintenance-postgres": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-site-maintenance-postgres.ts",
+    "visual:home-row-interaction-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/home-row-static-detail-visual-fixture.ts --mode=interaction"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
