@@ -398,6 +398,18 @@ const destructiveEditorialRoutes = await Promise.all([
     "reset",
     "route.ts"
   ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "media-cleanup",
+    "[slug]",
+    "route.ts"
+  ),
 ].map((file) => readFile(file, "utf8")));
 
 assert(
@@ -429,6 +441,16 @@ const gameHistoryCleanupMigration = await readFile(
   "utf8"
 );
 
+const mediaCleanupRecoveryMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "017_game_media_cleanup_recovery.sql"
+  ),
+  "utf8"
+);
+
 assert(
   editorialCleanupMigration.includes(
     "IF target.public_visible THEN"
@@ -456,6 +478,25 @@ assert(
       "editorial_publication_history_compacted"
     ),
   "Limpiar snapshots por juego debe conservar revisiones, crear un único baseline publicado y dejar auditoría."
+);
+
+assert(
+  mediaCleanupRecoveryMigration.includes(
+    "game_media_cleanup_queue"
+  ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "AFTER DELETE ON deuna_admin.editorial_items"
+    ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "BEFORE INSERT ON deuna_admin.editorial_items"
+    ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "begin_game_media_cleanup"
+    ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "complete_game_media_cleanup"
+    ),
+  "El hard-delete debe registrar la limpieza multimedia en la misma transacción, bloquear reutilización del slug y permitir un reintento Owner."
 );
 
 const editorialMaintenanceService = await readFile(
