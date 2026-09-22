@@ -60,6 +60,221 @@ AFTER DELETE ON deuna_admin.editorial_items
 FOR EACH ROW
 EXECUTE FUNCTION deuna_admin.enqueue_deleted_game_media_cleanup();
 
+CREATE OR REPLACE FUNCTION deuna_admin.is_game_media_cleanup_pending(
+  p_game_slug text
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, deuna_admin
+AS $
+  SELECT EXISTS (
+    SELECT 1
+      FROM deuna_admin.game_media_cleanup_queue
+     WHERE game_slug = p_game_slug
+  );
+$;
+
+REVOKE ALL ON FUNCTION deuna_admin.is_game_media_cleanup_pending(text)
+  FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION deuna_admin.prevent_game_recreation_during_media_cleanup()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, deuna_admin
+AS $
+BEGIN
+  IF NEW.item_type = 'game'
+     AND EXISTS (
+       SELECT 1
+         FROM deuna_admin.game_media_cleanup_queue
+        WHERE game_slug = NEW.item_key
+     ) THEN
+    RAISE EXCEPTION
+      'game media cleanup pending for slug %',
+      NEW.item_key
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  RETURN NEW;
+END;
+$;
+
+REVOKE ALL ON FUNCTION deuna_admin.prevent_game_recreation_during_media_cleanup()
+  FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS editorial_items_block_pending_media_cleanup
+  ON deuna_admin.editorial_items;
+
+CREATE TRIGGER editorial_items_block_pending_media_cleanup
+BEFORE INSERT ON deuna_admin.editorial_items
+FOR EACH ROW
+EXECUTE FUNCTION deuna_admin.prevent_game_recreation_during_media_cleanup();
+
+CREATE OR REPLACE FUNCTION deuna_admin.list_game_media_cleanup_queue(
+  p_actor_user_id uuid,
+  p_session_token text
+)
+RETURNS TABLE (
+  game_slug text,
+  created_at timestamptz,
+  last_attempt_at timestamptz,
+  attempts integer
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, deuna_admin
+AS $
+BEGIN
+  IF p_session_token IS NULL
+     OR p_session_token !~ '^[A-Za-z0-9_-]{43}
+  p_game_slug text,
+  p_actor_user_id uuid,
+  p_session_token text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, deuna_admin
+AS $$
+DECLARE
+  attempt_count integer;
+BEGIN
+  IF p_game_slug IS NULL
+     OR p_game_slug !~ '^[a-z0-9][a-z0-9._-]{0,159}$' THEN
+    RETURN jsonb_build_object('outcome', 'invalid');
+  END IF;
+
+  IF p_session_token IS NULL
+     OR p_session_token !~ '^[A-Za-z0-9_-]{43}$'
+     OR NOT EXISTS (
+       SELECT 1
+         FROM deuna_admin.admin_sessions AS session
+         INNER JOIN deuna_admin.admin_users AS account
+           ON account.id = session.user_id
+        WHERE session.token_hash = encode(
+          sha256(convert_to(p_session_token, 'UTF8')),
+          'hex'
+        )
+          AND session.user_id = p_actor_user_id
+          AND session.revoked_at IS NULL
+          AND session.expires_at > now()
+          AND account.role = 'owner'
+          AND account.active = true
+     ) THEN
+    RETURN jsonb_build_object('outcome', 'forbidden');
+  END IF;
+
+  UPDATE deuna_admin.game_media_cleanup_queue
+     SET attempts = attempts + 1,
+         last_attempt_at = now()
+   WHERE game_slug = p_game_slug
+   RETURNING attempts INTO attempt_count;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('outcome', 'not_found');
+  END IF;
+
+  RETURN jsonb_build_object(
+    'outcome', 'pending',
+    'attempts', attempt_count
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION deuna_admin.begin_game_media_cleanup(
+  text, uuid, text
+) FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION deuna_admin.complete_game_media_cleanup(
+  p_game_slug text,
+  p_actor_user_id uuid,
+  p_session_token text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, deuna_admin
+AS $$
+DECLARE
+  removed integer := 0;
+BEGIN
+  IF p_game_slug IS NULL
+     OR p_game_slug !~ '^[a-z0-9][a-z0-9._-]{0,159}$' THEN
+    RETURN jsonb_build_object('outcome', 'invalid');
+  END IF;
+
+  IF p_session_token IS NULL
+     OR p_session_token !~ '^[A-Za-z0-9_-]{43}$'
+     OR NOT EXISTS (
+       SELECT 1
+         FROM deuna_admin.admin_sessions AS session
+         INNER JOIN deuna_admin.admin_users AS account
+           ON account.id = session.user_id
+        WHERE session.token_hash = encode(
+          sha256(convert_to(p_session_token, 'UTF8')),
+          'hex'
+        )
+          AND session.user_id = p_actor_user_id
+          AND session.revoked_at IS NULL
+          AND session.expires_at > now()
+          AND account.role = 'owner'
+          AND account.active = true
+     ) THEN
+    RETURN jsonb_build_object('outcome', 'forbidden');
+  END IF;
+
+  DELETE FROM deuna_admin.game_media_cleanup_queue
+   WHERE game_slug = p_game_slug;
+  GET DIAGNOSTICS removed = ROW_COUNT;
+
+  RETURN jsonb_build_object(
+    'outcome',
+    CASE WHEN removed = 1 THEN 'completed' ELSE 'not_found' END
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION deuna_admin.complete_game_media_cleanup(
+  text, uuid, text
+) FROM PUBLIC;
+
+     OR NOT EXISTS (
+       SELECT 1
+         FROM deuna_admin.admin_sessions AS session
+         INNER JOIN deuna_admin.admin_users AS account
+           ON account.id = session.user_id
+        WHERE session.token_hash = encode(
+          sha256(convert_to(p_session_token, 'UTF8')),
+          'hex'
+        )
+          AND session.user_id = p_actor_user_id
+          AND session.revoked_at IS NULL
+          AND session.expires_at > now()
+          AND account.role = 'owner'
+          AND account.active = true
+     ) THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    queue.game_slug::text,
+    queue.created_at,
+    queue.last_attempt_at,
+    queue.attempts
+  FROM deuna_admin.game_media_cleanup_queue AS queue
+  ORDER BY queue.created_at ASC, queue.game_slug ASC;
+END;
+$;
+
+REVOKE ALL ON FUNCTION deuna_admin.list_game_media_cleanup_queue(
+  uuid, text
+) FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION deuna_admin.begin_game_media_cleanup(
   p_game_slug text,
   p_actor_user_id uuid,
