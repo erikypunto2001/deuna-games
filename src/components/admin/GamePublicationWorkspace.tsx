@@ -197,6 +197,14 @@ function RequestNotice({
     );
   }
 
+  if (state === "eliminacion-home-historial") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        Una versión histórica de Inicio todavía referencia este juego. Compacta el historial desde Mantenimiento después de retirar las referencias actuales.
+      </div>
+    );
+  }
+
   if (state === "solicitud" || state === "datos") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
