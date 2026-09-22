@@ -637,6 +637,17 @@ async function grantRuntimePrivileges(
       ON FUNCTION deuna_admin.complete_game_media_cleanup(text, uuid, text)
       TO ${role};
 
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.inspect_site_runtime_junk(uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.purge_site_runtime_junk(
+        uuid, text, integer, integer, integer, integer,
+        integer, integer, integer
+      )
+      TO ${role};
+
     REVOKE ALL
       ON deuna_admin.schema_migrations
       FROM ${role};
