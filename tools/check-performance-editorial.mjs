@@ -32,6 +32,7 @@ const [
   calibrationHook,
   performanceEstimate,
   compatibilityCard,
+  compatibilityHook,
   publicPerformanceRoute,
   requirementsPage,
   previewPage,
@@ -54,6 +55,7 @@ const [
   source("src/features/game-finder/useGamePerformanceCalibration.ts"),
   source("src/features/game-finder/GamePerformanceEstimate.tsx"),
   source("src/app/juegos/[slug]/GameCompatibilityCard.tsx"),
+  source("src/features/game-finder/useGameCompatibilityMetadata.ts"),
   source("src/app/api/games/[slug]/performance/route.ts"),
   source("src/app/requisitos/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
@@ -160,8 +162,20 @@ assert(
     calibrationHook.includes("resolved = new Map") &&
     calibrationHook.includes("parsePublishedCalibration") &&
     calibrationHook.includes("/performance") &&
-    calibrationHook.includes('cache: "no-store"'),
-  "Los estimadores de la ficha deben compartir y validar una sola lectura pública de calibración."
+    calibrationHook.includes('cache: "no-store"') &&
+    calibrationHook.includes("PUBLIC_GAME_METADATA_CACHE_MS = 60_000") &&
+    calibrationHook.includes("window.setTimeout") &&
+    calibrationHook.includes("window.clearTimeout"),
+  "Los estimadores de la ficha deben compartir, validar y revalidar periódicamente la calibración pública."
+);
+
+assert(
+  compatibilityHook.includes("PUBLIC_GAME_METADATA_CACHE_MS = 60_000") &&
+    compatibilityHook.includes("window.setTimeout") &&
+    compatibilityHook.includes("window.clearTimeout") &&
+    compatibilityHook.includes('/compatibility') &&
+    compatibilityHook.includes('cache: "no-store"'),
+  "La metadata pública de compatibilidad debe revalidarse mientras la ficha permanezca abierta."
 );
 
 for (const [name, component] of [
