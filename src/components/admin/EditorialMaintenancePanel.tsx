@@ -1,7 +1,6 @@
 import {
   ArchiveRestore,
   AlertTriangle,
-  RotateCcw,
 } from "lucide-react";
 
 import type {
@@ -187,66 +186,6 @@ export default function EditorialMaintenancePanel({
         </button>
       </form>
 
-      <div className={styles.heading}>
-        <span>RECUPERACIÓN DE ARCHIVOS</span>
-        <h3>Limpiezas multimedia pendientes</h3>
-        <p>
-          Si un hard-delete eliminó correctamente la base pero el filesystem
-          falló, el slug queda bloqueado y aparece aquí hasta que el namespace
-          multimedia se elimine por completo.
-        </p>
-      </div>
-
-      {overview.pendingGameMediaCleanups.length === 0 ? (
-        <div className={styles.empty}>
-          No hay limpiezas multimedia pendientes.
-        </div>
-      ) : (
-        <div className={styles.pendingList}>
-          {overview.pendingGameMediaCleanups.map((entry) => (
-            <div className={styles.pendingItem} key={entry.slug}>
-              <div>
-                <strong>{entry.slug}</strong>
-                <small>
-                  Intentos: {entry.attempts}
-                  {entry.lastAttemptAt
-                    ? ` · último: ${entry.lastAttemptAt.toISOString()}`
-                    : " · todavía sin reintentos"}
-                </small>
-              </div>
-
-              <form
-                className={styles.retryForm}
-                method="post"
-                action={`/api/admin/content/maintenance/media-cleanup/${encodeURIComponent(entry.slug)}`}
-              >
-                <label>
-                  Contraseña actual del Owner
-                  <input
-                    type="password"
-                    name="currentPassword"
-                    autoComplete="current-password"
-                    required
-                  />
-                </label>
-                <label>
-                  Escribe <strong>{entry.slug}</strong>
-                  <input
-                    type="text"
-                    name="confirmSlug"
-                    autoComplete="off"
-                    required
-                  />
-                </label>
-                <button className={styles.button} type="submit">
-                  <RotateCcw size={16} aria-hidden="true" />
-                  Reintentar limpieza
-                </button>
-              </form>
-            </div>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
