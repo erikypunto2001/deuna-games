@@ -16,6 +16,11 @@ import {
   type SiteMediaJunkScan,
 } from "@/lib/admin/site-maintenance-media";
 import {
+  purgeSiteTemporaryJunk,
+  scanSiteTemporaryJunk,
+  type SiteTemporaryJunkScan,
+} from "@/lib/admin/site-maintenance-temporary";
+import {
   readAdminSessionToken,
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -42,6 +47,7 @@ export type SiteMaintenancePendingCleanup = {
 export type SiteMaintenanceOverview = {
   runtime: RuntimeJunkSummary;
   media: SiteMediaJunkScan;
+  temporary: SiteTemporaryJunkScan;
   pendingMediaCleanups:
     SiteMaintenancePendingCleanup[];
   safeRecords: number;
@@ -65,6 +71,9 @@ export type SiteMaintenancePurgeResult =
       mediaBytesDeleted: number;
       markersDeleted: number;
       directoriesDeleted: number;
+      temporaryFilesDeleted: number;
+      temporaryDirectoriesDeleted: number;
+      temporaryBytesDeleted: number;
       pendingCompleted: number;
       pendingRemaining: number;
       skipped: number;
@@ -213,6 +222,7 @@ async function listPendingMediaCleanups(
 function overviewFingerprint(
   runtime: RuntimeJunkSummary,
   media: SiteMediaJunkScan,
+  temporary: SiteTemporaryJunkScan,
   pending:
     readonly SiteMaintenancePendingCleanup[]
 ) {
@@ -220,6 +230,7 @@ function overviewFingerprint(
     .update(JSON.stringify({
       runtime,
       media: media.fingerprint,
+      temporary: temporary.fingerprint,
       pending: pending.map((entry) => [
         entry.slug,
         entry.createdAt.toISOString(),
@@ -241,6 +252,7 @@ export async function inspectSiteMaintenance():
   const [
     runtime,
     pendingMediaCleanups,
+    temporary,
   ] = await Promise.all([
     inspectRuntimeJunk(
       session.userId,
@@ -250,6 +262,7 @@ export async function inspectSiteMaintenance():
       session.userId,
       sessionToken
     ),
+    scanSiteTemporaryJunk(),
   ]);
   const media = await scanSiteMediaJunk(
     pendingMediaCleanups.map(
@@ -273,11 +286,13 @@ export async function inspectSiteMaintenance():
   const manualIssues =
     runtime.orphanGameUpdates +
     media.unknownNamespaces.length +
-    media.unexpectedEntries.length;
+    media.unexpectedEntries.length +
+    temporary.unexpectedEntries.length;
 
   return {
     runtime,
     media,
+    temporary,
     pendingMediaCleanups,
     safeRecords,
     safeFiles: media.orphaned.length,
@@ -289,6 +304,7 @@ export async function inspectSiteMaintenance():
     fingerprint: overviewFingerprint(
       runtime,
       media,
+      temporary,
       pendingMediaCleanups
     ),
   };
@@ -410,10 +426,42 @@ export async function purgeSiteMaintenance(
       mediaBytesDeleted: 0,
       markersDeleted: 0,
       directoriesDeleted: 0,
+      temporaryFilesDeleted: 0,
+      temporaryDirectoriesDeleted: 0,
+      temporaryBytesDeleted: 0,
       pendingCompleted: 0,
       pendingRemaining:
         final.pendingMediaCleanups.length,
       skipped: 0,
+      final,
+    };
+  }
+
+  const temporary =
+    await purgeSiteTemporaryJunk(
+      current.temporary.fingerprint
+    );
+
+  if (temporary.outcome === "conflict") {
+    const final =
+      await inspectSiteMaintenance();
+
+    return {
+      outcome: "partial",
+      recordsDeleted:
+        runtime.recordsDeleted,
+      mediaFilesDeleted: media.files,
+      mediaBytesDeleted: media.bytes,
+      markersDeleted: media.markers,
+      directoriesDeleted:
+        media.directories,
+      temporaryFilesDeleted: 0,
+      temporaryDirectoriesDeleted: 0,
+      temporaryBytesDeleted: 0,
+      pendingCompleted: 0,
+      pendingRemaining:
+        final.pendingMediaCleanups.length,
+      skipped: media.skipped,
       final,
     };
   }
@@ -454,7 +502,15 @@ export async function purgeSiteMaintenance(
         bytes: media.bytes,
         markers: media.markers,
         directories: media.directories,
-        skipped: media.skipped,
+        skipped:
+          media.skipped +
+          temporary.skipped,
+        temporaryFiles:
+          temporary.files,
+        temporaryDirectories:
+          temporary.directories,
+        temporaryBytes:
+          temporary.bytes,
         pendingCompleted,
       }),
     ]
@@ -467,6 +523,7 @@ export async function purgeSiteMaintenance(
     final.safeFiles > 0 ||
     final.safeMarkers > 0 ||
     final.safeDirectories > 0 ||
+    final.temporary.candidates.length > 0 ||
     final.pendingMediaCleanups.length > 0;
 
   return {
@@ -480,10 +537,18 @@ export async function purgeSiteMaintenance(
     markersDeleted: media.markers,
     directoriesDeleted:
       media.directories,
+    temporaryFilesDeleted:
+      temporary.files,
+    temporaryDirectoriesDeleted:
+      temporary.directories,
+    temporaryBytesDeleted:
+      temporary.bytes,
     pendingCompleted,
     pendingRemaining:
       final.pendingMediaCleanups.length,
-    skipped: media.skipped,
+    skipped:
+      media.skipped +
+      temporary.skipped,
     final,
   };
 }
