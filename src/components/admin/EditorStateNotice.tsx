@@ -130,7 +130,7 @@ const notices = {
   "recurso-en-historial": {
     kind: "warning",
     message:
-      "Ese master está protegido por una publicación histórica restaurable. No se eliminó el archivo: conservarlo garantiza que el botón Restaurar siga pudiendo reconstruir ese snapshot.",
+      "Ese master está protegido por una revisión o publicación histórica restaurable. No se eliminó el archivo: conservarlo garantiza que Restaurar siga pudiendo reconstruir esa versión.",
   },
   "recurso-eliminado": {
     kind: "success",
@@ -256,6 +256,26 @@ const notices = {
     kind: "error",
     message:
       "El reintento no se ejecutó porque la contraseña o el identificador de confirmación no son válidos.",
+  },
+  "limpieza-general-completa": {
+    kind: "success",
+    message:
+      "Limpieza general completada. Se eliminaron únicamente residuos seguros y el sitio fue analizado nuevamente al finalizar.",
+  },
+  "limpieza-general-parcial": {
+    kind: "warning",
+    message:
+      "La limpieza general eliminó lo que pudo verificar con seguridad, pero quedaron residuos pendientes o el estado cambió durante la operación. Revisa el diagnóstico actualizado.",
+  },
+  "limpieza-general-conflicto": {
+    kind: "warning",
+    message:
+      "El diagnóstico cambió desde que cargaste Mantenimiento. No se inició la limpieza general; revisa los conteos y vuelve a confirmar.",
+  },
+  "limpieza-general-confirmacion": {
+    kind: "error",
+    message:
+      "La limpieza general no se ejecutó porque la contraseña, la frase de confirmación o el snapshot esperado no son válidos.",
   },
   "historial-compactado": {
     kind: "success",
