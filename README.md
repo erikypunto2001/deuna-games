@@ -168,13 +168,15 @@ El área `/admin` incorpora:
 
 La cuenta propietaria dispone además de **Mantenimiento** para operaciones
 destructivas auditadas. Los juegos creados exclusivamente desde Admin pueden
-eliminarse de forma definitiva sólo cuando Inicio no los referencia; los juegos
-respaldados por `src/data/games.ts` se retiran mediante visibilidad o cambios
-versionados de la fuente. La compactación del historial conserva el borrador,
-el snapshot publicado y la visibilidad actuales de cada registro, pero elimina
-las versiones anteriores y por tanto sus posibilidades de restauración. Antes
-de usarla sobre datos valiosos debe existir un backup verificado; en local se
-puede crear con `npm run admin:backup-local`.
+eliminarse de forma definitiva sólo después de ocultarlos y cuando Inicio no
+los referencia; los juegos respaldados por `src/data/games.ts` se retiran
+mediante visibilidad o cambios versionados de la fuente. El hard-delete y las
+compactaciones exigen reautenticación del Owner. Mantenimiento permite
+compactar sólo el historial de Inicio cuando ése es el bloqueo, o realizar una
+compactación global; ambas conservan el borrador, el snapshot publicado y la
+visibilidad actuales y dejan un baseline explícito. Antes de usar cualquier
+compactación sobre datos valiosos debe existir un backup verificado; en local
+se puede crear con `npm run admin:backup-local`.
 
 `DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
 
