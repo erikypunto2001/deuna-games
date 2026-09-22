@@ -79,6 +79,7 @@ try {
     can_delete_items: boolean;
     can_delete_panel_game: boolean;
     can_compact_history: boolean;
+    can_compact_item_history: boolean;
   }>(
     `SELECT
        has_table_privilege(
@@ -93,9 +94,14 @@ try {
        ) AS can_delete_panel_game,
        has_function_privilege(
          current_user,
-         'deuna_admin.compact_editorial_history(uuid,text)',
+         'deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)',
          'EXECUTE'
-       ) AS can_compact_history`
+       ) AS can_compact_history,
+       has_function_privilege(
+         current_user,
+         'deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)',
+         'EXECUTE'
+       ) AS can_compact_item_history`
   );
   assert(
     privilege.rows[0]?.can_delete_items === false,
@@ -103,7 +109,8 @@ try {
   );
   assert(
     privilege.rows[0]?.can_delete_panel_game === true &&
-      privilege.rows[0]?.can_compact_history === true,
+      privilege.rows[0]?.can_compact_history === true &&
+      privilege.rows[0]?.can_compact_item_history === true,
     "El rol runtime debe ejecutar sólo las funciones de mantenimiento autorizadas."
   );
 
@@ -354,6 +361,34 @@ try {
        $1, 80, 'medium', 2, '{}'::jsonb, $2
      )`,
     [slug, ownerId]
+  );
+
+  await client.query(
+    `UPDATE deuna_admin.editorial_items
+        SET public_visible = true
+      WHERE id = $1`,
+    [gameId]
+  );
+
+  const visibleDelete = await client.query<{
+    result: unknown;
+  }>(
+    `SELECT deuna_admin.delete_panel_game(
+       $1, $2, $3, 1, 1
+     ) AS result`,
+    [slug, ownerId, sessionToken]
+  );
+  assert(
+    outcome(visibleDelete.rows[0]?.result).outcome ===
+      "still_public",
+    "Un juego todavía visible debe ocultarse antes del hard-delete."
+  );
+
+  await client.query(
+    `UPDATE deuna_admin.editorial_items
+        SET public_visible = false
+      WHERE id = $1`,
+    [gameId]
   );
 
   const home = await client.query<{
@@ -667,9 +702,15 @@ try {
     result: unknown;
   }>(
     `SELECT deuna_admin.compact_editorial_history(
-       $1, $2
+       $1, $2, $3, $4, $5
      ) AS result`,
-    [ownerId, sessionToken]
+    [
+      ownerId,
+      sessionToken,
+      beforeCounts.items,
+      beforeCounts.revisions,
+      beforeCounts.publications,
+    ]
   );
   assert(
     outcome(compacted.rows[0]?.result).outcome ===
@@ -693,6 +734,28 @@ try {
       afterCounts.revisions === afterCounts.items &&
       afterCounts.publications === afterCounts.items,
     "La compactación debe conservar exactamente un baseline por registro."
+  );
+
+  const baselineActions = await client.query<{
+    revision_baselines: number;
+    publication_baselines: number;
+  }>(
+    `SELECT
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions
+          WHERE action = 'baseline'
+       ) AS revision_baselines,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications
+          WHERE action = 'baseline'
+       ) AS publication_baselines`
+  );
+  assert(
+    (baselineActions.rows[0]?.revision_baselines ?? 0) > 0 &&
+      (baselineActions.rows[0]?.publication_baselines ?? 0) > 0,
+    "La compactación debe identificar explícitamente el baseline de mantenimiento."
   );
 
   const preserved = await client.query<{
@@ -726,6 +789,50 @@ try {
     "La compactación alteró estado editorial actual o dejó una revisión histórica colgante."
   );
 
+  const homeCounts = await client.query<{
+    revisions: number;
+    publications: number;
+  }>(
+    `SELECT
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions
+          WHERE item_id = $1
+       ) AS revisions,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications
+          WHERE item_id = $1
+       ) AS publications`,
+    [homeRow.id]
+  );
+  const homeCountRow = homeCounts.rows[0];
+  assert(homeCountRow, "Faltan conteos de historial de Inicio.");
+
+  const homeCompacted = await client.query<{
+    result: unknown;
+  }>(
+    `SELECT deuna_admin.compact_editorial_item_history(
+       'home_config',
+       'home',
+       $1,
+       $2,
+       $3,
+       $4
+     ) AS result`,
+    [
+      ownerId,
+      sessionToken,
+      homeCountRow.revisions,
+      homeCountRow.publications,
+    ]
+  );
+  assert(
+    outcome(homeCompacted.rows[0]?.result).outcome ===
+      "compacted",
+    "La compactación acotada de Inicio fue rechazada."
+  );
+
   const privateExposure = await client.query<{
     count: number;
   }>(
@@ -743,7 +850,7 @@ try {
   await client.query("ROLLBACK");
 
   console.log(
-    "Higiene editorial PostgreSQL: OK (mínimo privilegio, bloqueo de fuente/Home, borrado coordinado y compactación preservando estado actual)."
+    "Higiene editorial PostgreSQL: OK (mínimo privilegio, bloqueo de fuente/visibilidad/Home, borrado coordinado, baseline explícito y compactación global/acotada preservando estado actual)."
   );
 } catch (error) {
   await client.query("ROLLBACK").catch(() => {});
