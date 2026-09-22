@@ -15,7 +15,13 @@ type CompatibilityState = {
   metadata: GameCompatibilityMetadata | null;
 };
 
-const resolved = new Map<string, GameCompatibilityMetadata | null>();
+type CachedCompatibilityMetadata = {
+  value: GameCompatibilityMetadata | null;
+  loadedAt: number;
+};
+
+const PUBLIC_GAME_METADATA_CACHE_MS = 60_000;
+const resolved = new Map<string, CachedCompatibilityMetadata>();
 const pending = new Map<string, Promise<GameCompatibilityMetadata | null>>();
 
 function parsePublishedCompatibilityMetadata(
@@ -71,11 +77,23 @@ function parsePublishedCompatibilityMetadata(
   };
 }
 
+function getFreshCachedMetadata(slug: string) {
+  const cached = resolved.get(slug);
+  if (
+    !cached ||
+    Date.now() - cached.loadedAt > PUBLIC_GAME_METADATA_CACHE_MS
+  ) {
+    return undefined;
+  }
+  return cached.value;
+}
+
 function loadCompatibilityMetadata(
   slug: string
 ): Promise<GameCompatibilityMetadata | null> {
-  if (resolved.has(slug)) {
-    return Promise.resolve(resolved.get(slug) ?? null);
+  const cached = getFreshCachedMetadata(slug);
+  if (cached !== undefined) {
+    return Promise.resolve(cached);
   }
 
   const existing = pending.get(slug);
@@ -92,7 +110,10 @@ function loadCompatibilityMetadata(
     })
     .catch(() => null)
     .then((metadata) => {
-      resolved.set(slug, metadata);
+      resolved.set(slug, {
+        value: metadata,
+        loadedAt: Date.now(),
+      });
       pending.delete(slug);
       return metadata;
     });
@@ -103,10 +124,11 @@ function loadCompatibilityMetadata(
 
 export function useGameCompatibilityMetadata(slug: string) {
   const cached = resolved.get(slug);
+  const freshCached = getFreshCachedMetadata(slug);
   const [state, setState] = useState<CompatibilityState>(() => ({
     slug,
-    loaded: resolved.has(slug),
-    metadata: cached ?? null,
+    loaded: freshCached !== undefined,
+    metadata: cached?.value ?? null,
   }));
 
   useEffect(() => {
@@ -134,9 +156,10 @@ export function useGameCompatibilityMetadata(slug: string) {
     };
   }
 
-  if (resolved.has(slug)) {
+  const nextCached = getFreshCachedMetadata(slug);
+  if (nextCached !== undefined) {
     return {
-      metadata: resolved.get(slug) ?? null,
+      metadata: nextCached,
       loading: false,
     };
   }
