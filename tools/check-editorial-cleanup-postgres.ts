@@ -851,6 +851,44 @@ try {
     "Limpiar el historial del juego alteró el estado editorial actual."
   );
 
+  await client.query(
+    `UPDATE deuna_admin.editorial_items
+        SET revision = 2,
+            publication_number = 2,
+            published_from_revision = 2
+      WHERE id = $1`,
+    [privateBaselineId]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_revisions (
+       item_id, revision, payload, action, actor_user_id
+     )
+     VALUES ($1, 2, $2::jsonb, 'draft_saved', $3)`,
+    [
+      privateBaselineId,
+      privateSerialized,
+      ownerId,
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_publications (
+       item_id,
+       publication_number,
+       payload,
+       checksum,
+       source_revision,
+       action,
+       actor_user_id
+     )
+     VALUES ($1, 2, $2::jsonb, $3, 2, 'bootstrap', $4)`,
+    [
+      privateBaselineId,
+      privateSerialized,
+      privateDigest,
+      ownerId,
+    ]
+  );
+
   const before = await client.query<{
     items: number;
     revisions: number;
