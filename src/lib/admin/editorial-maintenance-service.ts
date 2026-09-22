@@ -89,16 +89,39 @@ export type EditorialHistoryMaintenanceOverview = {
   publications: number;
   revisionsAfterCompaction: number;
   publicationsAfterCompaction: number;
+  homeRevisions: number;
+  homePublications: number;
 };
 
-export type CompactEditorialHistoryResult = {
-  outcome: "compacted";
-  items: number;
-  revisionsBefore: number;
-  revisionsAfter: number;
-  publicationsBefore: number;
-  publicationsAfter: number;
-};
+export type CompactEditorialHistoryResult =
+  | {
+      outcome: "compacted";
+      items: number;
+      revisionsBefore: number;
+      revisionsAfter: number;
+      publicationsBefore: number;
+      publicationsAfter: number;
+    }
+  | {
+      outcome: "conflict";
+      items: number;
+      revisions: number;
+      publications: number;
+    };
+
+export type CompactEditorialItemHistoryResult =
+  | {
+      outcome: "compacted";
+      revisionsBefore: number;
+      revisionsAfter: number;
+      publicationsBefore: number;
+      publicationsAfter: number;
+    }
+  | {
+      outcome: "conflict";
+      revisions: number;
+      publications: number;
+    };
 
 function asRecord(value: unknown) {
   return (
@@ -423,6 +446,8 @@ export async function getEditorialHistoryMaintenanceOverview():
     items: number;
     revisions: number;
     publications: number;
+    home_revisions: number;
+    home_publications: number;
   }>(
     `SELECT
        (
@@ -436,7 +461,23 @@ export async function getEditorialHistoryMaintenanceOverview():
        (
          SELECT count(*)::int
            FROM deuna_admin.editorial_publications
-       ) AS publications`
+       ) AS publications,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions AS revision
+           INNER JOIN deuna_admin.editorial_items AS item
+             ON item.id = revision.item_id
+          WHERE item.item_type = 'home_config'
+            AND item.item_key = 'home'
+       ) AS home_revisions,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications AS publication
+           INNER JOIN deuna_admin.editorial_items AS item
+             ON item.id = publication.item_id
+          WHERE item.item_type = 'home_config'
+            AND item.item_key = 'home'
+       ) AS home_publications`
   );
   const row = result.rows[0];
 
@@ -446,11 +487,18 @@ export async function getEditorialHistoryMaintenanceOverview():
     publications: row?.publications ?? 0,
     revisionsAfterCompaction: row?.items ?? 0,
     publicationsAfterCompaction: row?.items ?? 0,
+    homeRevisions: row?.home_revisions ?? 0,
+    homePublications: row?.home_publications ?? 0,
   };
 }
 
 export async function compactEditorialHistory(
-  actorUserId: string
+  actorUserId: string,
+  expected: {
+    items: number;
+    revisions: number;
+    publications: number;
+  }
 ): Promise<CompactEditorialHistoryResult> {
   const session = await requireOwner();
 
@@ -474,11 +522,29 @@ export async function compactEditorialHistory(
   }>(
     `SELECT deuna_admin.compact_editorial_history(
        $1,
-       $2
+       $2,
+       $3,
+       $4,
+       $5
      ) AS result`,
-    [actorUserId, sessionToken]
+    [
+      actorUserId,
+      sessionToken,
+      expected.items,
+      expected.revisions,
+      expected.publications,
+    ]
   );
   const raw = asRecord(result.rows[0]?.result);
+
+  if (raw.outcome === "conflict") {
+    return {
+      outcome: "conflict",
+      items: numberField(raw, "items"),
+      revisions: numberField(raw, "revisions"),
+      publications: numberField(raw, "publications"),
+    };
+  }
 
   if (raw.outcome !== "compacted") {
     throw new Error(
@@ -505,5 +571,73 @@ export async function compactEditorialHistory(
       raw,
       "publicationsAfter"
     ),
+  };
+}
+
+
+export async function compactHomeEditorialHistory(
+  actorUserId: string,
+  expected: {
+    revisions: number;
+    publications: number;
+  }
+): Promise<CompactEditorialItemHistoryResult> {
+  const session = await requireOwner();
+
+  if (session.userId !== actorUserId) {
+    throw new Error(
+      "La sesión administrativa no coincide con el actor."
+    );
+  }
+
+  const sessionToken =
+    await readAdminSessionToken();
+
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
+  const result = await adminQuery<{
+    result: unknown;
+  }>(
+    `SELECT deuna_admin.compact_editorial_item_history(
+       'home_config',
+       'home',
+       $1,
+       $2,
+       $3,
+       $4
+     ) AS result`,
+    [
+      actorUserId,
+      sessionToken,
+      expected.revisions,
+      expected.publications,
+    ]
+  );
+  const raw = asRecord(result.rows[0]?.result);
+
+  if (raw.outcome === "conflict") {
+    return {
+      outcome: "conflict",
+      revisions: numberField(raw, "revisions"),
+      publications: numberField(raw, "publications"),
+    };
+  }
+
+  if (raw.outcome !== "compacted") {
+    throw new Error(
+      "La compactación del historial de Inicio fue rechazada por la base."
+    );
+  }
+
+  return {
+    outcome: "compacted",
+    revisionsBefore: numberField(raw, "revisionsBefore"),
+    revisionsAfter: numberField(raw, "revisionsAfter"),
+    publicationsBefore: numberField(raw, "publicationsBefore"),
+    publicationsAfter: numberField(raw, "publicationsAfter"),
   };
 }
