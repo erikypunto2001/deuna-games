@@ -237,6 +237,26 @@ const notices = {
     message:
       "El juego y sus datos asociados fueron eliminados, pero la limpieza física de uno o más recursos multimedia quedó pendiente. El contenido ya no es público ni restaurable.",
   },
+  "eliminacion-media-no-verificada": {
+    kind: "error",
+    message:
+      "La eliminación definitiva no se ejecutó porque el namespace multimedia no pudo verificarse de forma exhaustiva. La base no fue modificada.",
+  },
+  "limpieza-media-pendiente": {
+    kind: "warning",
+    message:
+      "Existe una limpieza multimedia pendiente para ese identificador. El slug permanece bloqueado hasta que Mantenimiento elimine por completo el namespace anterior.",
+  },
+  "limpieza-media-completa": {
+    kind: "success",
+    message:
+      "La limpieza multimedia pendiente terminó correctamente. El namespace anterior fue eliminado y el identificador volvió a quedar disponible.",
+  },
+  "limpieza-media-confirmacion": {
+    kind: "error",
+    message:
+      "El reintento no se ejecutó porque la contraseña o el identificador de confirmación no son válidos.",
+  },
   "historial-compactado": {
     kind: "success",
     message:
