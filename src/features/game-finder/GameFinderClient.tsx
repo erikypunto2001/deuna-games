@@ -769,7 +769,7 @@ export default function GameFinderClient({
     resetFilters();
 
     const firstAnalyzableGame =
-      games.find((game) => Boolean(getPerformanceProfile(game.slug))) ?? games[0];
+      games.find((game) => game.performance !== undefined) ?? games[0];
 
     if (firstAnalyzableGame) {
       setSelectedSlug(firstAnalyzableGame.slug);
