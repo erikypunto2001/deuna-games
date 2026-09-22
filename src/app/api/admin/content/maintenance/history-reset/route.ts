@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import {
   adminRedirect,
@@ -6,13 +7,24 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
+  reauthenticateAdmin,
+} from "@/lib/admin/auth-service";
+import {
   compactEditorialHistory,
 } from "@/lib/admin/editorial-maintenance-service";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  adminCurrentPasswordSchema,
+} from "@/lib/admin/validation";
 
 const CONFIRMATION = "REINICIAR HISTORIAL";
+const countSchema = z
+  .string()
+  .regex(/^\d{1,10}$/)
+  .transform(Number)
+  .pipe(z.number().int().nonnegative());
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,10 +51,41 @@ export async function POST(
   if (
     !hasExactAdminFormFields(
       authorized.form,
-      ["confirmation"]
-    ) ||
-    authorized.form.get("confirmation") !==
-      CONFIRMATION
+      [
+        "confirmation",
+        "currentPassword",
+        "expectedItems",
+        "expectedRevisions",
+        "expectedPublications",
+      ]
+    )
+  ) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      "/admin/mantenimiento?estado=solicitud"
+    );
+  }
+
+  const currentPassword =
+    adminCurrentPasswordSchema.safeParse(
+      authorized.form.get("currentPassword")
+    );
+  const expectedItems = countSchema.safeParse(
+    authorized.form.get("expectedItems")
+  );
+  const expectedRevisions = countSchema.safeParse(
+    authorized.form.get("expectedRevisions")
+  );
+  const expectedPublications = countSchema.safeParse(
+    authorized.form.get("expectedPublications")
+  );
+
+  if (
+    authorized.form.get("confirmation") !== CONFIRMATION ||
+    !currentPassword.success ||
+    !expectedItems.success ||
+    !expectedRevisions.success ||
+    !expectedPublications.success
   ) {
     return adminRedirect(
       authorized.adminOrigin,
@@ -51,9 +94,31 @@ export async function POST(
   }
 
   try {
-    await compactEditorialHistory(
-      authorized.session.userId
+    if (!await reauthenticateAdmin(
+      authorized.session.userId,
+      currentPassword.data
+    )) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/mantenimiento?estado=reauth"
+      );
+    }
+
+    const result = await compactEditorialHistory(
+      authorized.session.userId,
+      {
+        items: expectedItems.data,
+        revisions: expectedRevisions.data,
+        publications: expectedPublications.data,
+      }
     );
+
+    if (result.outcome === "conflict") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/mantenimiento?estado=mantenimiento-conflicto"
+      );
+    }
 
     return adminRedirect(
       authorized.adminOrigin,
