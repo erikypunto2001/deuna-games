@@ -87,9 +87,12 @@ assert(
     modePolicy,
     "STANDARD_GAME_MEDIA_MODES",
     "background: STANDARD_GAME_MEDIA_MODES",
-    'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
+    'target === "card"',
+    'mode === "hover-video"',
+    'return "video";',
+    'return "image";'
   ),
-  "La política activa del Fondo debe limitarse a Imagen/Video y degradar hover histórico a Imagen."
+  "La política activa del Fondo debe seguir limitada a Imagen/Video y degradar hover histórico a Imagen aunque Card tenga una migración legacy específica."
 );
 
 assert(
