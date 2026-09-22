@@ -43,6 +43,14 @@ function PreviewVideo({
   const [playbackAllowed, setPlaybackAllowed] = useState(false);
   const [playing, setPlaying] = useState(false);
 
+  function ensurePlayback(video: HTMLVideoElement) {
+    if (!video.paused) return;
+
+    void video.play().catch(() => {
+      setPlaying(false);
+    });
+  }
+
   useEffect(() => {
     const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
     const syncPlaybackPolicy = () => {
@@ -86,6 +94,7 @@ function PreviewVideo({
       controls={false}
       preload="none"
       tabIndex={-1}
+      onCanPlay={(event) => ensurePlayback(event.currentTarget)}
       onPlaying={() => setPlaying(true)}
       onWaiting={() => setPlaying(false)}
       onStalled={() => setPlaying(false)}
