@@ -1,5 +1,31 @@
+import {
+  randomBytes,
+  randomUUID,
+} from "node:crypto";
+import {
+  access,
+  mkdir,
+  rm,
+  unlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import https from "node:https";
+import path from "node:path";
 import process from "node:process";
+
+import {
+  adminQuery,
+} from "../src/lib/admin/database.ts";
+import {
+  getEditorialMediaRoot,
+} from "../src/lib/media/editorial-media.ts";
+import {
+  TAXONOMY_ICON_SLUG,
+} from "../src/lib/media/taxonomy-icon-policy.ts";
+import {
+  SITE_BACKGROUND_MEDIA_SLUG,
+} from "../src/lib/site/backgrounds.ts";
 
 const baseUrl = new URL(
   process.env.DEUNA_VISUAL_BASE_URL ?? "https://127.0.0.1:3443"
@@ -136,6 +162,27 @@ function lastInputValue(html, name) {
   return values[values.length - 1];
 }
 
+
+function stringInputValue(html, name) {
+  const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
+  for (const input of inputs) {
+    const nameMatch = input.match(/\bname="([^"]*)"/i);
+    if (nameMatch?.[1] !== name) continue;
+    const valueMatch = input.match(/\bvalue="([^"]*)"/i);
+    if (valueMatch?.[1]) return valueMatch[1];
+  }
+  throw new Error("No se encontró " + name + ".");
+}
+
+async function pathExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function maintenancePage(cookie) {
   const response = await request(
     "/admin/mantenimiento",
@@ -171,7 +218,226 @@ const login = await request("/api/admin/auth/login", {
 redirectLocation(login, "Login de mantenimiento");
 const cookie = sessionCookie(login.headers["set-cookie"]);
 
+const owner = await adminQuery(
+  `SELECT id
+     FROM deuna_admin.admin_users
+    WHERE role = 'owner'
+      AND active = true
+    LIMIT 1`
+);
+const ownerId = owner.rows[0]?.id;
+if (!ownerId) {
+  throw new Error("Falta el Owner visual para mantenimiento.");
+}
+
+const junkSessionId = randomUUID();
+await adminQuery(
+  `INSERT INTO deuna_admin.admin_sessions (
+     id, user_id, token_hash, expires_at
+   )
+   VALUES ($1, $2, $3, now() + interval '1 hour')`,
+  [
+    junkSessionId,
+    ownerId,
+    randomBytes(32).toString("hex"),
+  ]
+);
+await adminQuery(
+  `UPDATE deuna_admin.admin_sessions
+      SET revoked_at = now()
+    WHERE id = $1`,
+  [junkSessionId]
+);
+
+const activeGame = await adminQuery(
+  `SELECT item_key
+     FROM deuna_admin.editorial_items
+    WHERE item_type = 'game'
+    ORDER BY item_key
+    LIMIT 1`
+);
+const activeGameSlug = activeGame.rows[0]?.item_key;
+if (!activeGameSlug) {
+  throw new Error("Falta un juego activo para probar marcadores multimedia.");
+}
+
+const mediaRoot = getEditorialMediaRoot();
+const backgroundDirectory = path.join(
+  mediaRoot,
+  SITE_BACKGROUND_MEDIA_SLUG
+);
+const taxonomyDirectory = path.join(
+  mediaRoot,
+  TAXONOMY_ICON_SLUG
+);
+const gameDirectory = path.join(
+  mediaRoot,
+  activeGameSlug
+);
+const unknownNamespace = `manual-review-${randomBytes(4).toString("hex")}`;
+const unknownDirectory = path.join(
+  mediaRoot,
+  unknownNamespace
+);
+const oldName = `${randomBytes(32).toString("hex")}.webp`;
+const recentName = `${randomBytes(32).toString("hex")}.webp`;
+const markerTarget = `${randomBytes(32).toString("hex")}.webp`;
+const markerName = `.delete-${markerTarget}`;
+const oldPath = path.join(
+  backgroundDirectory,
+  oldName
+);
+const recentPath = path.join(
+  backgroundDirectory,
+  recentName
+);
+const markerPath = path.join(
+  gameDirectory,
+  markerName
+);
+const unknownPath = path.join(
+  unknownDirectory,
+  "manual.txt"
+);
+
+await mkdir(backgroundDirectory, { recursive: true });
+await mkdir(taxonomyDirectory, { recursive: true });
+await mkdir(gameDirectory, { recursive: true });
+await mkdir(unknownDirectory, { recursive: true });
+await writeFile(oldPath, "old-orphan", { mode: 0o640 });
+await writeFile(recentPath, "recent-orphan", { mode: 0o640 });
+await writeFile(markerPath, "marker", { mode: 0o600 });
+await writeFile(unknownPath, "manual", { mode: 0o600 });
+const oldDate = new Date(
+  Date.now() - 25 * 60 * 60 * 1_000
+);
+await utimes(oldPath, oldDate, oldDate);
+
 let html = await maintenancePage(cookie);
+const initialFingerprint =
+  stringInputValue(
+    html,
+    "snapshotFingerprint"
+  );
+
+const rejectedGeneral = await post(
+  "/api/admin/content/maintenance/site-cleanup",
+  cookie,
+  {
+    confirmation: "LIMPIAR BASURA SEGURA",
+    currentPassword: adminPassword + "-incorrecta",
+    snapshotFingerprint: initialFingerprint,
+  },
+  "Limpieza general con contraseña incorrecta"
+);
+assertState(
+  rejectedGeneral,
+  "reauth",
+  "Reautenticación de limpieza general"
+);
+
+if (
+  !(await pathExists(oldPath)) ||
+  !(await pathExists(markerPath))
+) {
+  throw new Error(
+    "La reautenticación fallida alteró basura multimedia."
+  );
+}
+
+const staleFingerprint =
+  initialFingerprint[0] === "a"
+    ? `b${initialFingerprint.slice(1)}`
+    : `a${initialFingerprint.slice(1)}`;
+const staleGeneral = await post(
+  "/api/admin/content/maintenance/site-cleanup",
+  cookie,
+  {
+    confirmation: "LIMPIAR BASURA SEGURA",
+    currentPassword: adminPassword,
+    snapshotFingerprint: staleFingerprint,
+  },
+  "Limpieza general con snapshot obsoleto"
+);
+assertState(
+  staleGeneral,
+  "limpieza-general-conflicto",
+  "Concurrencia de limpieza general"
+);
+
+html = await maintenancePage(cookie);
+const currentFingerprint =
+  stringInputValue(
+    html,
+    "snapshotFingerprint"
+  );
+const cleanGeneral = await post(
+  "/api/admin/content/maintenance/site-cleanup",
+  cookie,
+  {
+    confirmation: "LIMPIAR BASURA SEGURA",
+    currentPassword: adminPassword,
+    snapshotFingerprint: currentFingerprint,
+  },
+  "Limpieza general segura"
+);
+assertState(
+  cleanGeneral,
+  "limpieza-general-completa",
+  "Limpieza general segura"
+);
+
+const junkSession = await adminQuery(
+  `SELECT count(*)::int AS count
+     FROM deuna_admin.admin_sessions
+    WHERE id = $1`,
+  [junkSessionId]
+);
+if (junkSession.rows[0]?.count !== 0) {
+  throw new Error(
+    "La limpieza general dejó la sesión revocada de prueba."
+  );
+}
+
+if (
+  await pathExists(oldPath) ||
+  await pathExists(markerPath) ||
+  await pathExists(taxonomyDirectory)
+) {
+  throw new Error(
+    "La limpieza general dejó un huérfano viejo, marcador o namespace vacío."
+  );
+}
+
+if (
+  !(await pathExists(recentPath)) ||
+  !(await pathExists(unknownPath))
+) {
+  throw new Error(
+    "La limpieza general eliminó un archivo reciente o un namespace de revisión manual."
+  );
+}
+
+html = await maintenancePage(cookie);
+if (
+  !html.includes("Revisión manual") ||
+  !html.includes(unknownNamespace)
+) {
+  throw new Error(
+    "Mantenimiento no mostró el namespace desconocido como revisión manual."
+  );
+}
+
+await unlink(recentPath).catch(() => {});
+await rm(unknownDirectory, {
+  recursive: true,
+  force: true,
+});
+await rm(backgroundDirectory, {
+  recursive: true,
+  force: true,
+}).catch(() => {});
+
 let homeRevisions = allInputValues(html, "expectedRevisions")[0];
 let homePublications = allInputValues(html, "expectedPublications")[0];
 if (
@@ -277,5 +543,5 @@ if (
 }
 
 console.log(
-  "Editorial maintenance lifecycle: OK (reauth negativa/positiva, Inicio acotado, concurrencia global y baseline global verificados por rutas HTTP reales)."
+  "Editorial maintenance lifecycle: OK (limpieza general con reauth/conflicto/filesystem, revisión manual preservada, Inicio acotado y baseline global verificados por rutas HTTP reales)."
 );
