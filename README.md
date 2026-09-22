@@ -239,6 +239,11 @@ Para actualizar un entorno ya instalado después de traer cambios editoriales/mi
 npm run admin:update-local
 ```
 
+Tanto `local:setup` como `admin:update-local` diagnostican residuos, pero no
+ejecutan purgas destructivas automáticamente. La eliminación se realiza desde
+**Mantenimiento** con reautenticación y confirmación explícita, o mediante los
+comandos `admin:purge-*` cuando el operador los invoca deliberadamente.
+
 Para rotar la contraseña propietaria:
 
 ```bash
