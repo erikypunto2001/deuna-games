@@ -34,14 +34,22 @@ try {
   await mkdir(staging, { recursive: true });
 
   const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1_000);
-  const oldFile = path.join(staging, "a".repeat(48) + ".video");
-  const recentFile = path.join(staging, "b".repeat(48) + ".video");
+  const oldToken = "a".repeat(48);
+  const mixedToken = "b".repeat(48);
+  const oldMetadata = path.join(staging, oldToken + ".json");
+  const oldFile = path.join(staging, oldToken + ".video");
+  const mixedMetadata = path.join(staging, mixedToken + ".json");
+  const mixedRecentFile = path.join(staging, mixedToken + ".video");
   const unexpectedFile = path.join(staging, "manual-review.txt");
 
+  await writeFile(oldMetadata, "{}");
   await writeFile(oldFile, "old");
-  await writeFile(recentFile, "recent");
+  await writeFile(mixedMetadata, "{}");
+  await writeFile(mixedRecentFile, "recent");
   await writeFile(unexpectedFile, "manual");
+  await utimes(oldMetadata, oldDate, oldDate);
   await utimes(oldFile, oldDate, oldDate);
+  await utimes(mixedMetadata, oldDate, oldDate);
 
   const trimDirectory = await mkdtemp(path.join(staging, ".trim-"));
   const trimFile = path.join(trimDirectory, "segment.webm");
@@ -66,7 +74,7 @@ try {
   await utimes(workerDirectory, oldDate, oldDate);
 
   const scan = await scanSiteTemporaryJunk(root);
-  assert.equal(scan.files, 1);
+  assert.equal(scan.files, 2);
   assert.equal(scan.directories, 3);
   assert.equal(scan.candidates.length, 4);
   assert.deepEqual(scan.unexpectedEntries, [
@@ -83,24 +91,27 @@ try {
     throw new Error("Resultado de purga inesperado.");
   }
 
-  assert.equal(purged.files, 1);
+  assert.equal(purged.files, 2);
   assert.equal(purged.directories, 3);
+  assert.equal(await exists(oldMetadata), false);
   assert.equal(await exists(oldFile), false);
   assert.equal(await exists(trimDirectory), false);
   assert.equal(await exists(uploadDirectory), false);
   assert.equal(await exists(workerDirectory), false);
-  assert.equal(await exists(recentFile), true);
+  assert.equal(await exists(mixedMetadata), true);
+  assert.equal(await exists(mixedRecentFile), true);
   assert.equal(await exists(unexpectedFile), true);
 
   const final = await scanSiteTemporaryJunk(root);
   assert.equal(final.candidates.length, 0);
   assert.equal(final.unexpectedEntries.length, 1);
 
-  await unlink(recentFile);
+  await unlink(mixedMetadata);
+  await unlink(mixedRecentFile);
   await unlink(unexpectedFile);
 
   console.log(
-    "Mantenimiento temporal: OK (24 h, fingerprint, revalidación y entradas inesperadas preservadas)."
+    "Mantenimiento temporal: OK (grupos coherentes, 24 h, fingerprint y entradas inesperadas preservadas)."
   );
 } finally {
   await rm(root, { recursive: true, force: true });
