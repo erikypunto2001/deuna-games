@@ -371,6 +371,33 @@ const destructiveEditorialRoutes = await Promise.all([
     "home",
     "route.ts"
   ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "games",
+    "[slug]",
+    "history",
+    "publications",
+    "reset",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "games",
+    "[slug]",
+    "history",
+    "reset",
+    "route.ts"
+  ),
 ].map((file) => readFile(file, "utf8")));
 
 assert(
@@ -392,6 +419,16 @@ const editorialCleanupMigration = await readFile(
   "utf8"
 );
 
+const gameHistoryCleanupMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "016_game_history_cleanup.sql"
+  ),
+  "utf8"
+);
+
 assert(
   editorialCleanupMigration.includes(
     "IF target.public_visible THEN"
@@ -403,6 +440,22 @@ assert(
       "action IN ('bootstrap', 'published', 'rollback', 'baseline')"
     ),
   "El hard-delete debe exigir contenido oculto y la compactación debe registrar un baseline explícito."
+);
+
+assert(
+  gameHistoryCleanupMigration.includes(
+    "compact_editorial_publication_history"
+  ) &&
+    gameHistoryCleanupMigration.includes(
+      "DELETE FROM deuna_admin.editorial_publications"
+    ) &&
+    !gameHistoryCleanupMigration.includes(
+      "DELETE FROM deuna_admin.editorial_revisions"
+    ) &&
+    gameHistoryCleanupMigration.includes(
+      "editorial_publication_history_compacted"
+    ),
+  "Limpiar snapshots por juego debe conservar revisiones, crear un único baseline publicado y dejar auditoría."
 );
 
 const editorialMaintenanceService = await readFile(
