@@ -361,6 +361,33 @@ export async function markEditorialMediaForDeletion(
   return "marked" as const;
 }
 
+export async function deleteEditorialMediaResourceByPublicPath(
+  slug: string,
+  publicPath: string
+) {
+  if (!isEditorialMediaSlug(slug)) {
+    throw new Error("La identidad multimedia no es válida.");
+  }
+
+  const resolved = resolveEditorialMediaDiskPath(publicPath);
+  if (
+    !resolved ||
+    resolved.slug !== slug ||
+    !MEDIA_FILENAME.test(resolved.filename)
+  ) {
+    throw new Error(
+      "El recurso no pertenece al namespace multimedia esperado."
+    );
+  }
+
+  await deleteValidatedEditorialResource(
+    slug,
+    resolved.filename
+  );
+
+  return "deleted" as const;
+}
+
 export async function deleteEditorialMediaResource(
   slug: string,
   resource: EditorialMediaLibraryResource
