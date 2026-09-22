@@ -15,12 +15,14 @@ const revisionActionLabels = {
   source_refreshed: "Fuente actualizada",
   draft_saved: "Borrador guardado",
   draft_restored: "Revisión restaurada",
+  baseline: "Baseline tras mantenimiento",
 } as const;
 
 const publicationActionLabels = {
   bootstrap: "Snapshot público inicial",
   published: "Publicación",
   rollback: "Rollback público",
+  baseline: "Baseline tras mantenimiento",
 } as const;
 
 function formatDate(date: Date) {
