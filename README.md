@@ -166,31 +166,58 @@ El área `/admin` incorpora:
 - `noindex`, `noarchive` y `no-store` en rutas administrativas;
 - ausencia deliberada de telemetría de visitantes en la base administrativa.
 
-La cuenta propietaria dispone además de **Mantenimiento** para operaciones
-destructivas auditadas. Los juegos creados exclusivamente desde Admin pueden
-eliminarse de forma definitiva sólo después de ocultarlos y cuando Inicio no
-los referencia; los juegos respaldados por `src/data/games.ts` se retiran
-mediante visibilidad o cambios versionados de la fuente. El hard-delete y las
-compactaciones exigen reautenticación del Owner. Mantenimiento permite
-compactar sólo el historial de Inicio cuando ése es el bloqueo, o realizar una
-compactación global; ambas conservan el borrador, el snapshot publicado y la
-visibilidad actuales y dejan un baseline explícito. Cada juego ofrece además
-dos limpiezas Owner-only: desde Publicación se pueden eliminar únicamente los
-snapshots antiguos conservando todas las revisiones del borrador, y desde
-Historial se pueden compactar revisiones y publicaciones de ese juego a su
-baseline actual. La multimedia referenciada por cualquier revisión que siga
-restaurable permanece protegida aunque ya no exista un snapshot histórico.
-Estas acciones exigen reautenticación, confirmación del identificador y control
-de concurrencia; no despublican contenido ni borran multimedia automáticamente.
+La cuenta propietaria dispone además de **Mantenimiento** como consola general
+de higiene del sitio. La pantalla combina un diagnóstico de PostgreSQL y del
+almacén multimedia con una limpieza general segura. La acción automática sólo
+elimina residuos deterministas: sesiones administrativas o de cuenta
+revocadas/vencidas, códigos de recuperación ya usados, eventos transitorios
+administrativos de más de 90 días, preferencias/ratings/insights cuyo juego ya
+no existe, masters multimedia sin ninguna referencia editorial y con más de 24
+horas, marcadores de borrado sin master, namespaces conocidos que sigan vacíos
+y limpiezas físicas pendientes de juegos ya eliminados.
 
-El hard-delete registra en PostgreSQL una limpieza multimedia pendiente dentro
-de la misma transacción que elimina un juego creado desde Admin. El identificador
-queda bloqueado hasta que el namespace físico se elimina por completo. Si el
-filesystem falla, Mantenimiento muestra el pendiente y permite al Owner
-reintentarlo con reautenticación; una limpieza exitosa elimina también el
-directorio vacío antes de liberar el slug. Antes de usar cualquier compactación
-sobre datos valiosos debe existir un backup verificado; en local se puede crear
-con `npm run admin:backup-local`.
+La protección multimedia recorre fuente, borrador, publicación actual,
+revisiones y snapshots de todos los registros editoriales. Los archivos
+referenciados desde cualquiera de esos estados no son basura. Los archivos sin
+referencia de menos de 24 horas conservan un período de gracia para no competir
+con cargas recientes. Namespaces desconocidos, entradas inesperadas y
+actualizaciones editoriales que apuntan a un juego inexistente se presentan
+como **revisión manual** y nunca se eliminan mediante la limpieza general. La
+operación tampoco borra cuentas válidas, avatares, perfiles de hardware,
+recompensas, `admin_audit_log`, contenido editorial vigente ni historial
+restaurable.
+
+La limpieza general exige Owner, reautenticación, la frase exacta de
+confirmación y un fingerprint del diagnóstico mostrado. El servidor recalcula
+el estado antes de mutar; PostgreSQL vuelve a comparar los conteos dentro de una
+función transaccional y cada archivo se revalida inmediatamente antes del
+`unlink`. Si el estado cambió, la operación aborta o informa una limpieza
+parcial y obliga a revisar el diagnóstico actualizado.
+
+Los juegos creados exclusivamente desde Admin pueden eliminarse de forma
+definitiva sólo después de ocultarlos y cuando Inicio no los referencia; los
+juegos respaldados por `src/data/games.ts` se retiran mediante visibilidad o
+cambios versionados de la fuente. El hard-delete registra en PostgreSQL una
+limpieza multimedia pendiente dentro de la misma transacción que elimina el
+juego. El identificador queda bloqueado hasta que el namespace físico
+desaparece por completo; si el filesystem falla, Mantenimiento permite al
+Owner reintentarlo y una limpieza exitosa elimina también el directorio vacío
+antes de liberar el slug.
+
+El historial editorial permanece separado de la limpieza de basura: una versión
+antigua no se considera basura por definición. Mantenimiento permite compactar
+sólo el historial de Inicio o todo el historial editorial conservando el
+borrador, el snapshot publicado y la visibilidad actuales como baseline. Cada
+juego ofrece además dos limpiezas Owner-only: desde Publicación se pueden
+eliminar sólo snapshots antiguos conservando revisiones, y desde Historial se
+pueden compactar revisiones y publicaciones de ese juego. La multimedia
+referenciada por cualquier revisión o publicación restaurable permanece
+protegida. Todas estas acciones exigen reautenticación y controles de
+concurrencia.
+
+Antes de ejecutar una limpieza o compactación sobre datos valiosos debe existir
+un backup verificado; en local se puede crear con
+`npm run admin:backup-local`.
 
 `DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
 
