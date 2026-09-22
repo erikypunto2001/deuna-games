@@ -153,7 +153,7 @@ function getFreshCachedPerformance(slug: string) {
   const cached = resolved.get(slug);
   if (
     !cached ||
-    Date.now() - cached.loadedAt > PUBLIC_GAME_METADATA_CACHE_MS
+    Date.now() - cached.loadedAt >= PUBLIC_GAME_METADATA_CACHE_MS
   ) {
     return null;
   }
@@ -219,20 +219,32 @@ export function useGamePerformanceCalibration(
 
   useEffect(() => {
     let active = true;
+    let timer: number | null = null;
 
-    loadCalibration(slug).then((performance) => {
-      if (active) {
-        setState({
-          slug,
-          loaded: true,
-          calibration: performance.calibration,
-          metadata: performance.metadata,
-        });
-      }
-    });
+    async function refresh() {
+      const performance = await loadCalibration(slug);
+      if (!active) return;
+
+      setState({
+        slug,
+        loaded: true,
+        calibration: performance.calibration,
+        metadata: performance.metadata,
+      });
+
+      timer = window.setTimeout(
+        refresh,
+        PUBLIC_GAME_METADATA_CACHE_MS
+      );
+    }
+
+    void refresh();
 
     return () => {
       active = false;
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
     };
   }, [slug]);
 
