@@ -614,6 +614,12 @@ async function grantRuntimePrivileges(
       )
       TO ${role};
 
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.compact_editorial_publication_history(
+        text, text, uuid, text, integer
+      )
+      TO ${role};
+
     REVOKE ALL
       ON deuna_admin.schema_migrations
       FROM ${role};
