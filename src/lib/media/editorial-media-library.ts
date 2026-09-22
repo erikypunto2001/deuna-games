@@ -377,6 +377,94 @@ export async function deleteEditorialMediaResource(
   return "deleted" as const;
 }
 
+
+export type EditorialMediaDeletionInventory = {
+  resources: number;
+  unrecognizedEntries: number;
+};
+
+export async function inspectEditorialMediaDeletionInventory(
+  slug: string
+): Promise<EditorialMediaDeletionInventory> {
+  if (!isEditorialMediaSlug(slug)) {
+    throw new Error("La identidad del juego no es válida para multimedia.");
+  }
+
+  const directory = path.join(getEditorialMediaRoot(), slug);
+  let entries;
+
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (isMissingPath(error)) {
+      return { resources: 0, unrecognizedEntries: 0 };
+    }
+    throw error;
+  }
+
+  let resources = 0;
+  let unrecognizedEntries = 0;
+
+  for (const entry of entries) {
+    if (entry.isFile() && MEDIA_FILENAME.test(entry.name)) {
+      resources += 1;
+      continue;
+    }
+
+    if (entry.isFile() && DELETE_MARKER.test(entry.name)) {
+      continue;
+    }
+
+    unrecognizedEntries += 1;
+  }
+
+  return { resources, unrecognizedEntries };
+}
+
+export async function deleteAllEditorialMediaResources(
+  slug: string
+) {
+  const inventory =
+    await inspectEditorialMediaDeletionInventory(slug);
+
+  if (inventory.unrecognizedEntries > 0) {
+    throw new Error(
+      "El namespace multimedia contiene entradas no reconocidas y no puede limpiarse automáticamente."
+    );
+  }
+
+  const directory = path.join(getEditorialMediaRoot(), slug);
+  let entries;
+
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (isMissingPath(error)) return 0;
+    throw error;
+  }
+
+  const filenames = entries
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        MEDIA_FILENAME.test(entry.name)
+    )
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+
+  let deleted = 0;
+
+  for (const filename of filenames) {
+    await deleteValidatedEditorialResource(
+      slug,
+      filename
+    );
+    deleted += 1;
+  }
+
+  return deleted;
+}
+
 // Alias de compatibilidad para rutas y checkers que todavía expresan la
 // operación en términos de imagen. Toda la seguridad física vive arriba.
 export async function clearEditorialImageDeletionMarker(
