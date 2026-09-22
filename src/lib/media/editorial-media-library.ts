@@ -462,6 +462,17 @@ export async function deleteAllEditorialMediaResources(
     deleted += 1;
   }
 
+  for (const entry of entries) {
+    if (
+      entry.isFile() &&
+      DELETE_MARKER.test(entry.name)
+    ) {
+      await removeDeletionMarker(
+        path.join(directory, entry.name)
+      );
+    }
+  }
+
   return deleted;
 }
 
