@@ -1,4 +1,7 @@
-import { readFile } from "node:fs/promises";
+import {
+  readFile,
+  readdir,
+} from "node:fs/promises";
 import https from "node:https";
 import path from "node:path";
 import process from "node:process";
@@ -1609,6 +1612,102 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
   );
 }
 
+publicationHtml = await publicationPage(slug, cookie);
+const deleteRevision = positiveInputNumber(
+  publicationHtml,
+  "expectedRevision"
+);
+const deletePublicationNumber = positiveInputNumber(
+  publicationHtml,
+  "deletePublicationNumber"
+);
+
+const rejectedDelete = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/delete`,
+  `${editorPath}/publicacion`,
+  cookie,
+  {
+    expectedRevision: String(deleteRevision),
+    deletePublicationNumber: String(deletePublicationNumber),
+    confirmSlug: slug,
+    currentPassword: `${adminPassword}-incorrecta`,
+  },
+  "El hard-delete con reautenticación incorrecta"
+);
+assertRedirectState(
+  rejectedDelete,
+  "reauth",
+  "Reautenticación incorrecta del hard-delete"
+);
+
+requirePage(
+  await request(`${editorPath}/publicacion`, { headers: { cookie } }),
+  "Juego conservado tras reautenticación incorrecta"
+);
+
+const deletedGame = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/delete`,
+  `${editorPath}/publicacion`,
+  cookie,
+  {
+    expectedRevision: String(deleteRevision),
+    deletePublicationNumber: String(deletePublicationNumber),
+    confirmSlug: slug,
+    currentPassword: adminPassword,
+  },
+  "El hard-delete final del juego"
+);
+assertRedirectState(
+  deletedGame,
+  "eliminado",
+  "Hard-delete final"
+);
+
+const deletedPublicationPage = await request(
+  `${editorPath}/publicacion`,
+  { headers: { cookie } }
+);
+if (deletedPublicationPage.status !== 404) {
+  throw new Error(
+    `El juego eliminado siguió disponible en Admin (HTTP ${deletedPublicationPage.status}).`
+  );
+}
+
+const mediaRoot =
+  process.env.DEUNA_EDITORIAL_MEDIA_ROOT;
+if (!mediaRoot) {
+  throw new Error(
+    "El lifecycle destructivo requiere DEUNA_EDITORIAL_MEDIA_ROOT aislado."
+  );
+}
+
+let residualMedia = [];
+try {
+  residualMedia = await readdir(
+    path.join(mediaRoot, slug)
+  );
+} catch (error) {
+  if (
+    !(
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    )
+  ) {
+    throw error;
+  }
+}
+if (
+  residualMedia.some((name) =>
+    /^(?:[a-f0-9]{64}\.(?:webp|webm)|\.delete-)/.test(name)
+  )
+) {
+  throw new Error(
+    `El hard-delete dejó masters o marcadores multimedia residuales: ${residualMedia.join(", ")}.`
+  );
+}
+
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento, reautenticación negativa/positiva, hard-delete sin multimedia residual y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );
