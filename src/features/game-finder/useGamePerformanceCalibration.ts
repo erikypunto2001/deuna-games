@@ -176,7 +176,13 @@ function loadCalibration(
     { cache: "no-store" }
   )
     .then(async (response) => {
-      if (!response.ok) return emptyPublishedPerformance();
+      if (!response.ok) {
+        if (response.status >= 500) {
+          return resolved.get(slug)?.value ??
+            emptyPublishedPerformance();
+        }
+        return emptyPublishedPerformance();
+      }
 
       const payload = await response.json() as {
         calibration?: unknown;
@@ -191,7 +197,11 @@ function loadCalibration(
           : null,
       };
     })
-    .catch(() => emptyPublishedPerformance())
+    .catch(
+      () =>
+        resolved.get(slug)?.value ??
+        emptyPublishedPerformance()
+    )
     .then((performance) => {
       resolved.set(slug, {
         value: performance,
