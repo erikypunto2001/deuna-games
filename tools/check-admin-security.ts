@@ -410,6 +410,17 @@ const destructiveEditorialRoutes = await Promise.all([
     "[slug]",
     "route.ts"
   ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "site-cleanup",
+    "route.ts"
+  ),
 ].map((file) => readFile(file, "utf8")));
 
 assert(
@@ -447,6 +458,16 @@ const mediaCleanupRecoveryMigration = await readFile(
     "database",
     "migrations",
     "017_game_media_cleanup_recovery.sql"
+  ),
+  "utf8"
+);
+
+const siteMaintenanceMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "018_site_maintenance.sql"
   ),
   "utf8"
 );
@@ -499,6 +520,28 @@ assert(
   "El hard-delete debe registrar la limpieza multimedia en la misma transacción, bloquear reutilización del slug y permitir un reintento Owner."
 );
 
+assert(
+  siteMaintenanceMigration.includes(
+    "inspect_site_runtime_junk"
+  ) &&
+    siteMaintenanceMigration.includes(
+      "purge_site_runtime_junk"
+    ) &&
+    siteMaintenanceMigration.includes(
+      "LOCK TABLE"
+    ) &&
+    siteMaintenanceMigration.includes(
+      "'site_runtime_junk_purged'"
+    ) &&
+    !siteMaintenanceMigration.includes(
+      "DELETE FROM deuna_admin.admin_audit_log"
+    ) &&
+    !siteMaintenanceMigration.includes(
+      "DELETE FROM deuna_accounts.reward_events"
+    ),
+  "La limpieza general debe ser Owner-only, optimista y auditada sin borrar auditoría ni recompensas."
+);
+
 const editorialMaintenanceService = await readFile(
   path.join(
     root,
@@ -520,6 +563,28 @@ const editorialMediaLibrary = await readFile(
   "utf8"
 );
 
+const siteMaintenanceService = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "site-maintenance-service.ts"
+  ),
+  "utf8"
+);
+
+const siteMaintenanceMedia = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "site-maintenance-media.ts"
+  ),
+  "utf8"
+);
+
 assert(
   editorialMaintenanceService.includes(
     "inspectEditorialMediaDeletionInventory"
@@ -534,6 +599,43 @@ assert(
       "deleteAllEditorialMediaResources"
     ),
   "El hard-delete debe usar inventario multimedia destructivo completo y no la biblioteca visual limitada."
+);
+
+assert(
+  siteMaintenanceService.includes(
+    "purgeSiteRuntimeJunk"
+  ) &&
+    siteMaintenanceService.includes(
+      "purgeSiteMediaJunk"
+    ) &&
+    siteMaintenanceService.includes(
+      "expectedFingerprint"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "editorial_revisions"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "editorial_publications"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "source_payload"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "draft_payload"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "published_payload"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "MIN_ORPHAN_AGE_MS"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "unknownNamespaces"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "unexpectedEntries"
+    ),
+  "Mantenimiento general debe proteger todos los payloads editoriales, usar gracia temporal y separar basura segura de revisión manual."
 );
 
 const migrator = await readFile(
