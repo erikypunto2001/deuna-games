@@ -768,6 +768,30 @@ async function main() {
       cyberpunkScreenshotPath
     );
 
+    // Cada generación legacy debe poder verificarse desde un catálogo recién
+    // hidratado. Evita que el hover/scroll de una Card previa contamine la
+    // geometría o el estado de puntero de Hogwarts.
+    await navigate(cdp, `${baseUrl}/juegos`);
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (
+          !(card instanceof HTMLElement) ||
+          document.readyState !== "complete"
+        ) {
+          return false;
+        }
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        return Object.keys(card).some((key) =>
+          key.startsWith("__reactProps$") ||
+          key.startsWith("__reactFiber$")
+        );
+      })()`,
+      "No se rehidrató Hogwarts Legacy antes de su prueba aislada"
+    );
+    await delay(300);
+
     const restState = await cdp.evaluate(`(() => {
       const card = ${lookup};
       return {
