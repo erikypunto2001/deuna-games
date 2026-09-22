@@ -346,18 +346,22 @@ export async function purgeSiteTemporaryJunk(
   let skipped = 0;
 
   for (const candidate of initial.candidates) {
-    if (!(await candidateStillMatches(root, candidate))) {
-      skipped += 1;
-      continue;
-    }
-    if (!(await removeCandidate(root, candidate))) {
-      skipped += 1;
-      continue;
-    }
+    try {
+      if (!(await candidateStillMatches(root, candidate))) {
+        skipped += 1;
+        continue;
+      }
+      if (!(await removeCandidate(root, candidate))) {
+        skipped += 1;
+        continue;
+      }
 
-    if (candidate.kind === "file") files += 1;
-    else directories += 1;
-    bytes += candidate.bytes;
+      if (candidate.kind === "file") files += 1;
+      else directories += 1;
+      bytes += candidate.bytes;
+    } catch {
+      skipped += 1;
+    }
   }
 
   return {
