@@ -17,6 +17,10 @@ import {
 import {
   PUBLIC_EXPOSURE_PUBLICATION_SQL,
 } from "../src/lib/admin/publication-history.ts";
+import {
+  createAdminSessionToken,
+  hashAdminSessionToken,
+} from "../src/lib/admin/session-token.ts";
 import { games } from "../src/data/games.ts";
 
 function assert(
@@ -58,6 +62,19 @@ try {
   const ownerId = owner.rows[0]?.id;
   assert(ownerId, "Falta el Owner aislado de CI.");
 
+  const sessionToken = createAdminSessionToken();
+  await client.query(
+    `INSERT INTO deuna_admin.admin_sessions (
+       id, user_id, token_hash, expires_at
+     )
+     VALUES ($1, $2, $3, now() + interval '1 hour')`,
+    [
+      randomUUID(),
+      ownerId,
+      hashAdminSessionToken(sessionToken),
+    ]
+  );
+
   const privilege = await client.query<{
     can_delete_items: boolean;
     can_delete_panel_game: boolean;
@@ -71,12 +88,12 @@ try {
        ) AS can_delete_items,
        has_function_privilege(
          current_user,
-         'deuna_admin.delete_panel_game(text,uuid,integer,integer)',
+         'deuna_admin.delete_panel_game(text,uuid,text,integer,integer)',
          'EXECUTE'
        ) AS can_delete_panel_game,
        has_function_privilege(
          current_user,
-         'deuna_admin.compact_editorial_history(uuid)',
+         'deuna_admin.compact_editorial_history(uuid,text)',
          'EXECUTE'
        ) AS can_compact_history`
   );
@@ -109,11 +126,12 @@ try {
     result: unknown;
   }>(
     `SELECT deuna_admin.delete_panel_game(
-       $1, $2, $3, $4
+       $1, $2, $3, $4, $5
      ) AS result`,
     [
       sourceGame.item_key,
       ownerId,
+      sessionToken,
       sourceGame.revision,
       sourceGame.publication_number,
     ]
@@ -122,6 +140,27 @@ try {
     outcome(sourceDelete.rows[0]?.result).outcome ===
       "source_managed",
     "Un juego fuente no debe poder eliminarse desde Admin."
+  );
+
+  const forgedSessionDelete = await client.query<{
+    result: unknown;
+  }>(
+    `SELECT deuna_admin.delete_panel_game(
+       $1, $2, $3, $4, $5
+     ) AS result`,
+    [
+      sourceGame.item_key,
+      ownerId,
+      createAdminSessionToken(),
+      sourceGame.revision,
+      sourceGame.publication_number,
+    ]
+  );
+  assert(
+    outcome(
+      forgedSessionDelete.rows[0]?.result
+    ).outcome === "forbidden",
+    "Conocer el UUID del Owner no debe permitir mantenimiento sin su sesión opaca válida."
   );
 
   const fixtureSource = games[0];
@@ -360,9 +399,9 @@ try {
     result: unknown;
   }>(
     `SELECT deuna_admin.delete_panel_game(
-       $1, $2, 1, 1
+       $1, $2, $3, 1, 1
      ) AS result`,
-    [slug, ownerId]
+    [slug, ownerId, sessionToken]
   );
   assert(
     outcome(blocked.rows[0]?.result).outcome ===
@@ -384,9 +423,9 @@ try {
     result: unknown;
   }>(
     `SELECT deuna_admin.delete_panel_game(
-       $1, $2, 1, 1
+       $1, $2, $3, 1, 1
      ) AS result`,
-    [slug, ownerId]
+    [slug, ownerId, sessionToken]
   );
   const deleteResult = outcome(
     deleted.rows[0]?.result
@@ -628,9 +667,9 @@ try {
     result: unknown;
   }>(
     `SELECT deuna_admin.compact_editorial_history(
-       $1
+       $1, $2
      ) AS result`,
-    [ownerId]
+    [ownerId, sessionToken]
   );
   assert(
     outcome(compacted.rows[0]?.result).outcome ===
