@@ -8,6 +8,31 @@
   background: var(--admin-surface-solid, #0a1119);
 }
 
+.heading {
+  display: grid;
+  gap: 7px;
+  padding-top: 4px;
+}
+
+.heading span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.heading h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.heading p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .warning {
   padding: 14px 16px;
   border: 1px solid rgba(255, 190, 92, 0.38);
