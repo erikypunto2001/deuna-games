@@ -458,6 +458,24 @@ function detailPlayingVideoExpression() {
   })()`;
 }
 
+function popularFirstCardLookup() {
+  return `
+    (() => {
+      const regions = [...document.querySelectorAll(
+        '[role="region"][aria-roledescription="carrusel"]'
+      )];
+      const popular = regions.find((region) =>
+        (region.getAttribute("aria-label") ?? "")
+          .toLowerCase()
+          .includes("popular")
+      );
+      return popular?.querySelector(
+        '[data-game-card-slot="true"] article'
+      ) ?? null;
+    })()
+  `;
+}
+
 function popularFirstCardStateExpression(expectedSlug) {
   return `(() => {
     const regions = [...document.querySelectorAll(
@@ -516,7 +534,7 @@ async function verifyHomeInteractionFirstCard(cdp, fixture) {
     );
   }
 
-  const lookup = cardLookup(fixture.slug);
+  const lookup = popularFirstCardLookup();
   await hoverCard(cdp, lookup);
 
   const playing = await waitFor(
