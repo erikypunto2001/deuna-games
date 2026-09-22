@@ -3,11 +3,15 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import GameDeletionPanel from "@/components/admin/GameDeletionPanel";
 import GamePublicationWorkspace from "@/components/admin/GamePublicationWorkspace";
 import GameTaxonomyPublicationNotice from "@/components/admin/GameTaxonomyPublicationNotice";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
+import {
+  getGameDeletionPreview,
+} from "@/lib/admin/editorial-maintenance-service";
 import {
   getGameMediaWorkspaceSnapshot,
 } from "@/lib/admin/game-media-workspace";
@@ -40,7 +44,7 @@ export default async function AdminGamePublicationPage({
   params,
   searchParams,
 }: PageProps) {
-  await verifyAdminSession();
+  const session = await verifyAdminSession();
   const [{ slug }, parameters] = await Promise.all([
     params,
     searchParams,
@@ -80,6 +84,9 @@ export default async function AdminGamePublicationPage({
   const publishedGame = neverPublished
     ? null
     : await getPublishedGameSnapshot(slug);
+  const deletionPreview = session.role === "owner"
+    ? await getGameDeletionPreview(slug)
+    : null;
 
   return (
     <>
@@ -116,6 +123,13 @@ export default async function AdminGamePublicationPage({
         panelCreated={panelCreated}
         mediaHygiene={mediaWorkspace.hygiene}
       />
+
+      {deletionPreview && (
+        <GameDeletionPanel
+          slug={slug}
+          preview={deletionPreview}
+        />
+      )}
     </>
   );
 }
