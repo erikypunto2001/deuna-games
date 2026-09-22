@@ -603,7 +603,7 @@ assert(
 
 assert(
   siteMaintenanceService.includes(
-    "purgeSiteRuntimeJunk"
+    "purge_site_runtime_junk"
   ) &&
     siteMaintenanceService.includes(
       "purgeSiteMediaJunk"
