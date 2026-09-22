@@ -20,7 +20,13 @@ type CalibrationState = PublishedPerformance & {
   loaded: boolean;
 };
 
-const resolved = new Map<string, PublishedPerformance>();
+type CachedPublishedPerformance = {
+  value: PublishedPerformance;
+  loadedAt: number;
+};
+
+const PUBLIC_GAME_METADATA_CACHE_MS = 60_000;
+const resolved = new Map<string, CachedPublishedPerformance>();
 const pending = new Map<string, Promise<PublishedPerformance>>();
 
 function parsePublishedCalibration(
@@ -143,11 +149,23 @@ function emptyPublishedPerformance(): PublishedPerformance {
   };
 }
 
+function getFreshCachedPerformance(slug: string) {
+  const cached = resolved.get(slug);
+  if (
+    !cached ||
+    Date.now() - cached.loadedAt > PUBLIC_GAME_METADATA_CACHE_MS
+  ) {
+    return null;
+  }
+  return cached.value;
+}
+
 function loadCalibration(
   slug: string
 ): Promise<PublishedPerformance> {
-  if (resolved.has(slug)) {
-    return Promise.resolve(resolved.get(slug) ?? emptyPublishedPerformance());
+  const cached = getFreshCachedPerformance(slug);
+  if (cached) {
+    return Promise.resolve(cached);
   }
 
   const existing = pending.get(slug);
@@ -175,7 +193,10 @@ function loadCalibration(
     })
     .catch(() => emptyPublishedPerformance())
     .then((performance) => {
-      resolved.set(slug, performance);
+      resolved.set(slug, {
+        value: performance,
+        loadedAt: Date.now(),
+      });
       pending.delete(slug);
       return performance;
     });
@@ -188,11 +209,12 @@ export function useGamePerformanceCalibration(
   slug: string
 ) {
   const cached = resolved.get(slug);
+  const freshCached = getFreshCachedPerformance(slug);
   const [state, setState] = useState<CalibrationState>(() => ({
     slug,
-    loaded: cached !== undefined,
-    calibration: cached?.calibration ?? null,
-    metadata: cached?.metadata ?? null,
+    loaded: freshCached !== null,
+    calibration: cached?.value.calibration ?? null,
+    metadata: cached?.value.metadata ?? null,
   }));
 
   useEffect(() => {
@@ -222,7 +244,7 @@ export function useGamePerformanceCalibration(
     };
   }
 
-  const nextCached = resolved.get(slug);
+  const nextCached = getFreshCachedPerformance(slug);
   if (nextCached) {
     return {
       calibration: nextCached.calibration,
