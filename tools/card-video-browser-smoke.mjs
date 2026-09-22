@@ -18,7 +18,11 @@ const outputRoot = path.resolve(
 const fixturePath = path.join(outputRoot, "card-video-fixture.json");
 const screenshotPath = path.join(
   outputRoot,
-  "card-video-active-desktop.png"
+  "card-video-hogwarts-legacy-active-desktop.png"
+);
+const redDeadScreenshotPath = path.join(
+  outputRoot,
+  "card-video-red-dead-redemption-2-active-desktop.png"
 );
 const detailScreenshotPath = path.join(
   outputRoot,
@@ -370,8 +374,24 @@ function detailPlayingVideoExpression() {
 async function main() {
   assertVisualCiOnly();
   const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
-  if (!fixture.slug || !fixture.clip) {
-    throw new Error("El descriptor del fixture Card video es inválido.");
+  if (
+    !fixture.slug ||
+    !fixture.clip ||
+    !Array.isArray(fixture.legacyCards) ||
+    fixture.legacyCards.length !== 2
+  ) {
+    throw new Error("El descriptor del fixture Card video legacy es inválido.");
+  }
+  const redDeadFixture = fixture.legacyCards.find(
+    (entry) => entry?.slug === "red-dead-redemption-2"
+  );
+  if (
+    fixture.slug !== "hogwarts-legacy" ||
+    !redDeadFixture?.clip
+  ) {
+    throw new Error(
+      "El fixture Card video debe cubrir Hogwarts Legacy y Red Dead Redemption 2."
+    );
   }
 
   const profileDir = await mkdtemp(
@@ -466,16 +486,125 @@ async function main() {
       );
     }
 
+    const redDeadLookup = cardLookup(redDeadFixture.slug);
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${redDeadLookup};
+        if (
+          !(card instanceof HTMLElement) ||
+          document.readyState !== "complete"
+        ) {
+          return false;
+        }
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        return Object.keys(card).some((key) =>
+          key.startsWith("__reactProps$") ||
+          key.startsWith("__reactFiber$")
+        );
+      })()`,
+      "No se hidrató la Card legacy de Red Dead Redemption 2"
+    );
+    await delay(300);
+
+    const redDeadRestState = await cdp.evaluate(`(() => {
+      const card = ${redDeadLookup};
+      return {
+        found: card instanceof HTMLElement,
+        mediaMode: card?.dataset.cardMediaMode ?? null,
+        detailVisible: card?.dataset.detailVisible ?? null,
+        hasVideo: Boolean(card?.querySelector("video")),
+      };
+    })()`);
+    if (
+      !redDeadRestState?.found ||
+      redDeadRestState.mediaMode !== "video" ||
+      redDeadRestState.detailVisible !== "false" ||
+      redDeadRestState.hasVideo
+    ) {
+      throw new Error(
+        `RDR2 legacy no migró a Card Video en reposo: ${JSON.stringify(redDeadRestState)}.`
+      );
+    }
+
+    const redDeadAsset = await cdp.evaluate(`
+      fetch(${JSON.stringify(redDeadFixture.clip)}, { cache: "no-store" })
+        .then(async (response) => ({
+          ok: response.ok,
+          status: response.status,
+          contentType: response.headers.get("content-type"),
+          bytes: (await response.arrayBuffer()).byteLength,
+        }))
+    `);
+    if (
+      !redDeadAsset?.ok ||
+      redDeadAsset.status !== 200 ||
+      redDeadAsset.bytes < 128 ||
+      !String(redDeadAsset.contentType ?? "")
+        .toLowerCase()
+        .includes("video/webm")
+    ) {
+      throw new Error(
+        `El WebM legacy de RDR2 no se sirvió correctamente: ${JSON.stringify(redDeadAsset)}.`
+      );
+    }
+
+    await hoverCard(cdp, redDeadLookup);
+    const redDeadPlaying = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${redDeadLookup};
+        const video = card?.querySelector("video");
+        if (!(video instanceof HTMLVideoElement)) return false;
+        if (
+          video.paused ||
+          video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+          video.currentTime <= 0.02
+        ) {
+          return false;
+        }
+        return {
+          src: new URL(video.currentSrc || video.src, location.href).pathname,
+          readyState: video.readyState,
+          paused: video.paused,
+          currentTime: video.currentTime,
+        };
+      })()`,
+      "RDR2 legacy montó el video pero no avanzó la reproducción"
+    );
+    if (
+      redDeadPlaying.src !== redDeadFixture.clip ||
+      redDeadPlaying.paused ||
+      redDeadPlaying.readyState < 2 ||
+      redDeadPlaying.currentTime <= 0.02
+    ) {
+      throw new Error(
+        `RDR2 legacy no reprodujo correctamente: ${JSON.stringify(redDeadPlaying)}.`
+      );
+    }
+
+    const redDeadCapture = await cdp.send("Page.captureScreenshot", {
+      format: "png",
+      fromSurface: true,
+    });
+    await writeFile(
+      redDeadScreenshotPath,
+      Buffer.from(redDeadCapture.data, "base64")
+    );
+    await leaveCard(cdp, redDeadLookup);
+
     const restState = await cdp.evaluate(`(() => {
       const card = ${lookup};
       return {
         found: card instanceof HTMLElement,
+        mediaMode: card?.dataset.cardMediaMode ?? null,
         detailVisible: card?.dataset.detailVisible ?? null,
         hasVideo: Boolean(card?.querySelector("video")),
       };
     })()`);
     if (
       !restState?.found ||
+      restState.mediaMode !== "video" ||
       restState.detailVisible !== "false" ||
       restState.hasVideo
     ) {
@@ -525,6 +654,27 @@ async function main() {
     ) {
       throw new Error(
         `El estado visible del video no respeta el contrato: ${JSON.stringify(visibleState)}.`
+      );
+    }
+
+    const advancedState = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        const video = card?.querySelector("video");
+        if (!(video instanceof HTMLVideoElement)) return false;
+        return !video.paused && video.currentTime > 0.02
+          ? { currentTime: video.currentTime, readyState: video.readyState }
+          : false;
+      })()`,
+      "Hogwarts Legacy montó el video pero quedó pausado en 0.000 s"
+    );
+    if (
+      advancedState.currentTime <= 0.02 ||
+      advancedState.readyState < 2
+    ) {
+      throw new Error(
+        `Hogwarts Legacy no avanzó la reproducción: ${JSON.stringify(advancedState)}.`
       );
     }
 
@@ -730,9 +880,10 @@ async function main() {
 
     console.log(
       "Card + Contenedor video browser smoke: OK " +
-        `(slug=${fixture.slug}, bytes=${asset.bytes}, ` +
-        `cardReady=${visibleState.readyState}, detailReady=${detailVisibleState.readyState}, ` +
-        "Card hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
+        `(hogwarts=${fixture.slug}, rdr2=${redDeadFixture.slug}, bytes=${asset.bytes}, ` +
+        `cardReady=${visibleState.readyState}, hogwartsTime=${advancedState.currentTime.toFixed(3)}, ` +
+        `rdr2Time=${redDeadPlaying.currentTime.toFixed(3)}, detailReady=${detailVisibleState.readyState}, ` +
+        "ambas Cards legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
     );
   } catch (error) {
     if (browserError.trim()) {
