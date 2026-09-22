@@ -94,14 +94,16 @@ assert(
   has(
     serving,
     "publishedReferenceCache",
-    "cached?.references.has(publicPath)",
-    "cached.publicationNumber",
-    "item.publication_number",
-    "cached.publicationNumber < item.publication_number",
-    "publication.publication_number > $2",
-    "reusable?.references ?? []"
-  ),
-  "La ruta debe cachear sólo referencias positivas e incorporar únicamente publicaciones nuevas cuando avanza publication_number."
+    "publication_row_count",
+    "publication_max_id",
+    "published_checksum",
+    "cached.publicationRowCount === item.publication_row_count",
+    "cached.publicationMaxId === item.publication_max_id",
+    "cached.publicVisible === item.public_visible",
+    "cached.publishedChecksum === item.published_checksum"
+  ) &&
+    !serving.includes("cached?.references.has(publicPath)"),
+  "La caché de serving debe revalidar una firma ligera del historial y del snapshot actual antes de reutilizar referencias positivas, incluida una compactación que no avance publication_number."
 );
 
 assert(
