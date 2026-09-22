@@ -302,7 +302,9 @@ export default async function GameDetailPage({
                 </div>
               )}
 
-              <GamePerformanceEstimate slug={game.slug} />
+              {platforms.includes("PC") && (
+                <GamePerformanceEstimate slug={game.slug} />
+              )}
 
               <GameAccountActions
                 gameSlug={game.slug}
