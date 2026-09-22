@@ -272,19 +272,59 @@ function detailVisibilityExpression(lookup, visible) {
 }
 
 async function hoverCard(cdp, lookup) {
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: 1,
+    y: 1,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (!(card instanceof HTMLElement)) return false;
+      card.scrollIntoView({ block: "center", inline: "nearest" });
+      return true;
+    })()`,
+    "No se pudo centrar la Card antes del hover"
+  );
+  await delay(150);
+
   const point = await waitFor(
     cdp,
     `(() => {
       const card = ${lookup};
       if (!(card instanceof HTMLElement)) return false;
       const rect = card.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return false;
-      return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
+      if (
+        rect.width <= 0 ||
+        rect.height <= 0 ||
+        rect.bottom <= 0 ||
+        rect.right <= 0 ||
+        rect.top >= innerHeight ||
+        rect.left >= innerWidth
+      ) {
+        return false;
+      }
+
+      const x = Math.min(
+        innerWidth - 2,
+        Math.max(2, rect.left + rect.width / 2)
+      );
+      const y = Math.min(
+        innerHeight - 2,
+        Math.max(2, rect.top + rect.height / 2)
+      );
+      const hit = document.elementFromPoint(x, y);
+      if (!(hit instanceof Element) || !card.contains(hit)) {
+        return false;
+      }
+
+      return { x, y };
     })()`,
-    "No se pudo resolver el área interactiva de la Card"
+    "No se pudo resolver un punto visible de la Card"
   );
 
   await cdp.send("Input.dispatchMouseEvent", {
