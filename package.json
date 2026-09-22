@@ -88,7 +88,7 @@
     "admin:purge-media-junk:check": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts",
     "admin:purge-media-junk": "node --conditions=react-server --env-file=.env.local ./tools/admin/purge-orphan-editorial-media.ts --apply",
     "visual:game-background-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/game-background-visual-fixture.ts",
-    "visual:editorial-maintenance": "node ./tools/editorial-maintenance-lifecycle-smoke.mjs",
+    "visual:editorial-maintenance": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/editorial-maintenance-lifecycle-smoke.mjs",
     "check:site-maintenance-postgres": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-site-maintenance-postgres.ts"
   },
   "allowScripts": {
