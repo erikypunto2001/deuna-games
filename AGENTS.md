@@ -10,8 +10,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Preferencias del usuario
 
-- Después de completar y verificar cada cambio solicitado, crear un commit y subirlo al repositorio remoto en la rama de trabajo. Esta acción está autorizada por el usuario; no volver a pedir confirmación. Incluir únicamente los cambios correspondientes a la tarea.
-- Después de cada cambio visual, iniciar el servidor con `npm run mobile:secure` y compartir la URL para que el usuario pueda probarlo. Si ya está activo, comprobar que sigue disponible y reutilizarlo.
+- GitHub es la fuente de verdad del código versionado. Antes de preparar cambios, comprobar el repositorio, la rama y el commit actuales y no basarse en recuerdos o copias antiguas.
+- Para cambios preparados por ChatGPT, usar primero el flujo de staging por Google Drive configurado para el proyecto: verificar `control/baseline.txt`, modificar sólo los archivos necesarios en `mirror/` y preparar `control/change-set.json` con hashes SHA-256.
+- No hacer commit ni push del cambio recién preparado antes de que el usuario lo aplique y pruebe localmente mediante el flujo Drive, salvo pedido explícito. Después de la confirmación local, volver a comprobar concurrencia en GitHub e integrar exactamente lo probado en una rama de trabajo/PR cuando corresponda.
+- No afirmar que se ejecutó un comando, servidor o prueba dentro del WSL del usuario sin acceso real a ese entorno. En cambios visuales, indicar al usuario cómo iniciar `npm run mobile:secure` cuando corresponda y basar cualquier URL o resultado local en la salida que el usuario muestre.
 - En cambios de la home o de su panel de control, revisar y verificar ambos lados. Para el hero, comprobar las previews de escritorio, tableta y móvil, la edición y la prueba interactiva con el mismo diseño y ancho que la home.
 
 ## Implementación y verificación integral de cada pedido
@@ -26,4 +28,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Verificar las integraciones y los flujos vecinos afectados. Corregir los fallos introducidos y repetir las comprobaciones pertinentes; ampliar las pruebas cuando el alcance o los resultados lo requieran.
 - Conservar evidencia útil de la verificación: comandos y resultados, escenarios recorridos y capturas o informes cuando corresponda, sin datos sensibles. No afirmar que algo fue visto, probado o aprobado si no se ejecutó e inspeccionó realmente.
 - Dar por terminado el pedido cuando sus criterios de aceptación estén comprobados. Si falta acceso, una herramienta o un servicio, avanzar con lo verificable y comunicar exactamente qué quedó sin probar y por qué; no presentar una verificación parcial como completa.
-- Al entregar, resumir qué cambió, qué se probó y cualquier limitación pendiente. Cumplir las preferencias anteriores de commit, push y URL de prueba para cambios visuales.
+- Al entregar, resumir qué cambió, qué se probó, qué ejecutó el usuario localmente y cualquier limitación pendiente. Distinguir claramente revisión de código, pruebas realmente ejecutadas, CI y comprobaciones pendientes.
