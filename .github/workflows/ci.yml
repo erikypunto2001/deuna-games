@@ -252,6 +252,9 @@ jobs:
       - name: Editorial cleanup integration
         run: npm run check:editorial-cleanup-postgres
 
+      - name: Site maintenance integration
+        run: npm run check:site-maintenance-postgres
+
       - name: Migration preflight against PostgreSQL
         run: node ./tools/admin/preflight.ts --purpose=migration
 
