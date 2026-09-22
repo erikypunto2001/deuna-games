@@ -14,6 +14,9 @@ import {
 import {
   getAdminDatabaseConfig,
 } from "../src/lib/admin/database-config.ts";
+import {
+  PUBLIC_EXPOSURE_PUBLICATION_SQL,
+} from "../src/lib/admin/publication-history.ts";
 import { games } from "../src/data/games.ts";
 
 function assert(
@@ -450,6 +453,90 @@ try {
     "La eliminación debe conservar un evento de auditoría."
   );
 
+  const privateBaselineSlug =
+    "ci-private-baseline-game";
+  const privateBaselineId = randomUUID();
+  const privateGame = normalizeEditorialPayload(
+    parseEditorialPayload("game", {
+      ...fixtureSource,
+      id: privateBaselineSlug,
+      slug: privateBaselineSlug,
+      title: "CI Private Baseline Game",
+    })
+  );
+  const privateSerialized =
+    JSON.stringify(privateGame);
+  const privateDigest =
+    hashEditorialPayload(privateGame);
+
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_items (
+       id,
+       item_type,
+       item_key,
+       source_payload,
+       source_checksum,
+       source_present,
+       draft_payload,
+       draft_status,
+       published_payload,
+       published_checksum,
+       public_visible,
+       updated_by
+     )
+     VALUES (
+       $1,
+       'game',
+       $2,
+       '{}'::jsonb,
+       $3,
+       false,
+       $4::jsonb,
+       'modified',
+       $4::jsonb,
+       $5,
+       false,
+       $6
+     )`,
+    [
+      privateBaselineId,
+      privateBaselineSlug,
+      emptyDigest,
+      privateSerialized,
+      privateDigest,
+      ownerId,
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_revisions (
+       item_id, revision, payload, action, actor_user_id
+     )
+     VALUES ($1, 1, $2::jsonb, 'draft_saved', $3)`,
+    [
+      privateBaselineId,
+      privateSerialized,
+      ownerId,
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_publications (
+       item_id,
+       publication_number,
+       payload,
+       checksum,
+       source_revision,
+       action,
+       actor_user_id
+     )
+     VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap', $4)`,
+    [
+      privateBaselineId,
+      privateSerialized,
+      privateDigest,
+      ownerId,
+    ]
+  );
+
   const compactionTarget = await client.query<{
     id: string;
     revision: number;
@@ -613,6 +700,20 @@ try {
       preservedRow.publication_number === nextPublication &&
       preservedRow.published_from_revision === null,
     "La compactación alteró estado editorial actual o dejó una revisión histórica colgante."
+  );
+
+  const privateExposure = await client.query<{
+    count: number;
+  }>(
+    `SELECT count(*)::int AS count
+       FROM deuna_admin.editorial_publications AS publication
+      WHERE publication.item_id = $1
+        AND ${PUBLIC_EXPOSURE_PUBLICATION_SQL}`,
+    [privateBaselineId]
+  );
+  assert(
+    privateExposure.rows[0]?.count === 0,
+    "Compactar historial no debe convertir el bootstrap privado de un juego Admin en exposición pública."
   );
 
   const compactionAudit = await client.query<{
