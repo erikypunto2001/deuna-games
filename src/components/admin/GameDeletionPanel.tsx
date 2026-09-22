@@ -109,7 +109,7 @@ export default function GameDeletionPanel({
           />
           <input
             type="hidden"
-            name="expectedPublicationNumber"
+            name="deletePublicationNumber"
             value={preview.publicationNumber}
           />
           <label>
