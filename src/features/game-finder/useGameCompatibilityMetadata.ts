@@ -104,11 +104,16 @@ function loadCompatibilityMetadata(
     { cache: "no-store" }
   )
     .then(async (response) => {
-      if (!response.ok) return null;
+      if (!response.ok) {
+        if (response.status >= 500) {
+          return resolved.get(slug)?.value ?? null;
+        }
+        return null;
+      }
       const payload = await response.json() as { metadata?: unknown };
       return parsePublishedCompatibilityMetadata(payload.metadata);
     })
-    .catch(() => null)
+    .catch(() => resolved.get(slug)?.value ?? null)
     .then((metadata) => {
       resolved.set(slug, {
         value: metadata,
