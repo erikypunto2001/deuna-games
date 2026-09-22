@@ -352,6 +352,40 @@ async function publishLegacyCardFixture(
   };
 }
 
+async function publishPreviewClipOnlyFixture(
+  client: Client,
+  item: GameRow,
+  actorUserId: string
+) {
+  const current = parseEditorialPayload("game", item.published_payload);
+  const fixtureMedia = await writeFixtureWebm(current.slug);
+
+  const rawLegacySnapshot = {
+    ...current,
+    previewClip: fixtureMedia.publicPath,
+  };
+  delete rawLegacySnapshot.mediaModes;
+  delete rawLegacySnapshot.videoMedia;
+
+  const persisted = await persistFixtureSnapshot(
+    client,
+    item,
+    actorUserId,
+    rawLegacySnapshot,
+    "card-legacy-preview-clip-only-browser-runtime"
+  );
+
+  return {
+    itemKey: item.item_key,
+    slug: current.slug,
+    clip: fixtureMedia.publicPath,
+    mediaDigest: fixtureMedia.digest,
+    mediaBytes: fixtureMedia.bytes,
+    legacyMode: "preview-clip-only" as const,
+    ...persisted,
+  };
+}
+
 async function main() {
   assertVisualCiOnly();
 
@@ -377,6 +411,7 @@ async function main() {
     const fixtureSlugs = [
       "hogwarts-legacy",
       "red-dead-redemption-2",
+      "cyberpunk-2077",
       "elden-ring",
     ] as const;
     const itemResult = await client.query<GameRow>(
@@ -400,10 +435,11 @@ async function main() {
     );
     const hogwartsItem = bySlug.get("hogwarts-legacy");
     const redDeadItem = bySlug.get("red-dead-redemption-2");
+    const cyberpunkItem = bySlug.get("cyberpunk-2077");
     const imageItem = bySlug.get("elden-ring");
-    if (!hogwartsItem || !redDeadItem || !imageItem) {
+    if (!hogwartsItem || !redDeadItem || !cyberpunkItem || !imageItem) {
       throw new Error(
-        "Los fixtures visuales requieren Hogwarts Legacy, Red Dead Redemption 2 y Elden Ring publicados con imagen base."
+        "Los fixtures visuales requieren Hogwarts Legacy, Red Dead Redemption 2, Cyberpunk 2077 y Elden Ring publicados con imagen base."
       );
     }
 
@@ -419,6 +455,11 @@ async function main() {
       redDeadItem,
       actorUserId,
       "inferred-hover"
+    );
+    const cyberpunkFixture = await publishPreviewClipOnlyFixture(
+      client,
+      cyberpunkItem,
+      actorUserId
     );
     const imageFixture = await publishFixtureGame(
       client,
@@ -438,7 +479,7 @@ async function main() {
       `${JSON.stringify(
         {
           ...videoFixture,
-          legacyCards: [videoFixture, redDeadFixture],
+          legacyCards: [videoFixture, redDeadFixture, cyberpunkFixture],
           imageItemKey: imageFixture.itemKey,
           imageSlug: imageFixture.slug,
           imageRevision: imageFixture.revision,
@@ -451,7 +492,7 @@ async function main() {
     );
 
     console.log(
-      `Card + Contenedor video visual fixture: OK (legacy=${videoFixture.slug}+${redDeadFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
+      `Card + Contenedor video visual fixture: OK (legacy=${videoFixture.slug}+${redDeadFixture.slug}+${cyberpunkFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
