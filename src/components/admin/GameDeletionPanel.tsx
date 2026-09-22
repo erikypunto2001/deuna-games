@@ -49,7 +49,11 @@ export default function GameDeletionPanel({
         </div>
         <div className={styles.fact}>
           <span>Multimedia</span>
-          <strong>{preview.mediaResources}</strong>
+          <strong>
+            {preview.mediaResources === null
+              ? "No verificado"
+              : preview.mediaResources}
+          </strong>
         </div>
         <div className={styles.fact}>
           <span>Preferencias</span>
@@ -69,7 +73,21 @@ export default function GameDeletionPanel({
         </div>
       </div>
 
-      {blockedByHome ? (
+      {preview.reason === "still_public" ? (
+        <div className={styles.blocker}>
+          <AlertTriangle size={17} aria-hidden="true" />{" "}
+          No se puede eliminar definitivamente mientras el juego siga visible
+          en la web. Ocúltalo primero desde Publicación; retirar y destruir
+          contenido son operaciones separadas.
+        </div>
+      ) : preview.reason === "media_unverified" ? (
+        <div className={styles.blocker}>
+          <AlertTriangle size={17} aria-hidden="true" />{" "}
+          No se pudo verificar por completo el namespace multimedia del juego.
+          Por seguridad, la eliminación queda bloqueada hasta corregir esa
+          inconsistencia o entrada no reconocida.
+        </div>
+      ) : blockedByHome ? (
         <div className={styles.blocker}>
           <AlertTriangle size={17} aria-hidden="true" />{" "}
           No se puede eliminar todavía. Inicio referencia este juego
@@ -112,6 +130,15 @@ export default function GameDeletionPanel({
             name="deletePublicationNumber"
             value={preview.publicationNumber}
           />
+          <label>
+            Contraseña actual del Owner
+            <input
+              type="password"
+              name="currentPassword"
+              autoComplete="current-password"
+              required
+            />
+          </label>
           <label>
             Escribe <strong>{slug}</strong> para confirmar
             <input
