@@ -6,6 +6,9 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
+  reauthenticateAdmin,
+} from "@/lib/admin/auth-service";
+import {
   expectedRevisionSchema,
 } from "@/lib/admin/content-forms";
 import {
@@ -17,6 +20,9 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  adminCurrentPasswordSchema,
+} from "@/lib/admin/validation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,6 +60,7 @@ export async function POST(
         "expectedRevision",
         "deletePublicationNumber",
         "confirmSlug",
+        "currentPassword",
       ]
     )
   ) {
@@ -75,10 +82,15 @@ export async function POST(
     );
   const confirmation =
     authorized.form.get("confirmSlug");
+  const currentPassword =
+    adminCurrentPasswordSchema.safeParse(
+      authorized.form.get("currentPassword")
+    );
 
   if (
     !expectedRevision.success ||
     !expectedPublication.success ||
+    !currentPassword.success ||
     confirmation !== slug
   ) {
     return adminRedirect(
@@ -88,6 +100,16 @@ export async function POST(
   }
 
   try {
+    if (!await reauthenticateAdmin(
+      authorized.session.userId,
+      currentPassword.data
+    )) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=reauth`
+      );
+    }
+
     const result = await deletePanelGame(
       slug,
       expectedRevision.data,
@@ -106,6 +128,13 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         `${target}?estado=eliminacion-fuente`
+      );
+    }
+
+    if (result.outcome === "still_public") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=eliminacion-visible`
       );
     }
 
