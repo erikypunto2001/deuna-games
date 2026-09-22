@@ -1582,6 +1582,92 @@ if (!visibleText(publicUpdates.body).includes(updateSummary)) {
   );
 }
 
+publicationHtml = await publicationPage(slug, cookie);
+const snapshotsBeforeCleanup = positiveInputNumber(
+  publicationHtml,
+  "expectedPublications"
+);
+const restoreCountBeforeSnapshotCleanup =
+  restoreActions(publicationHtml).length;
+if (snapshotsBeforeCleanup <= 1 || restoreCountBeforeSnapshotCleanup === 0) {
+  throw new Error(
+    "El fixture no generó snapshots históricos suficientes para probar su limpieza."
+  );
+}
+
+const rejectedSnapshotCleanup = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/history/publications/reset`,
+  `${editorPath}/publicacion`,
+  cookie,
+  {
+    expectedPublications: String(snapshotsBeforeCleanup),
+    confirmSlug: slug,
+    currentPassword: `${adminPassword}-incorrecta`,
+  },
+  "La limpieza de snapshots con contraseña incorrecta"
+);
+assertRedirectState(
+  rejectedSnapshotCleanup,
+  "reauth",
+  "Reautenticación de limpieza de snapshots"
+);
+
+publicationHtml = await publicationPage(slug, cookie);
+if (
+  restoreActions(publicationHtml).length !==
+  restoreCountBeforeSnapshotCleanup
+) {
+  throw new Error(
+    "Una reautenticación incorrecta alteró los snapshots históricos."
+  );
+}
+
+const snapshotCleanup = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/history/publications/reset`,
+  `${editorPath}/publicacion`,
+  cookie,
+  {
+    expectedPublications: String(snapshotsBeforeCleanup),
+    confirmSlug: slug,
+    currentPassword: adminPassword,
+  },
+  "La limpieza de snapshots históricos"
+);
+assertRedirectState(
+  snapshotCleanup,
+  "snapshots-limpiados",
+  "Limpieza de snapshots históricos"
+);
+
+publicationHtml = await publicationPage(slug, cookie);
+if (restoreActions(publicationHtml).length !== 0) {
+  throw new Error(
+    "Limpiar snapshots dejó versiones antiguas restaurables."
+  );
+}
+const publicationAfterSnapshotCleanup =
+  positiveInputNumber(
+    publicationHtml,
+    "expectedPublicationNumber"
+  );
+if (publicationAfterSnapshotCleanup !== publicationAfterUpdate) {
+  throw new Error(
+    `Limpiar snapshots cambió publication_number (${publicationAfterUpdate} -> ${publicationAfterSnapshotCleanup}).`
+  );
+}
+const publicAfterSnapshotCleanup = requirePage(
+  await request(publicPath),
+  "Juego público después de limpiar snapshots"
+);
+if (
+  !firstH1(publicAfterSnapshotCleanup.body).includes(markerB) ||
+  !visibleText(publicAfterSnapshotCleanup.body).includes(updateVersion)
+) {
+  throw new Error(
+    "Limpiar snapshots alteró el contenido público actual."
+  );
+}
+
 const hideRedirect = await postAdminForm(
   `/api/admin/content/games/${encodeURIComponent(slug)}/hide`,
   `${editorPath}/publicacion`,
@@ -1610,5 +1696,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, limpieza de snapshots con reauth, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
 );
