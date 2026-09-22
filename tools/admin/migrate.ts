@@ -620,6 +620,23 @@ async function grantRuntimePrivileges(
       )
       TO ${role};
 
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.is_game_media_cleanup_pending(text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.list_game_media_cleanup_queue(uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.begin_game_media_cleanup(text, uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.complete_game_media_cleanup(text, uuid, text)
+      TO ${role};
+
     REVOKE ALL
       ON deuna_admin.schema_migrations
       FROM ${role};
