@@ -54,9 +54,12 @@ export async function generateMetadata({
   const page = publicPages.finder;
   const title = `${page.title} ${page.highlight}`;
   const description = page.description;
+  const pcGames = games.filter(
+    (game) => game.platforms?.includes("PC") === true
+  );
   const hasFocusedGame =
     typeof params.juego === "string" &&
-    games.some((game) => game.slug === params.juego);
+    pcGames.some((game) => game.slug === params.juego);
 
   return {
     title,
@@ -103,6 +106,9 @@ export default async function RequirementsPage({
     getPublicPagesConfig(),
     readAccountSession(),
   ]);
+  const pcGames = games.filter(
+    (game) => game.platforms?.includes("PC") === true
+  );
   const accountHardware = accountSession
     ? await getAccountHardwareSelection(accountSession.userId)
     : null;
@@ -110,11 +116,11 @@ export default async function RequirementsPage({
   const pageTitle = `${page.title} ${page.highlight}`;
   const focusedSlug =
     typeof juego === "string" &&
-    games.some((game) => game.slug === juego)
+    pcGames.some((game) => game.slug === juego)
       ? juego
       : undefined;
   const performanceCalibrations = Object.fromEntries(
-    games.flatMap((game) =>
+    pcGames.flatMap((game) =>
       game.performance
         ? [[game.slug, game.performance] as const]
         : []
@@ -173,7 +179,7 @@ export default async function RequirementsPage({
 
         <PublicFinderCopyProvider copy={page}>
           <AccountAwareGameFinder
-            games={games}
+            games={pcGames}
             focusedSlug={focusedSlug}
             authenticated={Boolean(accountSession)}
             accountHardware={accountHardware
