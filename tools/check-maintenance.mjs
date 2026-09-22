@@ -168,14 +168,20 @@ assert(
 
 assert(
   scripts["admin:update-local"] ===
-    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk && npm run admin:purge-media-junk && npm run admin:preflight",
-  "La actualización local debe purgar transitorios y assets físicos huérfanos antes del preflight."
+    "npm run db:migrate && npm run admin:import-content && npm run admin:purge-junk:check && npm run admin:purge-media-junk:check && npm run admin:preflight",
+  "La actualización local debe diagnosticar residuos sin eliminarlos automáticamente."
 );
 
 const localSetupForPurge = await read("tools/setup-local-server.sh");
+const localSetupLines = localSetupForPurge
+  .split("\n")
+  .map((line) => line.trim());
 assert(
-  localSetupForPurge.includes("npm run admin:purge-junk"),
-  "El setup local debe ejecutar la purga transitoria automáticamente."
+  localSetupLines.includes("npm run admin:purge-junk:check") &&
+    localSetupLines.includes("npm run admin:purge-media-junk:check") &&
+    !localSetupLines.includes("npm run admin:purge-junk") &&
+    !localSetupLines.includes("npm run admin:purge-media-junk"),
+  "El setup local debe diagnosticar basura sin ejecutar purgas destructivas."
 );
 
 const localBackup = await read("tools/admin/backup-local.ts");
