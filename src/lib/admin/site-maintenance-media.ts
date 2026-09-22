@@ -432,27 +432,33 @@ export async function scanSiteMediaJunk(
         }
       }
 
-      const publicPath =
-        buildEditorialMediaPublicPath(
-          slug,
+      const gameAllowed =
+        scope === "game" &&
+        GAME_MEDIA_FILENAME.test(
           entry.name
         );
-      const allowed = scope === "game"
-        ? GAME_MEDIA_FILENAME.test(
-            entry.name
-          )
-        : isAllowedGlobalAsset(
-            slug,
-            publicPath
-          );
+      const rawPublicPath =
+        `/media/editorial/${slug}/${entry.name}`;
+      const globalAllowed =
+        scope === "global" &&
+        isAllowedGlobalAsset(
+          slug,
+          rawPublicPath
+        );
 
-      if (!allowed) {
+      if (!gameAllowed && !globalAllowed) {
         unexpectedEntries.push({
           namespace: slug,
           name: entry.name,
         });
         continue;
       }
+
+      const publicPath =
+        buildEditorialMediaPublicPath(
+          slug,
+          entry.name
+        );
 
       if (
         protectedReferences.has(publicPath)
