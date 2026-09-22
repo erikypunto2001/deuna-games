@@ -11,6 +11,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import https from "node:https";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
@@ -262,6 +263,18 @@ if (!activeGameSlug) {
 }
 
 const mediaRoot = getEditorialMediaRoot();
+const temporaryDirectory = path.join(
+  os.tmpdir(),
+  "deuna-preview-sources"
+);
+const oldTemporaryPath = path.join(
+  temporaryDirectory,
+  `${randomBytes(24).toString("hex")}.video`
+);
+const recentTemporaryPath = path.join(
+  temporaryDirectory,
+  `${randomBytes(24).toString("hex")}.video`
+);
 const backgroundDirectory = path.join(
   mediaRoot,
   SITE_BACKGROUND_MEDIA_SLUG
@@ -301,17 +314,21 @@ const unknownPath = path.join(
 );
 
 await mkdir(backgroundDirectory, { recursive: true });
+await mkdir(temporaryDirectory, { recursive: true });
 await mkdir(taxonomyDirectory, { recursive: true });
 await mkdir(gameDirectory, { recursive: true });
 await mkdir(unknownDirectory, { recursive: true });
 await writeFile(oldPath, "old-orphan", { mode: 0o640 });
 await writeFile(recentPath, "recent-orphan", { mode: 0o640 });
+await writeFile(oldTemporaryPath, "old-temporary", { mode: 0o600 });
+await writeFile(recentTemporaryPath, "recent-temporary", { mode: 0o600 });
 await writeFile(markerPath, "marker", { mode: 0o600 });
 await writeFile(unknownPath, "manual", { mode: 0o600 });
 const oldDate = new Date(
   Date.now() - 25 * 60 * 60 * 1_000
 );
 await utimes(oldPath, oldDate, oldDate);
+await utimes(oldTemporaryPath, oldDate, oldDate);
 
 let html = await maintenancePage(cookie);
 const initialFingerprint =
@@ -409,8 +426,15 @@ if (
   );
 }
 
+if (await pathExists(oldTemporaryPath)) {
+  throw new Error(
+    "La limpieza general dejó un temporal multimedia abandonado."
+  );
+}
+
 if (
   !(await pathExists(recentPath)) ||
+  !(await pathExists(recentTemporaryPath)) ||
   !(await pathExists(unknownPath))
 ) {
   throw new Error(
@@ -429,6 +453,7 @@ if (
 }
 
 await unlink(recentPath).catch(() => {});
+await unlink(recentTemporaryPath).catch(() => {});
 await rm(unknownDirectory, {
   recursive: true,
   force: true,
