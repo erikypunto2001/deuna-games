@@ -26,6 +26,7 @@ type GameDeletionPreviewRow = {
   insight_snapshots: number;
   home_draft_references: number;
   home_published_references: number;
+  home_historical_references: number;
 };
 
 export type GameDeletionPreview = {
@@ -33,7 +34,8 @@ export type GameDeletionPreview = {
   reason:
     | "ready"
     | "source_managed"
-    | "home_reference";
+    | "home_reference"
+    | "home_history_reference";
   revision: number;
   publicationNumber: number;
   publicVisible: boolean;
@@ -46,6 +48,7 @@ export type GameDeletionPreview = {
   mediaResources: number;
   homeDraftReferences: number;
   homePublishedReferences: number;
+  homeHistoricalReferences: number;
 };
 
 export type DeletePanelGameResult =
@@ -64,6 +67,10 @@ export type DeletePanelGameResult =
       outcome: "home_reference";
       draftReferences: number;
       publishedReferences: number;
+    }
+  | {
+      outcome: "home_history_reference";
+      historicalReferences: number;
     }
   | {
       outcome: "conflict";
@@ -189,7 +196,30 @@ export async function getGameDeletionPreview(
               OR COALESCE(home.published_payload -> 'lowSpecSlugs', '[]'::jsonb) ? item.item_key
               OR COALESCE(home.published_payload -> 'recommendedSlugs', '[]'::jsonb) ? item.item_key
             )
-       ) AS home_published_references
+       ) AS home_published_references,
+       (
+         SELECT count(*)::int
+           FROM (
+             SELECT revision.payload
+               FROM deuna_admin.editorial_revisions AS revision
+               INNER JOIN deuna_admin.editorial_items AS home
+                 ON home.id = revision.item_id
+              WHERE home.item_type = 'home_config'
+                AND home.item_key = 'home'
+             UNION ALL
+             SELECT publication.payload
+               FROM deuna_admin.editorial_publications AS publication
+               INNER JOIN deuna_admin.editorial_items AS home
+                 ON home.id = publication.item_id
+              WHERE home.item_type = 'home_config'
+                AND home.item_key = 'home'
+           ) AS history
+          WHERE
+            COALESCE(history.payload -> 'heroSlugs', '[]'::jsonb) ? item.item_key
+            OR COALESCE(history.payload -> 'popularSlugs', '[]'::jsonb) ? item.item_key
+            OR COALESCE(history.payload -> 'lowSpecSlugs', '[]'::jsonb) ? item.item_key
+            OR COALESCE(history.payload -> 'recommendedSlugs', '[]'::jsonb) ? item.item_key
+       ) AS home_historical_references
      FROM deuna_admin.editorial_items AS item
      WHERE item.item_type = 'game'
        AND item.item_key = $1
@@ -220,7 +250,9 @@ export async function getGameDeletionPreview(
     ? "source_managed"
     : hasHomeReference
       ? "home_reference"
-      : "ready";
+      : row.home_historical_references > 0
+        ? "home_history_reference"
+        : "ready";
 
   return {
     deletable: reason === "ready",
@@ -239,6 +271,8 @@ export async function getGameDeletionPreview(
       row.home_draft_references,
     homePublishedReferences:
       row.home_published_references,
+    homeHistoricalReferences:
+      row.home_historical_references,
   };
 }
 
@@ -291,6 +325,15 @@ export async function deletePanelGame(
       publishedReferences: numberField(
         raw,
         "publishedReferences"
+      ),
+    };
+  }
+  if (outcome === "home_history_reference") {
+    return {
+      outcome: "home_history_reference",
+      historicalReferences: numberField(
+        raw,
+        "historicalReferences"
       ),
     };
   }
