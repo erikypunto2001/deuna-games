@@ -406,6 +406,8 @@ assert(
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
+    'target === "card" && game.previewClip?.trim()',
+    "legacyCardViewport",
     "withGameVideoLayout",
     "withoutGameVideoTarget"
   ) &&
@@ -439,6 +441,7 @@ assert(
     "viewport.source !== expectedSource",
     "const coverImage = resolveGameCoverImage(game)",
     "const cardImageReady",
+    "resolveGameCardVideo(game)",
     "cardImageReady && cardVideoReady"
   ) &&
     !requirements.includes("videoMedia?.cover") &&
@@ -490,6 +493,8 @@ assert(
     "activeVideoMedia",
     "videoMedia.hero",
     "videoMedia.card",
+    "legacyCardPreview",
+    "game.previewClip",
     "const normalizedGame: Game"
   ),
   "La validación debe aceptar historial legado, normalizar shared/custom, sincronizar Portada compartida con Card y eliminar video activo de Portada."
