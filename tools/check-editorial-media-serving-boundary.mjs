@@ -197,9 +197,11 @@ assert(
       '"oculto"',
       "crop=confirmed-private",
       "historical-public",
-      "cleanup=hidden"
+      "snapshot-clean=revision-protected",
+      "history-clean=baseline",
+      "hard-delete=pending+retry+physical-clean"
     ),
-  "El smoke debe reutilizar sólo el fixture sintético oculto y publication-ready, cubrir upload/borrador/crop/publicación/restauración y volver a ocultarlo validando cada redirect crítico."
+  "El smoke debe reutilizar sólo el fixture sintético oculto y publication-ready, cubrir upload/borrador/crop/publicación/restauración, protección por revisión y recuperación física del hard-delete validando cada redirect crítico."
 );
 
 const gameLifecycleIndex = packageJson.indexOf(
