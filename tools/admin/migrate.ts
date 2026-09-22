@@ -598,12 +598,12 @@ async function grantRuntimePrivileges(
 
     GRANT EXECUTE
       ON FUNCTION deuna_admin.delete_panel_game(
-        text, uuid, integer, integer
+        text, uuid, text, integer, integer
       )
       TO ${role};
 
     GRANT EXECUTE
-      ON FUNCTION deuna_admin.compact_editorial_history(uuid)
+      ON FUNCTION deuna_admin.compact_editorial_history(uuid, text)
       TO ${role};
 
     REVOKE ALL
