@@ -47,11 +47,11 @@ assert(
       publicationHistory,
       "publication.action IN ('published', 'rollback')",
       "publication.action = 'bootstrap'",
-      "editorial_revisions",
-      "revision.action = 'draft_saved'",
+      "created_item.source_present = false",
+      "created_item.source_payload = '{}'::jsonb",
       "NOT EXISTS"
     ),
-  "La higiene debe usar la fuente compartida que protege publicaciones/restauraciones y bootstrap de origen, sin retener la base privada no restaurable creada desde el panel."
+  "La higiene debe usar la fuente compartida que protege publicaciones/restauraciones y distinguir el bootstrap privado por su origen persistente, sin depender de revisiones históricas compactables."
 );
 
 assert(
