@@ -267,6 +267,21 @@ const notices = {
     message:
       "Historial de Inicio compactado a un baseline actual sin modificar los historiales de juegos ni otras superficies editoriales.",
   },
+  "historial-limpiado": {
+    kind: "success",
+    message:
+      "Respaldos históricos del juego eliminados. Se conservaron el borrador y el snapshot actuales como baseline; las versiones anteriores dejaron de ser restaurables.",
+  },
+  "historial-conflicto": {
+    kind: "warning",
+    message:
+      "El historial del juego cambió desde que cargaste la página. No se eliminó ninguna versión. Recarga Historial antes de volver a confirmar.",
+  },
+  "historial-confirmacion": {
+    kind: "error",
+    message:
+      "La limpieza del historial no se ejecutó porque la contraseña, el identificador o los conteos esperados no son válidos.",
+  },
   reauth: {
     kind: "error",
     message:
