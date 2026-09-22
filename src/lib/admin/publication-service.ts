@@ -41,7 +41,8 @@ type PublishableEditorialType =
 type PublicationAction =
   | "bootstrap"
   | "published"
-  | "rollback";
+  | "rollback"
+  | "baseline";
 
 type PublicationItemRow = {
   id: string;
