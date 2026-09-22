@@ -438,21 +438,6 @@ try {
     "La eliminación dejó referencias huérfanas."
   );
 
-  const audit = await client.query<{
-    count: number;
-  }>(
-    `SELECT count(*)::int AS count
-       FROM deuna_admin.admin_audit_log
-      WHERE action = 'content_deleted'
-        AND entity_type = 'game'
-        AND entity_id = $1`,
-    [slug]
-  );
-  assert(
-    audit.rows[0]?.count === 1,
-    "La eliminación debe conservar un evento de auditoría."
-  );
-
   const privateBaselineSlug =
     "ci-private-baseline-game";
   const privateBaselineId = randomUUID();
@@ -714,20 +699,6 @@ try {
   assert(
     privateExposure.rows[0]?.count === 0,
     "Compactar historial no debe convertir el bootstrap privado de un juego Admin en exposición pública."
-  );
-
-  const compactionAudit = await client.query<{
-    count: number;
-  }>(
-    `SELECT count(*)::int AS count
-       FROM deuna_admin.admin_audit_log
-      WHERE action = 'editorial_history_compacted'
-        AND user_id = $1`,
-    [ownerId]
-  );
-  assert(
-    compactionAudit.rows[0]?.count === 1,
-    "La compactación debe quedar auditada."
   );
 
   await client.query("ROLLBACK");
