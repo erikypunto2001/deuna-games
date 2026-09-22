@@ -80,6 +80,7 @@ try {
     can_delete_panel_game: boolean;
     can_compact_history: boolean;
     can_compact_item_history: boolean;
+    can_compact_publication_history: boolean;
   }>(
     `SELECT
        has_table_privilege(
@@ -101,7 +102,12 @@ try {
          current_user,
          'deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)',
          'EXECUTE'
-       ) AS can_compact_item_history`
+       ) AS can_compact_item_history,
+       has_function_privilege(
+         current_user,
+         'deuna_admin.compact_editorial_publication_history(text,text,uuid,text,integer)',
+         'EXECUTE'
+       ) AS can_compact_publication_history`
   );
   assert(
     privilege.rows[0]?.can_delete_items === false,
@@ -110,7 +116,8 @@ try {
   assert(
     privilege.rows[0]?.can_delete_panel_game === true &&
       privilege.rows[0]?.can_compact_history === true &&
-      privilege.rows[0]?.can_compact_item_history === true,
+      privilege.rows[0]?.can_compact_item_history === true &&
+      privilege.rows[0]?.can_compact_publication_history === true,
     "El rol runtime debe ejecutar sólo las funciones de mantenimiento autorizadas."
   );
 
@@ -680,6 +687,170 @@ try {
     ]
   );
 
+  const targetHistoryBefore = await client.query<{
+    revisions: number;
+    publications: number;
+  }>(
+    `SELECT
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions
+          WHERE item_id = $1
+       ) AS revisions,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications
+          WHERE item_id = $1
+       ) AS publications`,
+    [target.id]
+  );
+  const targetHistoryCounts =
+    targetHistoryBefore.rows[0];
+  assert(
+    targetHistoryCounts &&
+      targetHistoryCounts.revisions > 1 &&
+      targetHistoryCounts.publications > 1,
+    "El fixture por juego no generó respaldos suficientes para limpiar."
+  );
+
+  const snapshotCompacted = await client.query<{
+    result: unknown;
+  }>(
+    `SELECT deuna_admin.compact_editorial_publication_history(
+       'game',
+       $1,
+       $2,
+       $3,
+       $4
+     ) AS result`,
+    [
+      sourceGame.item_key,
+      ownerId,
+      sessionToken,
+      targetHistoryCounts.publications,
+    ]
+  );
+  assert(
+    outcome(snapshotCompacted.rows[0]?.result).outcome ===
+      "compacted",
+    "La limpieza exclusiva de snapshots fue rechazada."
+  );
+
+  const afterSnapshotCleanup = await client.query<{
+    revisions: number;
+    publications: number;
+    revision: number;
+    publication_number: number;
+    published_from_revision: number | null;
+    draft_payload: unknown;
+    published_payload: unknown;
+    public_visible: boolean;
+  }>(
+    `SELECT
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions
+          WHERE item_id = item.id
+       ) AS revisions,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications
+          WHERE item_id = item.id
+       ) AS publications,
+       item.revision,
+       item.publication_number,
+       item.published_from_revision,
+       item.draft_payload,
+       item.published_payload,
+       item.public_visible
+     FROM deuna_admin.editorial_items AS item
+     WHERE item.id = $1`,
+    [target.id]
+  );
+  const snapshotRow = afterSnapshotCleanup.rows[0];
+  assert(
+    snapshotRow &&
+      snapshotRow.revisions === targetHistoryCounts.revisions &&
+      snapshotRow.publications === 1 &&
+      snapshotRow.revision === nextRevision &&
+      snapshotRow.publication_number === nextPublication &&
+      snapshotRow.published_from_revision === nextRevision &&
+      JSON.stringify(snapshotRow.draft_payload) === targetDraft &&
+      JSON.stringify(snapshotRow.published_payload) === targetPublished &&
+      snapshotRow.public_visible === target.public_visible,
+    "Limpiar snapshots alteró revisiones o el estado editorial actual."
+  );
+
+  const itemCompacted = await client.query<{
+    result: unknown;
+  }>(
+    `SELECT deuna_admin.compact_editorial_item_history(
+       'game',
+       $1,
+       $2,
+       $3,
+       $4,
+       $5
+     ) AS result`,
+    [
+      sourceGame.item_key,
+      ownerId,
+      sessionToken,
+      snapshotRow.revisions,
+      snapshotRow.publications,
+    ]
+  );
+  assert(
+    outcome(itemCompacted.rows[0]?.result).outcome ===
+      "compacted",
+    "La limpieza completa del historial del juego fue rechazada."
+  );
+
+  const afterItemCleanup = await client.query<{
+    revisions: number;
+    publications: number;
+    revision: number;
+    publication_number: number;
+    published_from_revision: number | null;
+    draft_payload: unknown;
+    published_payload: unknown;
+    public_visible: boolean;
+  }>(
+    `SELECT
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions
+          WHERE item_id = item.id
+       ) AS revisions,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications
+          WHERE item_id = item.id
+       ) AS publications,
+       item.revision,
+       item.publication_number,
+       item.published_from_revision,
+       item.draft_payload,
+       item.published_payload,
+       item.public_visible
+     FROM deuna_admin.editorial_items AS item
+     WHERE item.id = $1`,
+    [target.id]
+  );
+  const itemCleanupRow = afterItemCleanup.rows[0];
+  assert(
+    itemCleanupRow &&
+      itemCleanupRow.revisions === 1 &&
+      itemCleanupRow.publications === 1 &&
+      itemCleanupRow.revision === nextRevision &&
+      itemCleanupRow.publication_number === nextPublication &&
+      itemCleanupRow.published_from_revision === null &&
+      JSON.stringify(itemCleanupRow.draft_payload) === targetDraft &&
+      JSON.stringify(itemCleanupRow.published_payload) === targetPublished &&
+      itemCleanupRow.public_visible === target.public_visible,
+    "Limpiar el historial del juego alteró el estado editorial actual."
+  );
+
   const before = await client.query<{
     items: number;
     revisions: number;
@@ -693,8 +864,10 @@ try {
   const beforeCounts = before.rows[0];
   assert(
     beforeCounts &&
-      beforeCounts.revisions > beforeCounts.items &&
-      beforeCounts.publications > beforeCounts.items,
+      (
+        beforeCounts.revisions > beforeCounts.items ||
+        beforeCounts.publications > beforeCounts.items
+      ),
     "El fixture no generó historial antiguo para compactar."
   );
 
@@ -850,7 +1023,7 @@ try {
   await client.query("ROLLBACK");
 
   console.log(
-    "Higiene editorial PostgreSQL: OK (mínimo privilegio, bloqueo de fuente/visibilidad/Home, borrado coordinado, baseline explícito y compactación global/acotada preservando estado actual)."
+    "Higiene editorial PostgreSQL: OK (mínimo privilegio, bloqueo de fuente/visibilidad/Home, borrado coordinado, limpieza de snapshots, historial por juego y compactación global/acotada preservando estado actual)."
   );
 } catch (error) {
   await client.query("ROLLBACK").catch(() => {});
