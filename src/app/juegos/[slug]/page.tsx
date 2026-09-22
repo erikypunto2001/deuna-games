@@ -467,7 +467,10 @@ export default async function GameDetailPage({
             id="compatibility"
             className={styles.compatibilityAnchor}
           >
-            <GameCompatibilityCard slug={game.slug} />
+            <GameCompatibilityCard
+              slug={game.slug}
+              supportsPc={platforms.includes("PC")}
+            />
           </div>
         </section>
 
