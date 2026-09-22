@@ -1,7 +1,11 @@
 import {
   createHash,
 } from "node:crypto";
+import {
+  readdir,
+} from "node:fs/promises";
 import https from "node:https";
+import path from "node:path";
 import process from "node:process";
 
 import {
@@ -714,10 +718,126 @@ assertPublicImmutable(
   digest
 );
 
+const deleteStateResult = await adminQuery(
+  `SELECT revision, publication_number
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+const deleteState = deleteStateResult.rows[0];
+
+if (!deleteState) {
+  throw new Error(
+    "El fixture desapareció antes de probar el hard-delete."
+  );
+}
+
+const deleteReferer =
+  `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
+const rejectedDeleteBody = new URLSearchParams({
+  expectedRevision: String(deleteState.revision),
+  deletePublicationNumber: String(deleteState.publication_number),
+  confirmSlug: slug,
+  currentPassword: `${adminPassword}-incorrecta`,
+}).toString();
+const rejectedDelete = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/delete`,
+  {
+    method: "POST",
+    headers: formHeaders(deleteReferer, cookie),
+    body: rejectedDeleteBody,
+  }
+);
+expectRedirect(
+  rejectedDelete,
+  "El hard-delete con contraseña incorrecta",
+  "reauth"
+);
+
+const preservedAfterRejectedDelete = await adminQuery(
+  `SELECT count(*)::int AS count
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+if (preservedAfterRejectedDelete.rows[0]?.count !== 1) {
+  throw new Error(
+    "Una reautenticación incorrecta alteró el fixture."
+  );
+}
+
+const deleteBody = new URLSearchParams({
+  expectedRevision: String(deleteState.revision),
+  deletePublicationNumber: String(deleteState.publication_number),
+  confirmSlug: slug,
+  currentPassword: adminPassword,
+}).toString();
+const deleted = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/delete`,
+  {
+    method: "POST",
+    headers: formHeaders(deleteReferer, cookie),
+    body: deleteBody,
+  }
+);
+expectRedirect(
+  deleted,
+  "El hard-delete final del fixture",
+  "eliminado"
+);
+
+const remainingItem = await adminQuery(
+  `SELECT count(*)::int AS count
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+if (remainingItem.rows[0]?.count !== 0) {
+  throw new Error(
+    "El hard-delete no eliminó el registro editorial."
+  );
+}
+
+const mediaRoot =
+  process.env.DEUNA_EDITORIAL_MEDIA_ROOT;
+if (!mediaRoot) {
+  throw new Error(
+    "El hard-delete E2E requiere DEUNA_EDITORIAL_MEDIA_ROOT aislado."
+  );
+}
+
+let residualMedia = [];
+try {
+  residualMedia = await readdir(
+    path.join(mediaRoot, slug)
+  );
+} catch (error) {
+  if (
+    !(
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    )
+  ) {
+    throw error;
+  }
+}
+
+if (
+  residualMedia.some((name) =>
+    /^(?:[a-f0-9]{64}\.(?:webp|webm)|\.delete-)/.test(name)
+  )
+) {
+  throw new Error(
+    `El hard-delete dejó masters o marcadores multimedia residuales: ${residualMedia.join(", ")}.`
+  );
+}
+
 console.log(
   "Editorial media serving lifecycle smoke: OK " +
     `(slug=${slug}, bytes=${image.length}, ` +
     "upload=anon404/admin-private, draft=custom-pending-private, " +
     "crop=confirmed-private, published=public-immutable, " +
-    "restored=historical-public, cleanup=hidden)."
+    "restored=historical-public, cleanup=hidden, hard-delete=reauth+physical-clean)." 
 );
