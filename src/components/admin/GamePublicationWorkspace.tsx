@@ -182,7 +182,31 @@ function RequestNotice({
   if (state === "reauth") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
-        La contraseña actual del Owner no pudo verificarse. El juego no fue eliminado.
+        La contraseña actual del Owner no pudo verificarse. No se ejecutó la operación crítica.
+      </div>
+    );
+  }
+
+  if (state === "snapshots-limpiados") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeSuccess}`}>
+        Snapshots antiguos eliminados. Se conservó únicamente el snapshot actual y el historial de revisiones quedó intacto.
+      </div>
+    );
+  }
+
+  if (state === "snapshots-conflicto") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        El historial de snapshots cambió desde que cargaste la página. No se eliminó ninguna versión; recarga antes de volver a confirmar.
+      </div>
+    );
+  }
+
+  if (state === "snapshots-confirmacion") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        La limpieza no se ejecutó porque la contraseña, el identificador o el conteo esperado no son válidos.
       </div>
     );
   }
