@@ -196,6 +196,24 @@ assert(
 const purgeMediaJunk = await read(
   "tools/admin/purge-orphan-editorial-media.ts"
 );
+const siteTemporaryMaintenance = await read(
+  "src/lib/admin/site-maintenance-temporary.ts"
+);
+for (const requiredGuard of [
+  "TEMPORARY_JUNK_AGE_MS",
+  "deuna-preview-sources",
+  "deuna-preview-upload",
+  "deuna-media-import-worker",
+  "MAX_DIRECTORY_ENTRIES",
+  "stats.isSymbolicLink()",
+  "expectedFingerprint",
+  "candidateStillMatches",
+]) {
+  assert(
+    siteTemporaryMaintenance.includes(requiredGuard),
+    `La limpieza temporal general debe conservar la guarda ${requiredGuard}.`
+  );
+}
 const taxonomyIconStorage = await read(
   "src/lib/media/taxonomy-icon-upload.ts"
 );
