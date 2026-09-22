@@ -81,7 +81,7 @@ function getFreshCachedMetadata(slug: string) {
   const cached = resolved.get(slug);
   if (
     !cached ||
-    Date.now() - cached.loadedAt > PUBLIC_GAME_METADATA_CACHE_MS
+    Date.now() - cached.loadedAt >= PUBLIC_GAME_METADATA_CACHE_MS
   ) {
     return undefined;
   }
@@ -133,19 +133,31 @@ export function useGameCompatibilityMetadata(slug: string) {
 
   useEffect(() => {
     let active = true;
+    let timer: number | null = null;
 
-    loadCompatibilityMetadata(slug).then((metadata) => {
-      if (active) {
-        setState({
-          slug,
-          loaded: true,
-          metadata,
-        });
-      }
-    });
+    async function refresh() {
+      const metadata = await loadCompatibilityMetadata(slug);
+      if (!active) return;
+
+      setState({
+        slug,
+        loaded: true,
+        metadata,
+      });
+
+      timer = window.setTimeout(
+        refresh,
+        PUBLIC_GAME_METADATA_CACHE_MS
+      );
+    }
+
+    void refresh();
 
     return () => {
       active = false;
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
     };
   }, [slug]);
 
