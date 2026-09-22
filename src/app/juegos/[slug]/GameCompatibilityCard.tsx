@@ -128,7 +128,7 @@ function UnsupportedPlatformCompatibilityCard() {
       </div>
 
       <p className={styles.compatibilityEmpty}>
-        Este juego no tiene PC entre sus plataformas publicadas. DeUna Games no calcula FPS de CPU/GPU de PC para una plataforma distinta ni pendiente de confirmar.
+        Este juego no tiene PC entre sus plataformas publicadas. No se calculan FPS de CPU/GPU de PC para una plataforma distinta ni pendiente de confirmar.
       </p>
     </aside>
   );
