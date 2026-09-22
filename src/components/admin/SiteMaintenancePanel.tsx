@@ -64,11 +64,15 @@ export default function SiteMaintenancePanel({
     overview.pendingMediaCleanups.length;
   const recent =
     overview.media.recentUnreferenced.length;
+  const temporary =
+    overview.temporary.files +
+    overview.temporary.directories;
   const hasSafeCleanup =
     overview.safeRecords > 0 ||
     overview.safeFiles > 0 ||
     overview.safeMarkers > 0 ||
     overview.safeDirectories > 0 ||
+    temporary > 0 ||
     pending > 0;
   const manualEntries = [
     ...overview.media.unknownNamespaces.map(
@@ -78,6 +82,10 @@ export default function SiteMaintenancePanel({
     ...overview.media.unexpectedEntries.map(
       (entry) =>
         `${entry.namespace}: ${entry.name}`
+    ),
+    ...overview.temporary.unexpectedEntries.map(
+      (entry) =>
+        `Temporal no reconocido: ${entry}`
     ),
   ];
 
@@ -264,6 +272,10 @@ export default function SiteMaintenancePanel({
               value={overview.safeDirectories}
             />
             <CountRow
+              label={`Temporales multimedia abandonados · ${formatBytes(overview.temporary.bytes)}`}
+              value={temporary}
+            />
+            <CountRow
               label="Limpiezas pendientes de hard-delete"
               value={pending}
             />
@@ -290,6 +302,12 @@ export default function SiteMaintenancePanel({
             <li>
               archivos sin referencia con menos de
               24 horas ({recent} ahora);
+            </li>
+            <li>
+              temporales multimedia recientes o en
+              uso; sólo los artefactos DeUna
+              reconocidos con más de 24 horas se
+              consideran abandonados;
             </li>
             <li>
               cuentas, perfiles de hardware,
@@ -358,6 +376,13 @@ export default function SiteMaintenancePanel({
               label="Entradas inesperadas"
               value={
                 overview.media
+                  .unexpectedEntries.length
+              }
+            />
+            <CountRow
+              label="Temporales no reconocidos"
+              value={
+                overview.temporary
                   .unexpectedEntries.length
               }
             />
