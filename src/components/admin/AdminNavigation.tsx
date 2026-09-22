@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Tags,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -87,6 +88,12 @@ const navigationGroups = [
         label: "Acceso y seguridad",
         icon: ShieldCheck,
         ownerOnly: false,
+      },
+      {
+        href: "/admin/mantenimiento",
+        label: "Mantenimiento",
+        icon: Wrench,
+        ownerOnly: true,
       },
     ],
   },
