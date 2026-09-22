@@ -4,6 +4,7 @@ import {
   adminQuery,
 } from "./database";
 import {
+  readAdminSessionToken,
   verifyAdminSession,
 } from "./session";
 import {
@@ -290,6 +291,15 @@ export async function deletePanelGame(
     );
   }
 
+  const sessionToken =
+    await readAdminSessionToken();
+
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
   const result = await adminQuery<{
     result: unknown;
   }>(
@@ -297,11 +307,13 @@ export async function deletePanelGame(
        $1,
        $2,
        $3,
-       $4
+       $4,
+       $5
      ) AS result`,
     [
       slug,
       actorUserId,
+      sessionToken,
       expectedRevision,
       expectedPublicationNumber,
     ]
@@ -439,13 +451,23 @@ export async function compactEditorialHistory(
     );
   }
 
+  const sessionToken =
+    await readAdminSessionToken();
+
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
   const result = await adminQuery<{
     result: unknown;
   }>(
     `SELECT deuna_admin.compact_editorial_history(
-       $1
+       $1,
+       $2
      ) AS result`,
-    [actorUserId]
+    [actorUserId, sessionToken]
   );
   const raw = asRecord(result.rows[0]?.result);
 
