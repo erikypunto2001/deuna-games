@@ -79,7 +79,7 @@ assert(
   has(
     publicationHistory,
     "PUBLIC_EXPOSURE_PUBLICATION_SQL",
-    "publication.action IN ('published', 'rollback')",
+    "publication.action IN ('published', 'rollback', 'baseline')",
     "publication.action = 'bootstrap'",
     "created_item.source_present = false",
     "created_item.source_payload = '{}'::jsonb",
