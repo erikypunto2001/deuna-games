@@ -178,11 +178,19 @@ visibilidad actuales y dejan un baseline explícito. Cada juego ofrece además
 dos limpiezas Owner-only: desde Publicación se pueden eliminar únicamente los
 snapshots antiguos conservando todas las revisiones del borrador, y desde
 Historial se pueden compactar revisiones y publicaciones de ese juego a su
-baseline actual. Estas acciones exigen reautenticación, confirmación del
-identificador y control de concurrencia; no despublican contenido ni borran
-multimedia automáticamente. Antes de usar cualquier compactación sobre datos
-valiosos debe existir un backup verificado; en local se puede crear con
-`npm run admin:backup-local`.
+baseline actual. La multimedia referenciada por cualquier revisión que siga
+restaurable permanece protegida aunque ya no exista un snapshot histórico.
+Estas acciones exigen reautenticación, confirmación del identificador y control
+de concurrencia; no despublican contenido ni borran multimedia automáticamente.
+
+El hard-delete registra en PostgreSQL una limpieza multimedia pendiente dentro
+de la misma transacción que elimina un juego creado desde Admin. El identificador
+queda bloqueado hasta que el namespace físico se elimina por completo. Si el
+filesystem falla, Mantenimiento muestra el pendiente y permite al Owner
+reintentarlo con reautenticación; una limpieza exitosa elimina también el
+directorio vacío antes de liberar el slug. Antes de usar cualquier compactación
+sobre datos valiosos debe existir un backup verificado; en local se puede crear
+con `npm run admin:backup-local`.
 
 `DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
 
