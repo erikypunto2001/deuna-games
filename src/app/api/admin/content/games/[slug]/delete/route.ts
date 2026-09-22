@@ -52,7 +52,7 @@ export async function POST(
       authorized.form,
       [
         "expectedRevision",
-        "expectedPublicationNumber",
+        "deletePublicationNumber",
         "confirmSlug",
       ]
     )
@@ -70,7 +70,7 @@ export async function POST(
   const expectedPublication =
     expectedRevisionSchema.safeParse(
       authorized.form.get(
-        "expectedPublicationNumber"
+        "deletePublicationNumber"
       )
     );
   const confirmation =
