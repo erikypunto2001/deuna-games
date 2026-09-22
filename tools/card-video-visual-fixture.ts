@@ -90,6 +90,7 @@ async function writeFixtureWebm(slug: string) {
 }
 
 type FixtureMode = "video" | "image";
+type LegacyCardFixtureMode = "explicit-hover" | "inferred-hover";
 
 type GameRow = {
   id: string;
@@ -100,57 +101,14 @@ type GameRow = {
   publication_number: number;
 };
 
-async function publishFixtureGame(
+async function persistFixtureSnapshot(
   client: Client,
   item: GameRow,
   actorUserId: string,
-  mode: FixtureMode
+  payload: unknown,
+  fixture: string
 ) {
-  const current = parseEditorialPayload("game", item.published_payload);
-  const fixtureMedia = mode === "video" ? await writeFixtureWebm(current.slug) : null;
-  const otherVideoMedia = { ...(current.videoMedia ?? {}) };
-  delete otherVideoMedia.card;
-  const videoMedia =
-    mode === "video" && fixtureMedia
-      ? {
-          ...otherVideoMedia,
-          card: {
-            source: "independent" as const,
-            clip: fixtureMedia.publicPath,
-            viewport: {
-              x: 0.5,
-              y: 0.5,
-              zoom: 1,
-              aspect: "3:2" as const,
-              confirmed: true,
-            },
-            playback: "always" as const,
-          },
-          detail: {
-            clip: fixtureMedia.publicPath,
-            viewport: {
-              x: 0.5,
-              y: 0.5,
-              zoom: 1,
-              aspect: "source" as const,
-              confirmed: true,
-            },
-            playback: "always" as const,
-          },
-        }
-      : Object.keys(otherVideoMedia).length > 0
-        ? otherVideoMedia
-        : undefined;
-  const next = parseEditorialPayload("game", {
-    ...current,
-    mediaModes: {
-      ...(current.mediaModes ?? {}),
-      card: mode,
-      ...(mode === "video" ? { detail: "video" as const } : {}),
-    },
-    videoMedia,
-  });
-  const normalized = normalizeEditorialPayload(next);
+  const normalized = normalizeEditorialPayload(payload);
   const serialized = JSON.stringify(normalized);
   const digest = hashEditorialPayload(normalized);
   const draftStatus =
@@ -183,7 +141,7 @@ async function publishFixtureGame(
       item.item_key,
       JSON.stringify({
         revision: nextRevision,
-        fixture: `card-${mode}-browser-runtime`,
+        fixture,
       }),
     ]
   );
@@ -239,19 +197,158 @@ async function publishFixtureGame(
         publicationNumber: nextPublication,
         revision: nextRevision,
         firstVisibility: false,
-        fixture: `card-${mode}-browser-runtime`,
+        fixture,
       }),
     ]
   );
 
   return {
+    revision: nextRevision,
+    publicationNumber: nextPublication,
+  };
+}
+
+async function publishFixtureGame(
+  client: Client,
+  item: GameRow,
+  actorUserId: string,
+  mode: FixtureMode
+) {
+  const current = parseEditorialPayload("game", item.published_payload);
+  const fixtureMedia = mode === "video" ? await writeFixtureWebm(current.slug) : null;
+  const otherVideoMedia = { ...(current.videoMedia ?? {}) };
+  delete otherVideoMedia.card;
+  const videoMedia =
+    mode === "video" && fixtureMedia
+      ? {
+          ...otherVideoMedia,
+          card: {
+            source: "independent" as const,
+            clip: fixtureMedia.publicPath,
+            viewport: {
+              x: 0.5,
+              y: 0.5,
+              zoom: 1,
+              aspect: "3:2" as const,
+              confirmed: true,
+            },
+            playback: "always" as const,
+          },
+          detail: {
+            clip: fixtureMedia.publicPath,
+            viewport: {
+              x: 0.5,
+              y: 0.5,
+              zoom: 1,
+              aspect: "source" as const,
+              confirmed: true,
+            },
+            playback: "always" as const,
+          },
+        }
+      : Object.keys(otherVideoMedia).length > 0
+        ? otherVideoMedia
+        : undefined;
+  const next = parseEditorialPayload("game", {
+    ...current,
+    mediaModes: {
+      ...(current.mediaModes ?? {}),
+      card: mode,
+      ...(mode === "video" ? { detail: "video" as const } : {}),
+    },
+    videoMedia,
+  });
+  const persisted = await persistFixtureSnapshot(
+    client,
+    item,
+    actorUserId,
+    next,
+    `card-${mode}-browser-runtime`
+  );
+
+  return {
     itemKey: item.item_key,
-    slug: normalized.slug,
+    slug: next.slug,
     clip: fixtureMedia?.publicPath ?? null,
     mediaDigest: fixtureMedia?.digest ?? null,
     mediaBytes: fixtureMedia?.bytes ?? null,
-    revision: nextRevision,
-    publicationNumber: nextPublication,
+    ...persisted,
+  };
+}
+
+async function publishLegacyCardFixture(
+  client: Client,
+  item: GameRow,
+  actorUserId: string,
+  legacyMode: LegacyCardFixtureMode,
+  withDetailVideo = false
+) {
+  const current = parseEditorialPayload("game", item.published_payload);
+  const fixtureMedia = await writeFixtureWebm(current.slug);
+  const otherVideoMedia = { ...(current.videoMedia ?? {}) };
+  delete otherVideoMedia.card;
+
+  const mediaModes = { ...(current.mediaModes ?? {}) };
+  delete mediaModes.card;
+  if (legacyMode === "explicit-hover") {
+    mediaModes.card = "hover-video";
+  }
+  if (withDetailVideo) {
+    mediaModes.detail = "video";
+  }
+
+  const rawLegacySnapshot = {
+    ...current,
+    mediaModes,
+    videoMedia: {
+      ...otherVideoMedia,
+      card: {
+        source: "independent" as const,
+        clip: fixtureMedia.publicPath,
+        viewport: {
+          x: 0.5,
+          y: 0.5,
+          zoom: 1,
+          aspect: "3:2" as const,
+          confirmed: true,
+        },
+        playback: "hover" as const,
+      },
+      ...(withDetailVideo
+        ? {
+            detail: {
+              clip: fixtureMedia.publicPath,
+              viewport: {
+                x: 0.5,
+                y: 0.5,
+                zoom: 1,
+                aspect: "source" as const,
+                confirmed: true,
+              },
+              playback: "always" as const,
+            },
+          }
+        : {}),
+    },
+    previewClip: fixtureMedia.publicPath,
+  };
+
+  const persisted = await persistFixtureSnapshot(
+    client,
+    item,
+    actorUserId,
+    rawLegacySnapshot,
+    `card-legacy-${legacyMode}-browser-runtime`
+  );
+
+  return {
+    itemKey: item.item_key,
+    slug: current.slug,
+    clip: fixtureMedia.publicPath,
+    mediaDigest: fixtureMedia.digest,
+    mediaBytes: fixtureMedia.bytes,
+    legacyMode,
+    ...persisted,
   };
 }
 
@@ -277,6 +374,11 @@ async function main() {
       throw new Error("No se encontró el owner visual aislado de CI.");
     }
 
+    const fixtureSlugs = [
+      "hogwarts-legacy",
+      "red-dead-redemption-2",
+      "elden-ring",
+    ] as const;
     const itemResult = await client.query<GameRow>(
       `SELECT
          id::text,
@@ -288,23 +390,35 @@ async function main() {
        FROM deuna_admin.editorial_items
        WHERE item_type = 'game'
          AND public_visible = true
+         AND item_key = ANY($1::text[])
          AND COALESCE(published_payload ->> 'coverImage', '') <> ''
-       ORDER BY item_key ASC
-       LIMIT 2
-       FOR UPDATE`
+       FOR UPDATE`,
+      [fixtureSlugs]
     );
-    const [videoItem, imageItem] = itemResult.rows;
-    if (!videoItem || !imageItem) {
+    const bySlug = new Map(
+      itemResult.rows.map((item) => [item.item_key, item])
+    );
+    const hogwartsItem = bySlug.get("hogwarts-legacy");
+    const redDeadItem = bySlug.get("red-dead-redemption-2");
+    const imageItem = bySlug.get("elden-ring");
+    if (!hogwartsItem || !redDeadItem || !imageItem) {
       throw new Error(
-        "Se necesitan dos juegos publicados con imagen base para probar Card Video e Imagen."
+        "Los fixtures visuales requieren Hogwarts Legacy, Red Dead Redemption 2 y Elden Ring publicados con imagen base."
       );
     }
 
-    const videoFixture = await publishFixtureGame(
+    const videoFixture = await publishLegacyCardFixture(
       client,
-      videoItem,
+      hogwartsItem,
       actorUserId,
-      "video"
+      "explicit-hover",
+      true
+    );
+    const redDeadFixture = await publishLegacyCardFixture(
+      client,
+      redDeadItem,
+      actorUserId,
+      "inferred-hover"
     );
     const imageFixture = await publishFixtureGame(
       client,
@@ -324,6 +438,7 @@ async function main() {
       `${JSON.stringify(
         {
           ...videoFixture,
+          legacyCards: [videoFixture, redDeadFixture],
           imageItemKey: imageFixture.itemKey,
           imageSlug: imageFixture.slug,
           imageRevision: imageFixture.revision,
@@ -336,7 +451,7 @@ async function main() {
     );
 
     console.log(
-      `Card + Contenedor video visual fixture: OK (video=${videoFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
+      `Card + Contenedor video visual fixture: OK (legacy=${videoFixture.slug}+${redDeadFixture.slug}, image=${imageFixture.slug}, bytes=${videoFixture.mediaBytes}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
