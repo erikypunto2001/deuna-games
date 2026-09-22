@@ -55,7 +55,9 @@ import {
   PROFILE_STORAGE_KEY,
   readStoredHardwareProfile,
 } from "./hardware-storage";
-import { getPerformanceProfile } from "./performance-data";
+import {
+  resolveGameDetailPresentation,
+} from "@/lib/games/game-detail-presentation";
 import { estimateGamePerformance } from "./performance-model";
 import {
   invalidateDetectedBrowserProfileCache,
@@ -628,7 +630,9 @@ export default function GameFinderClient({
     visibleGames.find((game) => game.slug === selectedSlug) ??
     visibleGames[0];
   const selectedEstimate = selectedGame ? estimates.get(selectedGame.slug) ?? null : null;
-  const selectedProfile = selectedGame ? getPerformanceProfile(selectedGame.slug) : null;
+  const selectedSizeLabel = selectedGame
+    ? resolveGameDetailPresentation(selectedGame).sizeLabel
+    : "A confirmar";
   const selectedManualGpu = findGpuById(manualDraft.gpuId);
   const manualRamGb = Number(manualDraft.ramGb);
   const manualProfileReady = Boolean(
@@ -1095,7 +1099,7 @@ export default function GameFinderClient({
                 <div className={styles.quickInfo}>
                   <h4>Información rápida</h4>
                   <dl>
-                    <div><dt>Espacio estimado</dt><dd>{selectedProfile?.storageGb ? `${selectedProfile.storageGb} GB` : "A confirmar"}</dd></div>
+                    <div><dt>Espacio requerido</dt><dd>{selectedSizeLabel}</dd></div>
                     <div><dt>Género</dt><dd>{selectedGame.category}</dd></div>
                     <div><dt>Cuello de botella</dt><dd>{bottleneckLabel(selectedEstimate)}</dd></div>
                     <div><dt>Escenario</dt><dd>{estimateSettings.resolution} · {qualityLabels[estimateSettings.quality]}</dd></div>
