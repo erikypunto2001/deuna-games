@@ -677,37 +677,51 @@ export async function purgeSiteMediaJunk(
     if (
       currentReferences.has(
         candidate.publicPath
-      ) ||
-      !(await currentFileMatches(candidate))
+      )
     ) {
       skipped += 1;
       continue;
     }
 
-    if (candidate.scope === "game") {
-      await deleteEditorialMediaResourceByPublicPath(
-        candidate.slug,
-        candidate.publicPath
-      );
-      files += 1;
-      bytes += candidate.bytes;
-      continue;
-    }
+    try {
+      if (
+        !(await currentFileMatches(candidate))
+      ) {
+        skipped += 1;
+        continue;
+      }
 
-    if (
-      await deleteGlobalCandidate(candidate)
-    ) {
-      files += 1;
-      bytes += candidate.bytes;
-    } else {
+      if (candidate.scope === "game") {
+        await deleteEditorialMediaResourceByPublicPath(
+          candidate.slug,
+          candidate.publicPath
+        );
+        files += 1;
+        bytes += candidate.bytes;
+        continue;
+      }
+
+      if (
+        await deleteGlobalCandidate(candidate)
+      ) {
+        files += 1;
+        bytes += candidate.bytes;
+      } else {
+        skipped += 1;
+      }
+    } catch {
       skipped += 1;
     }
   }
 
   for (const marker of initial.staleMarkers) {
-    if (await deleteStaleMarker(marker)) {
-      markers += 1;
-    } else {
+    try {
+      if (await deleteStaleMarker(marker)) {
+        markers += 1;
+      } else {
+        skipped += 1;
+      }
+    } catch {
       skipped += 1;
     }
   }
