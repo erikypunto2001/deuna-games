@@ -123,6 +123,23 @@ export type CompactEditorialItemHistoryResult =
       publications: number;
     };
 
+
+export type EditorialItemHistoryOverview = {
+  revisions: number;
+  publications: number;
+};
+
+export type CompactEditorialPublicationHistoryResult =
+  | {
+      outcome: "compacted";
+      publicationsBefore: number;
+      publicationsAfter: number;
+    }
+  | {
+      outcome: "conflict";
+      publications: number;
+    };
+
 function asRecord(value: unknown) {
   return (
     value &&
@@ -630,6 +647,156 @@ export async function compactHomeEditorialHistory(
   if (raw.outcome !== "compacted") {
     throw new Error(
       "La compactación del historial de Inicio fue rechazada por la base."
+    );
+  }
+
+  return {
+    outcome: "compacted",
+    revisionsBefore: numberField(raw, "revisionsBefore"),
+    revisionsAfter: numberField(raw, "revisionsAfter"),
+    publicationsBefore: numberField(raw, "publicationsBefore"),
+    publicationsAfter: numberField(raw, "publicationsAfter"),
+  };
+}
+
+
+export async function getGameHistoryMaintenanceOverview(
+  slug: string
+): Promise<EditorialItemHistoryOverview | null> {
+  await verifyAdminSession();
+
+  const result = await adminQuery<{
+    revisions: number;
+    publications: number;
+  }>(
+    `SELECT
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_revisions AS revision
+          WHERE revision.item_id = item.id
+       ) AS revisions,
+       (
+         SELECT count(*)::int
+           FROM deuna_admin.editorial_publications AS publication
+          WHERE publication.item_id = item.id
+       ) AS publications
+     FROM deuna_admin.editorial_items AS item
+     WHERE item.item_type = 'game'
+       AND item.item_key = $1
+     LIMIT 1`,
+    [slug]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function compactGamePublicationHistory(
+  slug: string,
+  actorUserId: string,
+  expectedPublications: number
+): Promise<CompactEditorialPublicationHistoryResult> {
+  const session = await requireOwner();
+
+  if (session.userId !== actorUserId) {
+    throw new Error(
+      "La sesión administrativa no coincide con el actor."
+    );
+  }
+
+  const sessionToken = await readAdminSessionToken();
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
+  const result = await adminQuery<{ result: unknown }>(
+    `SELECT deuna_admin.compact_editorial_publication_history(
+       'game',
+       $1,
+       $2,
+       $3,
+       $4
+     ) AS result`,
+    [
+      slug,
+      actorUserId,
+      sessionToken,
+      expectedPublications,
+    ]
+  );
+  const raw = asRecord(result.rows[0]?.result);
+
+  if (raw.outcome === "conflict") {
+    return {
+      outcome: "conflict",
+      publications: numberField(raw, "publications"),
+    };
+  }
+
+  if (raw.outcome !== "compacted") {
+    throw new Error(
+      "La limpieza de snapshots del juego fue rechazada por la base."
+    );
+  }
+
+  return {
+    outcome: "compacted",
+    publicationsBefore: numberField(raw, "publicationsBefore"),
+    publicationsAfter: numberField(raw, "publicationsAfter"),
+  };
+}
+
+export async function compactGameEditorialHistory(
+  slug: string,
+  actorUserId: string,
+  expected: EditorialItemHistoryOverview
+): Promise<CompactEditorialItemHistoryResult> {
+  const session = await requireOwner();
+
+  if (session.userId !== actorUserId) {
+    throw new Error(
+      "La sesión administrativa no coincide con el actor."
+    );
+  }
+
+  const sessionToken = await readAdminSessionToken();
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
+  const result = await adminQuery<{ result: unknown }>(
+    `SELECT deuna_admin.compact_editorial_item_history(
+       'game',
+       $1,
+       $2,
+       $3,
+       $4,
+       $5
+     ) AS result`,
+    [
+      slug,
+      actorUserId,
+      sessionToken,
+      expected.revisions,
+      expected.publications,
+    ]
+  );
+  const raw = asRecord(result.rows[0]?.result);
+
+  if (raw.outcome === "conflict") {
+    return {
+      outcome: "conflict",
+      revisions: numberField(raw, "revisions"),
+      publications: numberField(raw, "publications"),
+    };
+  }
+
+  if (raw.outcome !== "compacted") {
+    throw new Error(
+      "La limpieza del historial del juego fue rechazada por la base."
     );
   }
 
