@@ -95,6 +95,13 @@ export async function POST(
       );
     }
 
+    if (result.outcome === "cleanup_pending") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${createPage}?estado=limpieza-media-pendiente`
+      );
+    }
+
     return adminRedirect(
       authorized.adminOrigin,
       `/admin/juegos/${encodeURIComponent(result.key)}?seccion=datos&estado=creado`
