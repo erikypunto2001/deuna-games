@@ -11,6 +11,7 @@ import {
 } from "@/lib/admin/content-service";
 import {
   getGameDeletionPreview,
+  getGameHistoryMaintenanceOverview,
 } from "@/lib/admin/editorial-maintenance-service";
 import {
   getGameMediaWorkspaceSnapshot,
@@ -58,11 +59,15 @@ export default async function AdminGamePublicationPage({
     publicationIdentity,
     mediaWorkspace,
     taxonomyIntegrity,
+    historyMaintenance,
   ] = await Promise.all([
     getGamePublicationState(slug),
     getGamePublicationIdentity(slug),
     getGameMediaWorkspaceSnapshot(slug),
     inspectPublishedGameTaxonomyIntegrity(item.payload),
+    session.role === "owner"
+      ? getGameHistoryMaintenanceOverview(slug)
+      : Promise.resolve(null),
   ]);
 
   if (!publicationState || !mediaWorkspace) notFound();
@@ -122,6 +127,7 @@ export default async function AdminGamePublicationPage({
         neverPublished={neverPublished}
         panelCreated={panelCreated}
         mediaHygiene={mediaWorkspace.hygiene}
+        maintenanceOverview={historyMaintenance}
       />
 
       {deletionPreview && (
