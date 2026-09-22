@@ -11,6 +11,10 @@ import {
   Rocket,
 } from "lucide-react";
 
+import GameHistoryCleanupPanel from "@/components/admin/GameHistoryCleanupPanel";
+import type {
+  EditorialItemHistoryOverview,
+} from "@/lib/admin/editorial-maintenance-service";
 import {
   gameEditorReadinessTarget,
 } from "@/lib/admin/game-editor-flow";
@@ -44,6 +48,7 @@ type GamePublicationWorkspaceProps = {
   neverPublished: boolean;
   panelCreated: boolean;
   mediaHygiene: MediaHygieneSummary;
+  maintenanceOverview?: EditorialItemHistoryOverview | null;
 };
 
 const publicationActionLabels = {
@@ -281,6 +286,7 @@ export default function GamePublicationWorkspace({
   neverPublished,
   panelCreated,
   mediaHygiene,
+  maintenanceOverview,
 }: GamePublicationWorkspaceProps) {
   const readiness = evaluateGamePublicationReadiness(game);
   const publicationChanges = evaluateGamePublicationChanges(
@@ -643,6 +649,14 @@ export default function GamePublicationWorkspace({
             );
           })}
         </div>
+
+        {maintenanceOverview && (
+          <GameHistoryCleanupPanel
+            slug={slug}
+            mode="snapshots"
+            overview={maintenanceOverview}
+          />
+        )}
       </section>
     </div>
   );
