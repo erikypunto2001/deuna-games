@@ -76,6 +76,22 @@ export default function EditorialMaintenancePanel({
         method="post"
         action="/api/admin/content/maintenance/history-reset"
       >
+        <input type="hidden" name="expectedItems" value={overview.items} />
+        <input type="hidden" name="expectedRevisions" value={overview.revisions} />
+        <input
+          type="hidden"
+          name="expectedPublications"
+          value={overview.publications}
+        />
+        <label>
+          Contraseña actual del Owner
+          <input
+            type="password"
+            name="currentPassword"
+            autoComplete="current-password"
+            required
+          />
+        </label>
         <label>
           Escribe <strong>{CONFIRMATION}</strong> para confirmar
           <input
