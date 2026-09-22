@@ -116,6 +116,13 @@ export async function POST(
       );
     }
 
+    if (result.outcome === "home_history_reference") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=eliminacion-home-historial`
+      );
+    }
+
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
