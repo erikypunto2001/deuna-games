@@ -458,6 +458,9 @@ function detailPlayingVideoExpression() {
   })()`;
 }
 
+// La etiqueta de la primera fila es editorial y puede cambiar.
+// La regresión que importa es posicional: primer carrusel visible de Home,
+// primera Card, exactamente como en la captura pública reportada.
 function firstHomeCarouselCardLookup() {
   return `
     (() => {
