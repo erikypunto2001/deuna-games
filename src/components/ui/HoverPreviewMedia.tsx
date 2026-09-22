@@ -96,7 +96,7 @@ function PreviewVideo({
       controls={false}
       preload="none"
       tabIndex={-1}
-      onCanPlay={(event) => ensurePlayback(event.currentTarget)}
+      onCanPlay={unscaled ? (event) => ensurePlayback(event.currentTarget) : undefined}
       onPlaying={() => setPlaying(true)}
       onWaiting={() => setPlaying(false)}
       onStalled={() => setPlaying(false)}
