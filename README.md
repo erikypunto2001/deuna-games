@@ -173,7 +173,8 @@ elimina residuos deterministas: sesiones administrativas o de cuenta
 revocadas/vencidas, códigos de recuperación ya usados, eventos transitorios
 administrativos de más de 90 días, preferencias/ratings/insights cuyo juego ya
 no existe, masters multimedia sin ninguna referencia editorial y con más de 24
-horas, marcadores de borrado sin master, namespaces conocidos que sigan vacíos
+horas, marcadores de borrado sin master, namespaces conocidos que sigan vacíos,
+temporales multimedia DeUna reconocidos que lleven más de 24 horas abandonados
 y limpiezas físicas pendientes de juegos ya eliminados.
 
 La protección multimedia recorre fuente, borrador, publicación actual,
