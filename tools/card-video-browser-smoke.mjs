@@ -489,9 +489,12 @@ function popularFirstCardStateExpression(expectedSlug) {
     const firstCard = popular?.querySelector(
       '[data-game-card-slot="true"] article'
     );
-    const link = firstCard?.querySelector('a[href^="/juegos/"]');
+    if (!(firstCard instanceof HTMLElement)) {
+      return false;
+    }
+    const link = firstCard.querySelector('a[href^="/juegos/"]');
     return {
-      found: firstCard instanceof HTMLElement,
+      found: true,
       href: link instanceof HTMLAnchorElement ? link.getAttribute("href") : null,
       expectedHref: "/juegos/" + ${JSON.stringify(expectedSlug)},
       revealMode:
@@ -1246,6 +1249,15 @@ async function main() {
         `La pestaña oculta no desmontó el video del Contenedor: ${JSON.stringify(hiddenDetailState)}.`
       );
     }
+
+    await cdp.send("Target.activateTarget", {
+      targetId: target.id,
+    });
+    await waitFor(
+      cdp,
+      "document.hidden === false && document.visibilityState === 'visible'",
+      "La pestaña principal no volvió a visible antes de probar Home interaction"
+    );
 
     const homeInteractionPlaying =
       await verifyHomeInteractionFirstCard(
