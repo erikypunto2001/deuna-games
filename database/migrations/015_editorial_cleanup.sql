@@ -50,330 +50,6 @@ BEGIN
     RETURN jsonb_build_object('outcome', 'forbidden');
   END IF;
 
-  LOCK TABLE deuna_admin.editorial_items IN SHARE ROW EXCLUSIVE MODE;
-  LOCK TABLE deuna_admin.editorial_revisions IN EXCLUSIVE MODE;
-  LOCK TABLE deuna_admin.editorial_publications IN EXCLUSIVE MODE;
-
-  SELECT count(*)::integer
-    INTO revision_before
-    FROM deuna_admin.editorial_revisions;
-
-  SELECT count(*)::integer
-    INTO publication_before
-    FROM deuna_admin.editorial_publications;
-
-  CREATE TEMP TABLE editorial_history_compaction_state
-  ON COMMIT DROP
-  AS
-  SELECT
-    editorial.id,
-    editorial.item_type,
-    editorial.item_key,
-    editorial.source_payload,
-    editorial.source_present,
-    editorial.draft_payload,
-    editorial.revision,
-    editorial.updated_by,
-    editorial.updated_at,
-    editorial.published_payload,
-    editorial.published_checksum,
-    editorial.published_from_revision,
-    editorial.publication_number,
-    editorial.published_by,
-    editorial.published_at,
-    EXISTS (
-      SELECT 1
-        FROM deuna_admin.editorial_publications AS publication
-       WHERE publication.item_id = editorial.id
-         AND publication.action IN ('published', 'rollback')
-    ) AS ever_published
-  FROM deuna_admin.editorial_items AS editorial;
-
-  DELETE FROM deuna_admin.editorial_revisions;
-  DELETE FROM deuna_admin.editorial_publications;
-
-  UPDATE deuna_admin.editorial_items
-     SET published_from_revision = NULL;
-
-  FOR item IN
-    SELECT *
-      FROM pg_temp.editorial_history_compaction_state
-     ORDER BY item_type, item_key
-  LOOP
-    item_count := item_count + 1;
-    panel_created :=
-      item.source_present = false
-      AND item.source_payload = '{}'::jsonb;
-
-    revision_action := CASE
-      WHEN panel_created THEN 'draft_saved'
-      WHEN item.revision = 1 THEN 'imported'
-      ELSE 'source_refreshed'
-    END;
-
-    INSERT INTO deuna_admin.editorial_revisions (
-      item_id,
-      revision,
-      payload,
-      action,
-      actor_user_id,
-      created_at
-    )
-    VALUES (
-      item.id,
-      item.revision,
-      item.draft_payload,
-      revision_action,
-      item.updated_by,
-      item.updated_at
-    );
-    revision_after := revision_after + 1;
-
-    ever_published := item.ever_published;
-    publication_action := CASE
-      WHEN panel_created AND NOT ever_published THEN 'bootstrap'
-      WHEN NOT ever_published AND item.publication_number = 1 THEN 'bootstrap'
-      ELSE 'published'
-    END;
-
-    INSERT INTO deuna_admin.editorial_publications (
-      item_id,
-      publication_number,
-      payload,
-      checksum,
-      source_revision,
-      action,
-      actor_user_id,
-      created_at
-    )
-    VALUES (
-      item.id,
-      item.publication_number,
-      item.published_payload,
-      item.published_checksum,
-      NULL,
-      publication_action,
-      item.published_by,
-      item.published_at
-    );
-    publication_after := publication_after + 1;
-  END LOOP;
-
-  INSERT INTO deuna_admin.admin_audit_log (
-    user_id,
-    action,
-    entity_type,
-    entity_id,
-    details
-  )
-  VALUES (
-    p_actor_user_id,
-    'editorial_history_compacted',
-    'editorial_history',
-    NULL,
-    jsonb_build_object(
-      'items', item_count,
-      'revisionsBefore', revision_before,
-      'revisionsAfter', revision_after,
-      'publicationsBefore', publication_before,
-      'publicationsAfter', publication_after
-    )
-  );
-
-  RETURN jsonb_build_object(
-    'outcome', 'compacted',
-    'items', item_count,
-    'revisionsBefore', revision_before,
-    'revisionsAfter', revision_after,
-    'publicationsBefore', publication_before,
-    'publicationsAfter', publication_after
-  );
-END;
-$$;
-
-REVOKE ALL ON FUNCTION deuna_admin.compact_editorial_history(uuid)
-  FROM PUBLIC;
-
-     OR NOT EXISTS (
-       SELECT 1
-         FROM deuna_admin.admin_sessions AS session
-         INNER JOIN deuna_admin.admin_users AS account
-           ON account.id = session.user_id
-        WHERE session.token_hash = encode(
-          sha256(convert_to(p_session_token, 'UTF8')),
-          'hex'
-        )
-          AND session.user_id = p_actor_user_id
-          AND session.revoked_at IS NULL
-          AND session.expires_at > now()
-          AND account.role = 'owner'
-          AND account.active = true
-     ) THEN
-    RETURN jsonb_build_object('outcome', 'forbidden');
-  END IF;
-
-  LOCK TABLE deuna_admin.editorial_items IN SHARE ROW EXCLUSIVE MODE;
-  LOCK TABLE deuna_admin.editorial_revisions IN EXCLUSIVE MODE;
-  LOCK TABLE deuna_admin.editorial_publications IN EXCLUSIVE MODE;
-
-  SELECT count(*)::integer
-    INTO revision_before
-    FROM deuna_admin.editorial_revisions;
-
-  SELECT count(*)::integer
-    INTO publication_before
-    FROM deuna_admin.editorial_publications;
-
-  CREATE TEMP TABLE editorial_history_compaction_state
-  ON COMMIT DROP
-  AS
-  SELECT
-    editorial.id,
-    editorial.item_type,
-    editorial.item_key,
-    editorial.source_payload,
-    editorial.source_present,
-    editorial.draft_payload,
-    editorial.revision,
-    editorial.updated_by,
-    editorial.updated_at,
-    editorial.published_payload,
-    editorial.published_checksum,
-    editorial.published_from_revision,
-    editorial.publication_number,
-    editorial.published_by,
-    editorial.published_at,
-    EXISTS (
-      SELECT 1
-        FROM deuna_admin.editorial_publications AS publication
-       WHERE publication.item_id = editorial.id
-         AND publication.action IN ('published', 'rollback')
-    ) AS ever_published
-  FROM deuna_admin.editorial_items AS editorial;
-
-  DELETE FROM deuna_admin.editorial_revisions;
-  DELETE FROM deuna_admin.editorial_publications;
-
-  UPDATE deuna_admin.editorial_items
-     SET published_from_revision = NULL;
-
-  FOR item IN
-    SELECT *
-      FROM pg_temp.editorial_history_compaction_state
-     ORDER BY item_type, item_key
-  LOOP
-    item_count := item_count + 1;
-    panel_created :=
-      item.source_present = false
-      AND item.source_payload = '{}'::jsonb;
-
-    revision_action := CASE
-      WHEN panel_created THEN 'draft_saved'
-      WHEN item.revision = 1 THEN 'imported'
-      ELSE 'source_refreshed'
-    END;
-
-    INSERT INTO deuna_admin.editorial_revisions (
-      item_id,
-      revision,
-      payload,
-      action,
-      actor_user_id,
-      created_at
-    )
-    VALUES (
-      item.id,
-      item.revision,
-      item.draft_payload,
-      revision_action,
-      item.updated_by,
-      item.updated_at
-    );
-    revision_after := revision_after + 1;
-
-    ever_published := item.ever_published;
-    publication_action := CASE
-      WHEN panel_created AND NOT ever_published THEN 'bootstrap'
-      WHEN NOT ever_published AND item.publication_number = 1 THEN 'bootstrap'
-      ELSE 'published'
-    END;
-
-    INSERT INTO deuna_admin.editorial_publications (
-      item_id,
-      publication_number,
-      payload,
-      checksum,
-      source_revision,
-      action,
-      actor_user_id,
-      created_at
-    )
-    VALUES (
-      item.id,
-      item.publication_number,
-      item.published_payload,
-      item.published_checksum,
-      NULL,
-      publication_action,
-      item.published_by,
-      item.published_at
-    );
-    publication_after := publication_after + 1;
-  END LOOP;
-
-  INSERT INTO deuna_admin.admin_audit_log (
-    user_id,
-    action,
-    entity_type,
-    entity_id,
-    details
-  )
-  VALUES (
-    p_actor_user_id,
-    'editorial_history_compacted',
-    'editorial_history',
-    NULL,
-    jsonb_build_object(
-      'items', item_count,
-      'revisionsBefore', revision_before,
-      'revisionsAfter', revision_after,
-      'publicationsBefore', publication_before,
-      'publicationsAfter', publication_after
-    )
-  );
-
-  RETURN jsonb_build_object(
-    'outcome', 'compacted',
-    'items', item_count,
-    'revisionsBefore', revision_before,
-    'revisionsAfter', revision_after,
-    'publicationsBefore', publication_before,
-    'publicationsAfter', publication_after
-  );
-END;
-$$;
-
-REVOKE ALL ON FUNCTION deuna_admin.compact_editorial_history(uuid)
-  FROM PUBLIC;
-
-     OR NOT EXISTS (
-       SELECT 1
-         FROM deuna_admin.admin_sessions AS session
-         INNER JOIN deuna_admin.admin_users AS account
-           ON account.id = session.user_id
-        WHERE session.token_hash = encode(
-          sha256(convert_to(p_session_token, 'UTF8')),
-          'hex'
-        )
-          AND session.user_id = p_actor_user_id
-          AND session.revoked_at IS NULL
-          AND session.expires_at > now()
-          AND account.role = 'owner'
-          AND account.active = true
-     ) THEN
-    RETURN jsonb_build_object('outcome', 'forbidden');
-  END IF;
-
   SELECT *
     INTO target
     FROM deuna_admin.editorial_items
@@ -470,7 +146,9 @@ REVOKE ALL ON FUNCTION deuna_admin.compact_editorial_history(uuid)
        )
      RETURNING id
   )
-  SELECT count(*)::integer INTO update_count FROM deleted;
+  SELECT count(*)::integer
+    INTO update_count
+    FROM deleted;
 
   DELETE FROM deuna_accounts.game_preferences
    WHERE game_slug = p_game_slug;
@@ -521,11 +199,12 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION deuna_admin.delete_panel_game(
-  text, uuid, integer, integer
+  text, uuid, text, integer, integer
 ) FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION deuna_admin.compact_editorial_history(
-  p_actor_user_id uuid
+  p_actor_user_id uuid,
+  p_session_token text
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -544,13 +223,23 @@ DECLARE
   revision_action text;
   publication_action text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-      FROM deuna_admin.admin_users
-     WHERE id = p_actor_user_id
-       AND role = 'owner'
-       AND active = true
-  ) THEN
+  IF p_session_token IS NULL
+     OR p_session_token !~ '^[A-Za-z0-9_-]{43}$'
+     OR NOT EXISTS (
+       SELECT 1
+         FROM deuna_admin.admin_sessions AS session
+         INNER JOIN deuna_admin.admin_users AS account
+           ON account.id = session.user_id
+        WHERE session.token_hash = encode(
+          sha256(convert_to(p_session_token, 'UTF8')),
+          'hex'
+        )
+          AND session.user_id = p_actor_user_id
+          AND session.revoked_at IS NULL
+          AND session.expires_at > now()
+          AND account.role = 'owner'
+          AND account.active = true
+     ) THEN
     RETURN jsonb_build_object('outcome', 'forbidden');
   END IF;
 
@@ -581,7 +270,6 @@ BEGIN
     editorial.updated_at,
     editorial.published_payload,
     editorial.published_checksum,
-    editorial.published_from_revision,
     editorial.publication_number,
     editorial.published_by,
     editorial.published_at,
@@ -636,7 +324,8 @@ BEGIN
     ever_published := item.ever_published;
     publication_action := CASE
       WHEN panel_created AND NOT ever_published THEN 'bootstrap'
-      WHEN NOT ever_published AND item.publication_number = 1 THEN 'bootstrap'
+      WHEN NOT ever_published
+           AND item.publication_number = 1 THEN 'bootstrap'
       ELSE 'published'
     END;
 
@@ -695,5 +384,6 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION deuna_admin.compact_editorial_history(uuid)
-  FROM PUBLIC;
+REVOKE ALL ON FUNCTION deuna_admin.compact_editorial_history(
+  uuid, text
+) FROM PUBLIC;
