@@ -174,6 +174,22 @@ function RequestNotice({
     );
   }
 
+  if (state === "reauth") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        La contraseña actual del Owner no pudo verificarse. El juego no fue eliminado.
+      </div>
+    );
+  }
+
+  if (state === "eliminacion-visible") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        El juego sigue visible en la web. Ocúltalo primero; retirar y eliminar definitivamente son operaciones separadas.
+      </div>
+    );
+  }
+
   if (state === "eliminacion-confirmacion") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
