@@ -32,6 +32,10 @@ const detailScreenshotPath = path.join(
   outputRoot,
   "detail-container-video-active-desktop.png"
 );
+const homeInteractionScreenshotPath = path.join(
+  outputRoot,
+  "home-popular-hogwarts-interaction-video-active-desktop.png"
+);
 
 function assertVisualCiOnly() {
   if (
@@ -452,6 +456,115 @@ function detailPlayingVideoExpression() {
       reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
   })()`;
+}
+
+function popularFirstCardStateExpression(expectedSlug) {
+  return `(() => {
+    const regions = [...document.querySelectorAll(
+      '[role="region"][aria-roledescription="carrusel"]'
+    )];
+    const popular = regions.find((region) =>
+      (region.getAttribute("aria-label") ?? "")
+        .toLowerCase()
+        .includes("popular")
+    );
+    const firstCard = popular?.querySelector(
+      '[data-game-card-slot="true"] article'
+    );
+    const link = firstCard?.querySelector('a[href^="/juegos/"]');
+    return {
+      found: firstCard instanceof HTMLElement,
+      href: link instanceof HTMLAnchorElement ? link.getAttribute("href") : null,
+      expectedHref: "/juegos/" + ${JSON.stringify(expectedSlug)},
+      revealMode:
+        firstCard instanceof HTMLElement
+          ? firstCard.dataset.cardRevealMode ?? null
+          : null,
+      mediaMode:
+        firstCard instanceof HTMLElement
+          ? firstCard.dataset.cardMediaMode ?? null
+          : null,
+      detailVisible:
+        firstCard instanceof HTMLElement
+          ? firstCard.dataset.detailVisible ?? null
+          : null,
+      hasVideo: Boolean(firstCard?.querySelector("video")),
+    };
+  })()`;
+}
+
+async function verifyHomeInteractionFirstCard(cdp, fixture) {
+  await navigate(cdp, `${baseUrl}/`);
+  const expectedHref = `/juegos/${fixture.slug}`;
+
+  const restState = await waitFor(
+    cdp,
+    popularFirstCardStateExpression(fixture.slug),
+    "No se encontró la primera Card de la fila Popular en Home"
+  );
+
+  if (
+    !restState.found ||
+    restState.href !== expectedHref ||
+    restState.revealMode !== "interaction" ||
+    restState.mediaMode !== "video" ||
+    restState.detailVisible !== "false" ||
+    restState.hasVideo
+  ) {
+    throw new Error(
+      `Home Popular no reproduce el contrato real de la captura: ${JSON.stringify(restState)}.`
+    );
+  }
+
+  const lookup = cardLookup(fixture.slug);
+  await hoverCard(cdp, lookup);
+
+  const playing = await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      const video = card?.querySelector("video");
+      if (!(video instanceof HTMLVideoElement)) return false;
+      if (
+        video.paused ||
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        video.currentTime <= 0.02
+      ) {
+        return false;
+      }
+      return {
+        src: new URL(video.currentSrc || video.src, location.href).pathname,
+        readyState: video.readyState,
+        paused: video.paused,
+        currentTime: video.currentTime,
+      };
+    })()`,
+    "Hogwarts primera Card de Home interaction no reprodujo el WebM"
+  );
+
+  if (
+    playing.src !== fixture.clip ||
+    playing.paused ||
+    playing.readyState < 2 ||
+    playing.currentTime <= 0.02
+  ) {
+    throw new Error(
+      `Hogwarts primera Card de Home no reprodujo correctamente: ${JSON.stringify(playing)}.`
+    );
+  }
+
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    homeInteractionScreenshotPath,
+    Buffer.from(capture.data, "base64")
+  );
+
+  await leaveCard(cdp, lookup);
+
+  return playing;
 }
 
 async function verifyLegacyCardPlayback(
@@ -1116,12 +1229,19 @@ async function main() {
       );
     }
 
+    const homeInteractionPlaying =
+      await verifyHomeInteractionFirstCard(
+        cdp,
+        fixture
+      );
+
     console.log(
       "Card + Contenedor video browser smoke: OK " +
         `(hogwarts=${fixture.slug}, rdr2=${redDeadFixture.slug}, cyberpunk=${cyberpunkFixture.slug}, bytes=${asset.bytes}, ` +
         `cardReady=${visibleState.readyState}, hogwartsTime=${advancedState.currentTime.toFixed(3)}, ` +
         `rdr2Time=${redDeadPlaying.currentTime.toFixed(3)}, cyberpunkTime=${cyberpunkPlaying.currentTime.toFixed(3)}, ` +
-        `detailReady=${detailVisibleState.readyState}, tres generaciones legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados).`
+        `homeFirstTime=${homeInteractionPlaying.currentTime.toFixed(3)}, detailReady=${detailVisibleState.readyState}, ` +
+        "Home interaction primera Card + tres generaciones legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
     );
   } catch (error) {
     if (browserError.trim()) {
