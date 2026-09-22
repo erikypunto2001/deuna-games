@@ -17,6 +17,9 @@ import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
 import {
+  getGameHistoryMaintenanceOverview,
+} from "@/lib/admin/editorial-maintenance-service";
+import {
   getGameHistory,
 } from "@/lib/admin/game-history";
 import {
@@ -128,7 +131,7 @@ export default async function AdminGameEditorPage({
   params,
   searchParams,
 }: PageProps) {
-  await verifyAdminSession();
+  const session = await verifyAdminSession();
   const [{ slug }, parameters] = await Promise.all([
     params,
     searchParams,
@@ -179,9 +182,15 @@ export default async function AdminGameEditorPage({
   const valuationAction = `${coreAction}/valuation`;
   const hasPublicVersion = publicationIdentity?.everPublished ?? false;
   const readiness = evaluateGamePublicationReadiness(game);
-  const history = section === "historial"
-    ? await getGameHistory(slug)
-    : [];
+  const [history, historyMaintenance] =
+    section === "historial"
+      ? await Promise.all([
+          getGameHistory(slug),
+          session.role === "owner"
+            ? getGameHistoryMaintenanceOverview(slug)
+            : Promise.resolve(null),
+        ])
+      : [[], null];
 
   return (
     <>
@@ -304,6 +313,8 @@ export default async function AdminGameEditorPage({
         <GameHistoryPanel
           events={history}
           currentRevision={item.revision}
+          slug={slug}
+          maintenanceOverview={historyMaintenance}
         />
       )}
     </>
