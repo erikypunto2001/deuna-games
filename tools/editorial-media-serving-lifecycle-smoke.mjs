@@ -1058,15 +1058,10 @@ if (remainingItem.rows[0]?.count !== 0) {
 }
 
 const pendingCleanup = await adminQuery(
-  `SELECT attempts
-   FROM deuna_admin.game_media_cleanup_queue
-   WHERE game_slug = $1`,
+  `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
   [slug]
 );
-if (
-  pendingCleanup.rows.length !== 1 ||
-  Number(pendingCleanup.rows[0]?.attempts ?? 0) < 1
-) {
+if (pendingCleanup.rows[0]?.pending !== true) {
   throw new Error(
     "El hard-delete fallido no dejó una limpieza multimedia durable y reintentable."
   );
@@ -1103,12 +1098,10 @@ expectRedirect(
 );
 
 const queueAfterRetry = await adminQuery(
-  `SELECT count(*)::int AS count
-   FROM deuna_admin.game_media_cleanup_queue
-   WHERE game_slug = $1`,
+  `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
   [slug]
 );
-if (queueAfterRetry.rows[0]?.count !== 0) {
+if (queueAfterRetry.rows[0]?.pending !== false) {
   throw new Error(
     "La cola multimedia siguió pendiente después de una limpieza física exitosa."
   );
