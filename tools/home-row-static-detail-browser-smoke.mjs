@@ -241,6 +241,31 @@ function playingVideoExpression(lookup) {
   })()`;
 }
 
+function videoDiagnosticExpression(lookup) {
+  return `(() => {
+    const card = ${lookup};
+    const video = card?.querySelector("video");
+    if (!(video instanceof HTMLVideoElement)) {
+      return { hasVideo: false };
+    }
+    return {
+      hasVideo: true,
+      src: new URL(video.currentSrc || video.src, location.href).pathname,
+      autoplay: video.autoplay,
+      muted: video.muted,
+      paused: video.paused,
+      currentTime: video.currentTime,
+      readyState: video.readyState,
+      networkState: video.networkState,
+      error: video.error
+        ? { code: video.error.code, message: video.error.message }
+        : null,
+      hidden: document.hidden,
+      reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+  })()`;
+}
+
 async function setViewport(cdp, width, height) {
   await cdp.send("Emulation.setDeviceMetricsOverride", {
     width,
@@ -463,11 +488,21 @@ async function main() {
       );
     }
 
-    const playing = await waitFor(
-      cdp,
-      playingVideoExpression(videoLookup),
-      "La Card estática visible en modo Video no reprodujo su WebM"
-    );
+    let playing;
+    try {
+      playing = await waitFor(
+        cdp,
+        playingVideoExpression(videoLookup),
+        "La Card estática visible en modo Video no reprodujo su WebM"
+      );
+    } catch (error) {
+      const diagnostic = await cdp.evaluate(
+        videoDiagnosticExpression(videoLookup)
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)} Estado final: ${JSON.stringify(diagnostic)}.`
+      );
+    }
     if (
       playing.src !== fixture.clip ||
       playing.paused ||
