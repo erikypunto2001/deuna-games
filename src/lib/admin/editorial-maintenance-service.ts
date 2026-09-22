@@ -68,6 +68,7 @@ export type DeletePanelGameResult =
   | { outcome: "not_found" }
   | { outcome: "source_managed" }
   | { outcome: "still_public" }
+  | { outcome: "media_unverified" }
   | {
       outcome: "home_reference";
       draftReferences: number;
@@ -83,6 +84,13 @@ export type DeletePanelGameResult =
       publicationNumber: number;
     };
 
+export type PendingGameMediaCleanup = {
+  slug: string;
+  createdAt: Date;
+  lastAttemptAt: Date | null;
+  attempts: number;
+};
+
 export type EditorialHistoryMaintenanceOverview = {
   items: number;
   revisions: number;
@@ -91,6 +99,7 @@ export type EditorialHistoryMaintenanceOverview = {
   publicationsAfterCompaction: number;
   homeRevisions: number;
   homePublications: number;
+  pendingGameMediaCleanups: PendingGameMediaCleanup[];
 };
 
 export type CompactEditorialHistoryResult =
@@ -339,6 +348,16 @@ export async function deletePanelGame(
 ): Promise<DeletePanelGameResult> {
   const session = await requireOwner();
 
+  try {
+    const inventory =
+      await inspectEditorialMediaDeletionInventory(slug);
+    if (inventory.unrecognizedEntries > 0) {
+      return { outcome: "media_unverified" };
+    }
+  } catch {
+    return { outcome: "media_unverified" };
+  }
+
   if (session.userId !== actorUserId) {
     throw new Error(
       "La sesión administrativa no coincide con el actor."
@@ -384,6 +403,9 @@ export async function deletePanelGame(
   if (outcome === "still_public") {
     return { outcome: "still_public" };
   }
+  if (outcome === "media_unverified") {
+    return { outcome: "media_unverified" };
+  }
   if (outcome === "home_reference") {
     return {
       outcome: "home_reference",
@@ -426,8 +448,12 @@ export async function deletePanelGame(
   let mediaCleanupPending = false;
 
   try {
-    mediaDeleted =
-      await deleteAllEditorialMediaResources(slug);
+    const retry = await retryPendingGameMediaCleanup(
+      slug,
+      actorUserId
+    );
+    mediaDeleted = retry.mediaDeleted;
+    mediaCleanupPending = retry.outcome !== "completed";
   } catch {
     mediaCleanupPending = true;
   }
@@ -497,6 +523,24 @@ export async function getEditorialHistoryMaintenanceOverview():
        ) AS home_publications`
   );
   const row = result.rows[0];
+  const session = await requireOwner();
+  const sessionToken = await readAdminSessionToken();
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
+  const pending = await adminQuery<{
+    game_slug: string;
+    created_at: Date;
+    last_attempt_at: Date | null;
+    attempts: number;
+  }>(
+    `SELECT *
+       FROM deuna_admin.list_game_media_cleanup_queue($1, $2)`,
+    [session.userId, sessionToken]
+  );
 
   return {
     items: row?.items ?? 0,
@@ -506,6 +550,12 @@ export async function getEditorialHistoryMaintenanceOverview():
     publicationsAfterCompaction: row?.items ?? 0,
     homeRevisions: row?.home_revisions ?? 0,
     homePublications: row?.home_publications ?? 0,
+    pendingGameMediaCleanups: pending.rows.map((entry) => ({
+      slug: entry.game_slug,
+      createdAt: entry.created_at,
+      lastAttemptAt: entry.last_attempt_at,
+      attempts: entry.attempts,
+    })),
   };
 }
 
@@ -807,4 +857,80 @@ export async function compactGameEditorialHistory(
     publicationsBefore: numberField(raw, "publicationsBefore"),
     publicationsAfter: numberField(raw, "publicationsAfter"),
   };
+}
+
+
+export type RetryPendingGameMediaCleanupResult =
+  | { outcome: "completed"; mediaDeleted: number }
+  | { outcome: "not_found"; mediaDeleted: 0 }
+  | { outcome: "pending"; mediaDeleted: number };
+
+export async function isGameMediaCleanupPending(
+  slug: string
+) {
+  const result = await adminQuery<{ pending: boolean }>(
+    `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
+    [slug]
+  );
+  return result.rows[0]?.pending === true;
+}
+
+export async function retryPendingGameMediaCleanup(
+  slug: string,
+  actorUserId: string
+): Promise<RetryPendingGameMediaCleanupResult> {
+  const session = await requireOwner();
+  if (session.userId !== actorUserId) {
+    throw new Error(
+      "La sesión administrativa no coincide con el actor."
+    );
+  }
+
+  const sessionToken = await readAdminSessionToken();
+  if (!sessionToken) {
+    throw new Error(
+      "La sesión administrativa no está disponible."
+    );
+  }
+
+  const started = await adminQuery<{ result: unknown }>(
+    `SELECT deuna_admin.begin_game_media_cleanup(
+       $1, $2, $3
+     ) AS result`,
+    [slug, actorUserId, sessionToken]
+  );
+  const startRaw = asRecord(started.rows[0]?.result);
+  if (startRaw.outcome === "not_found") {
+    return { outcome: "not_found", mediaDeleted: 0 };
+  }
+  if (startRaw.outcome !== "pending") {
+    throw new Error(
+      "La limpieza multimedia pendiente fue rechazada por la base."
+    );
+  }
+
+  let mediaDeleted = 0;
+  try {
+    mediaDeleted =
+      await deleteAllEditorialMediaResources(slug);
+  } catch {
+    return { outcome: "pending", mediaDeleted };
+  }
+
+  const completed = await adminQuery<{ result: unknown }>(
+    `SELECT deuna_admin.complete_game_media_cleanup(
+       $1, $2, $3
+     ) AS result`,
+    [slug, actorUserId, sessionToken]
+  );
+  const completeRaw = asRecord(completed.rows[0]?.result);
+
+  if (
+    completeRaw.outcome !== "completed" &&
+    completeRaw.outcome !== "not_found"
+  ) {
+    return { outcome: "pending", mediaDeleted };
+  }
+
+  return { outcome: "completed", mediaDeleted };
 }
