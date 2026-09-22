@@ -9,19 +9,35 @@ const TEMPORARY_JUNK_AGE_MS = 24 * 60 * 60 * 1_000;
 const MAX_DIRECTORY_ENTRIES = 4_096;
 const STAGING_DIRECTORY = "deuna-preview-sources";
 const STAGING_FILE_PATTERN =
-  /^[a-f0-9]{48}\.(?:json|video|video\.part|proxy\.webm|proxy\.webm\.part)$/;
+  /^([a-f0-9]{48})\.(?:json|video|video\.part|proxy\.webm|proxy\.webm\.part)$/;
 const STAGING_TRIM_DIRECTORY_PATTERN = /^\.trim-[A-Za-z0-9_-]{6}$/;
 const PREVIEW_UPLOAD_DIRECTORY_PATTERN =
   /^deuna-preview-upload-[A-Za-z0-9_-]{6}$/;
 const MEDIA_IMPORT_WORKER_DIRECTORY_PATTERN =
   /^deuna-media-import-worker-[A-Za-z0-9_-]{6}$/;
 
-export type SiteTemporaryJunkCandidate = {
-  kind: "file" | "directory";
-  relativePath: string;
+type SiteTemporaryJunkMember = {
+  name: string;
   bytes: number;
   mtimeMs: number;
 };
+
+export type SiteTemporaryJunkCandidate =
+  | {
+      kind: "staging-group";
+      relativePath: string;
+      bytes: number;
+      mtimeMs: number;
+      files: number;
+      members: SiteTemporaryJunkMember[];
+    }
+  | {
+      kind: "directory";
+      relativePath: string;
+      bytes: number;
+      mtimeMs: number;
+      files: 0;
+    };
 
 export type SiteTemporaryJunkScan = {
   candidates: SiteTemporaryJunkCandidate[];
@@ -45,6 +61,19 @@ export type SiteTemporaryJunkPurgeResult =
 type DirectoryMeasurement = {
   bytes: number;
   newestMtimeMs: number;
+};
+
+type StagingGroupMeasurement = {
+  bytes: number;
+  newestMtimeMs: number;
+  members: SiteTemporaryJunkMember[];
+};
+
+type CandidateRemovalResult = {
+  files: number;
+  directories: number;
+  bytes: number;
+  skipped: number;
 };
 
 function isMissingPath(error: unknown) {
@@ -120,6 +149,65 @@ async function measureDirectory(
   return { bytes, newestMtimeMs };
 }
 
+async function measureStagingGroup(
+  stagingRoot: string,
+  token: string
+): Promise<StagingGroupMeasurement | null> {
+  const entries = await readdir(stagingRoot, { withFileTypes: true });
+  const members: SiteTemporaryJunkMember[] = [];
+
+  for (const entry of entries) {
+    if (!entry.name.startsWith(token + ".")) continue;
+
+    const match = STAGING_FILE_PATTERN.exec(entry.name);
+    if (
+      !match ||
+      match[1] !== token ||
+      !entry.isFile() ||
+      entry.isSymbolicLink()
+    ) {
+      return null;
+    }
+
+    const entryPath = path.join(stagingRoot, entry.name);
+    const stats = await lstat(entryPath);
+    if (!stats.isFile() || stats.isSymbolicLink()) return null;
+
+    members.push({
+      name: entry.name,
+      bytes: stats.size,
+      mtimeMs: stats.mtimeMs,
+    });
+  }
+
+  if (members.length === 0) return null;
+
+  members.sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    bytes: members.reduce((total, member) => total + member.bytes, 0),
+    newestMtimeMs: Math.max(...members.map((member) => member.mtimeMs)),
+    members,
+  };
+}
+
+function sameMembers(
+  left: readonly SiteTemporaryJunkMember[],
+  right: readonly SiteTemporaryJunkMember[]
+) {
+  if (left.length !== right.length) return false;
+
+  return left.every((member, index) => {
+    const other = right[index];
+    return (
+      other !== undefined &&
+      member.name === other.name &&
+      member.bytes === other.bytes &&
+      member.mtimeMs === other.mtimeMs
+    );
+  });
+}
+
 function isOldEnough(mtimeMs: number) {
   return Date.now() - mtimeMs >= TEMPORARY_JUNK_AGE_MS;
 }
@@ -135,6 +223,14 @@ function buildFingerprint(
         candidate.relativePath,
         candidate.bytes,
         candidate.mtimeMs,
+        candidate.files,
+        candidate.kind === "staging-group"
+          ? candidate.members.map((member) => [
+              member.name,
+              member.bytes,
+              member.mtimeMs,
+            ])
+          : [],
       ]),
       unexpected: [...unexpectedEntries].sort(),
     }))
@@ -169,28 +265,24 @@ export async function scanSiteTemporaryJunk(
       unexpectedEntries.push(STAGING_DIRECTORY);
     } else {
       const entries = await readdir(stagingRoot, { withFileTypes: true });
+      const stagingTokens = new Set<string>();
+
       for (const entry of entries) {
         const entryPath = path.join(stagingRoot, entry.name);
         const label = relativeLabel(root, entryPath);
+        const match = STAGING_FILE_PATTERN.exec(entry.name);
 
         if (
+          match &&
           entry.isFile() &&
-          !entry.isSymbolicLink() &&
-          STAGING_FILE_PATTERN.test(entry.name)
+          !entry.isSymbolicLink()
         ) {
           const stats = await lstat(entryPath);
-          if (
-            stats.isFile() &&
-            !stats.isSymbolicLink() &&
-            isOldEnough(stats.mtimeMs)
-          ) {
-            candidates.push({
-              kind: "file",
-              relativePath: label,
-              bytes: stats.size,
-              mtimeMs: stats.mtimeMs,
-            });
+          if (!stats.isFile() || stats.isSymbolicLink()) {
+            unexpectedEntries.push(label);
+            continue;
           }
+          stagingTokens.add(match[1]!);
           continue;
         }
 
@@ -208,12 +300,37 @@ export async function scanSiteTemporaryJunk(
               relativePath: label,
               bytes: measured.bytes,
               mtimeMs: measured.newestMtimeMs,
+              files: 0,
             });
           }
           continue;
         }
 
         unexpectedEntries.push(label);
+      }
+
+      for (const token of stagingTokens) {
+        const measured = await measureStagingGroup(stagingRoot, token);
+        if (!measured) {
+          unexpectedEntries.push(
+            relativeLabel(root, path.join(stagingRoot, token))
+          );
+          continue;
+        }
+
+        if (isOldEnough(measured.newestMtimeMs)) {
+          candidates.push({
+            kind: "staging-group",
+            relativePath: relativeLabel(
+              root,
+              path.join(stagingRoot, token)
+            ),
+            bytes: measured.bytes,
+            mtimeMs: measured.newestMtimeMs,
+            files: measured.members.length,
+            members: measured.members,
+          });
+        }
       }
     }
   } catch (error) {
@@ -249,6 +366,7 @@ export async function scanSiteTemporaryJunk(
         relativePath: label,
         bytes: measured.bytes,
         mtimeMs: measured.newestMtimeMs,
+        files: 0,
       });
     }
   }
@@ -258,10 +376,13 @@ export async function scanSiteTemporaryJunk(
   );
   unexpectedEntries.sort();
 
-  const files = candidates.filter(
-    (candidate) => candidate.kind === "file"
+  const files = candidates.reduce(
+    (total, candidate) => total + candidate.files,
+    0
+  );
+  const directories = candidates.filter(
+    (candidate) => candidate.kind === "directory"
   ).length;
-  const directories = candidates.length - files;
   const bytes = candidates.reduce(
     (total, candidate) => total + candidate.bytes,
     0
@@ -281,24 +402,22 @@ async function candidateStillMatches(
   root: string,
   candidate: SiteTemporaryJunkCandidate
 ) {
+  if (candidate.kind === "staging-group") {
+    const stagingRoot = path.join(root, STAGING_DIRECTORY);
+    const token = path.basename(candidate.relativePath);
+    const measured = await measureStagingGroup(stagingRoot, token);
+
+    return (
+      measured !== null &&
+      measured.bytes === candidate.bytes &&
+      measured.newestMtimeMs === candidate.mtimeMs &&
+      sameMembers(measured.members, candidate.members) &&
+      isOldEnough(measured.newestMtimeMs)
+    );
+  }
+
   const candidatePath = path.resolve(root, candidate.relativePath);
   if (!isContainedBy(root, candidatePath)) return false;
-
-  if (candidate.kind === "file") {
-    try {
-      const stats = await lstat(candidatePath);
-      return (
-        stats.isFile() &&
-        !stats.isSymbolicLink() &&
-        stats.size === candidate.bytes &&
-        stats.mtimeMs === candidate.mtimeMs &&
-        isOldEnough(stats.mtimeMs)
-      );
-    } catch (error) {
-      if (isMissingPath(error)) return false;
-      throw error;
-    }
-  }
 
   const measured = await measureDirectory(candidatePath);
   return (
@@ -312,19 +431,79 @@ async function candidateStillMatches(
 async function removeCandidate(
   root: string,
   candidate: SiteTemporaryJunkCandidate
-) {
+): Promise<CandidateRemovalResult> {
+  if (candidate.kind === "staging-group") {
+    const stagingRoot = path.join(root, STAGING_DIRECTORY);
+
+    for (const member of candidate.members) {
+      const memberPath = path.join(stagingRoot, member.name);
+      if (!isContainedBy(stagingRoot, memberPath)) {
+        return { files: 0, directories: 0, bytes: 0, skipped: 1 };
+      }
+
+      try {
+        const stats = await lstat(memberPath);
+        if (
+          !stats.isFile() ||
+          stats.isSymbolicLink() ||
+          stats.size !== member.bytes ||
+          stats.mtimeMs !== member.mtimeMs ||
+          !isOldEnough(stats.mtimeMs)
+        ) {
+          return { files: 0, directories: 0, bytes: 0, skipped: 1 };
+        }
+      } catch (error) {
+        if (isMissingPath(error)) {
+          return { files: 0, directories: 0, bytes: 0, skipped: 1 };
+        }
+        throw error;
+      }
+    }
+
+    let files = 0;
+    let bytes = 0;
+    let skipped = 0;
+
+    for (const member of candidate.members) {
+      try {
+        await unlink(path.join(stagingRoot, member.name));
+        files += 1;
+        bytes += member.bytes;
+      } catch (error) {
+        skipped += 1;
+        if (!isMissingPath(error)) continue;
+      }
+    }
+
+    return { files, directories: 0, bytes, skipped };
+  }
+
   const candidatePath = path.resolve(root, candidate.relativePath);
-  if (!isContainedBy(root, candidatePath)) return false;
+  if (!isContainedBy(root, candidatePath)) {
+    return { files: 0, directories: 0, bytes: 0, skipped: 1 };
+  }
 
   try {
-    if (candidate.kind === "file") {
-      await unlink(candidatePath);
-    } else {
-      await rm(candidatePath, { recursive: true });
+    const stats = await lstat(candidatePath);
+    if (
+      !stats.isDirectory() ||
+      stats.isSymbolicLink() ||
+      stats.mtimeMs !== candidate.mtimeMs
+    ) {
+      return { files: 0, directories: 0, bytes: 0, skipped: 1 };
     }
-    return true;
+
+    await rm(candidatePath, { recursive: true });
+    return {
+      files: 0,
+      directories: 1,
+      bytes: candidate.bytes,
+      skipped: 0,
+    };
   } catch (error) {
-    if (isMissingPath(error)) return false;
+    if (isMissingPath(error)) {
+      return { files: 0, directories: 0, bytes: 0, skipped: 1 };
+    }
     throw error;
   }
 }
@@ -351,14 +530,12 @@ export async function purgeSiteTemporaryJunk(
         skipped += 1;
         continue;
       }
-      if (!(await removeCandidate(root, candidate))) {
-        skipped += 1;
-        continue;
-      }
 
-      if (candidate.kind === "file") files += 1;
-      else directories += 1;
-      bytes += candidate.bytes;
+      const removed = await removeCandidate(root, candidate);
+      files += removed.files;
+      directories += removed.directories;
+      bytes += removed.bytes;
+      skipped += removed.skipped;
     } catch {
       skipped += 1;
     }
