@@ -173,6 +173,30 @@ function RequestNotice({
     );
   }
 
+  if (state === "eliminacion-confirmacion") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        La eliminación no se ejecutó porque la confirmación no coincide exactamente con el identificador del juego.
+      </div>
+    );
+  }
+
+  if (state === "eliminacion-fuente") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        Este juego está respaldado por archivos fuente y no puede eliminarse definitivamente desde el panel. Puedes ocultarlo o retirarlo mediante un cambio versionado de la fuente.
+      </div>
+    );
+  }
+
+  if (state === "eliminacion-home") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        Inicio todavía referencia este juego. Retíralo del borrador y del snapshot público de Inicio antes de volver a intentar la eliminación.
+      </div>
+    );
+  }
+
   if (state === "solicitud" || state === "datos") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
