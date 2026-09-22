@@ -334,6 +334,114 @@ assert(
   "Crear, activar o restablecer administradores debe exigir reautenticación del Owner."
 );
 
+
+const destructiveEditorialRoutes = await Promise.all([
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "games",
+    "[slug]",
+    "delete",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "history-reset",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "history-reset",
+    "home",
+    "route.ts"
+  ),
+].map((file) => readFile(file, "utf8")));
+
+assert(
+  destructiveEditorialRoutes.every(
+    (source) =>
+      source.includes("currentPassword") &&
+      source.includes("reauthenticateAdmin(")
+  ),
+  "Borrado y compactaciones editoriales deben reautenticar al Owner."
+);
+
+const editorialCleanupMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "015_editorial_cleanup.sql"
+  ),
+  "utf8"
+);
+
+assert(
+  editorialCleanupMigration.includes(
+    "IF target.public_visible THEN"
+  ) &&
+    editorialCleanupMigration.includes(
+      "'outcome', 'still_public'"
+    ) &&
+    editorialCleanupMigration.includes(
+      "action IN ('bootstrap', 'published', 'rollback', 'baseline')"
+    ),
+  "El hard-delete debe exigir contenido oculto y la compactación debe registrar un baseline explícito."
+);
+
+const editorialMaintenanceService = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "editorial-maintenance-service.ts"
+  ),
+  "utf8"
+);
+const editorialMediaLibrary = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "media",
+    "editorial-media-library.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  editorialMaintenanceService.includes(
+    "inspectEditorialMediaDeletionInventory"
+  ) &&
+    editorialMaintenanceService.includes(
+      "deleteAllEditorialMediaResources"
+    ) &&
+    !editorialMaintenanceService.includes(
+      "listEditorialMediaLibrary(slug)"
+    ) &&
+    editorialMediaLibrary.includes(
+      "deleteAllEditorialMediaResources"
+    ),
+  "El hard-delete debe usar inventario multimedia destructivo completo y no la biblioteca visual limitada."
+);
+
 const migrator = await readFile(
   path.join(
     root,
