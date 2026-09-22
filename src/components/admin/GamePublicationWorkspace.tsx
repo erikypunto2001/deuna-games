@@ -50,6 +50,7 @@ const publicationActionLabels = {
   bootstrap: "Base inicial",
   published: "Publicación",
   rollback: "Restauración",
+  baseline: "Baseline",
 } as const;
 
 function formatDate(value: Date) {
