@@ -204,9 +204,12 @@ assert(
       "card: STANDARD_GAME_MEDIA_MODES",
       "detail: STANDARD_GAME_MEDIA_MODES",
       "background: STANDARD_GAME_MEDIA_MODES",
-      'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
+      'target === "card"',
+      'mode === "hover-video"',
+      'return "video";',
+      'return "image";'
     ),
-  "La política compartida debe reservar Imagen + hover exclusivamente para Hero y degradar snapshots legacy de Card/Contenedor/Fondo a Imagen."
+  "La política compartida debe reservar Imagen + hover exclusivamente para Hero, migrar Card legacy a Video y degradar Contenedor/Fondo legacy a Imagen."
 );
 
 assert(
