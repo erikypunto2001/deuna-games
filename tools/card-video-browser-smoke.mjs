@@ -24,6 +24,10 @@ const redDeadScreenshotPath = path.join(
   outputRoot,
   "card-video-red-dead-redemption-2-active-desktop.png"
 );
+const cyberpunkScreenshotPath = path.join(
+  outputRoot,
+  "card-video-cyberpunk-2077-previewclip-active-desktop.png"
+);
 const detailScreenshotPath = path.join(
   outputRoot,
   "detail-container-video-active-desktop.png"
@@ -371,6 +375,125 @@ function detailPlayingVideoExpression() {
   })()`;
 }
 
+async function verifyLegacyCardPlayback(
+  cdp,
+  fixture,
+  label,
+  screenshotFile
+) {
+  const lookup = cardLookup(fixture.slug);
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (
+        !(card instanceof HTMLElement) ||
+        document.readyState !== "complete"
+      ) {
+        return false;
+      }
+      card.scrollIntoView({ block: "center", inline: "nearest" });
+      return Object.keys(card).some((key) =>
+        key.startsWith("__reactProps$") ||
+        key.startsWith("__reactFiber$")
+      );
+    })()`,
+    `No se hidrató la Card legacy de ${label}`
+  );
+  await delay(300);
+
+  const restState = await cdp.evaluate(`(() => {
+    const card = ${lookup};
+    return {
+      found: card instanceof HTMLElement,
+      mediaMode: card?.dataset.cardMediaMode ?? null,
+      detailVisible: card?.dataset.detailVisible ?? null,
+      hasVideo: Boolean(card?.querySelector("video")),
+    };
+  })()`);
+
+  if (
+    !restState?.found ||
+    restState.mediaMode !== "video" ||
+    restState.detailVisible !== "false" ||
+    restState.hasVideo
+  ) {
+    throw new Error(
+      `${label} no migró a Card Video en reposo: ${JSON.stringify(restState)}.`
+    );
+  }
+
+  const asset = await cdp.evaluate(`
+    fetch(${JSON.stringify(fixture.clip)}, { cache: "no-store" })
+      .then(async (response) => ({
+        ok: response.ok,
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        bytes: (await response.arrayBuffer()).byteLength,
+      }))
+  `);
+
+  if (
+    !asset?.ok ||
+    asset.status !== 200 ||
+    asset.bytes < 128 ||
+    !String(asset.contentType ?? "")
+      .toLowerCase()
+      .includes("video/webm")
+  ) {
+    throw new Error(
+      `El WebM legacy de ${label} no se sirvió correctamente: ${JSON.stringify(asset)}.`
+    );
+  }
+
+  await hoverCard(cdp, lookup);
+  const playing = await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      const video = card?.querySelector("video");
+      if (!(video instanceof HTMLVideoElement)) return false;
+      if (
+        video.paused ||
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        video.currentTime <= 0.02
+      ) {
+        return false;
+      }
+      return {
+        src: new URL(video.currentSrc || video.src, location.href).pathname,
+        readyState: video.readyState,
+        paused: video.paused,
+        currentTime: video.currentTime,
+      };
+    })()`,
+    `${label} montó el video pero no avanzó la reproducción`
+  );
+
+  if (
+    playing.src !== fixture.clip ||
+    playing.paused ||
+    playing.readyState < 2 ||
+    playing.currentTime <= 0.02
+  ) {
+    throw new Error(
+      `${label} no reprodujo correctamente: ${JSON.stringify(playing)}.`
+    );
+  }
+
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    screenshotFile,
+    Buffer.from(capture.data, "base64")
+  );
+  await leaveCard(cdp, lookup);
+
+  return playing;
+}
+
 async function main() {
   assertVisualCiOnly();
   const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
@@ -378,19 +501,24 @@ async function main() {
     !fixture.slug ||
     !fixture.clip ||
     !Array.isArray(fixture.legacyCards) ||
-    fixture.legacyCards.length !== 2
+    fixture.legacyCards.length !== 3
   ) {
     throw new Error("El descriptor del fixture Card video legacy es inválido.");
   }
   const redDeadFixture = fixture.legacyCards.find(
     (entry) => entry?.slug === "red-dead-redemption-2"
   );
+  const cyberpunkFixture = fixture.legacyCards.find(
+    (entry) => entry?.slug === "cyberpunk-2077"
+  );
   if (
     fixture.slug !== "hogwarts-legacy" ||
-    !redDeadFixture?.clip
+    !redDeadFixture?.clip ||
+    !cyberpunkFixture?.clip ||
+    cyberpunkFixture.legacyMode !== "preview-clip-only"
   ) {
     throw new Error(
-      "El fixture Card video debe cubrir Hogwarts Legacy y Red Dead Redemption 2."
+      "El fixture Card video debe cubrir Hogwarts Legacy, Red Dead Redemption 2 y Cyberpunk 2077 previewClip-only."
     );
   }
 
@@ -592,6 +720,13 @@ async function main() {
       Buffer.from(redDeadCapture.data, "base64")
     );
     await leaveCard(cdp, redDeadLookup);
+
+    const cyberpunkPlaying = await verifyLegacyCardPlayback(
+      cdp,
+      cyberpunkFixture,
+      "Cyberpunk 2077 previewClip-only",
+      cyberpunkScreenshotPath
+    );
 
     const restState = await cdp.evaluate(`(() => {
       const card = ${lookup};
@@ -880,10 +1015,10 @@ async function main() {
 
     console.log(
       "Card + Contenedor video browser smoke: OK " +
-        `(hogwarts=${fixture.slug}, rdr2=${redDeadFixture.slug}, bytes=${asset.bytes}, ` +
+        `(hogwarts=${fixture.slug}, rdr2=${redDeadFixture.slug}, cyberpunk=${cyberpunkFixture.slug}, bytes=${asset.bytes}, ` +
         `cardReady=${visibleState.readyState}, hogwartsTime=${advancedState.currentTime.toFixed(3)}, ` +
-        `rdr2Time=${redDeadPlaying.currentTime.toFixed(3)}, detailReady=${detailVisibleState.readyState}, ` +
-        "ambas Cards legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
+        `rdr2Time=${redDeadPlaying.currentTime.toFixed(3)}, cyberpunkTime=${cyberpunkPlaying.currentTime.toFixed(3)}, ` +
+        `detailReady=${detailVisibleState.readyState}, tres generaciones legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados).`
     );
   } catch (error) {
     if (browserError.trim()) {
