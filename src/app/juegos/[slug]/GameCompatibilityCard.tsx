@@ -35,6 +35,7 @@ import styles from "./page.module.css";
 
 type GameCompatibilityCardProps = {
   slug: string;
+  supportsPc: boolean;
 };
 
 const tierLabels: Record<
@@ -103,9 +104,41 @@ function profileStatusLabel(profile: HardwareProfile) {
   return "Perfil local";
 }
 
-export default function GameCompatibilityCard({
+function UnsupportedPlatformCompatibilityCard() {
+  return (
+    <aside
+      className={styles.compatibilityCard}
+      aria-labelledby="compatibility-title"
+    >
+      <div className={styles.compatibilityTopline}>
+        <div className={styles.compatibilityHeading}>
+          <span className={styles.compatibilityIcon}>
+            <Gauge size={20} aria-hidden="true" />
+          </span>
+          <div>
+            <span className={styles.compatibilityEyebrow}>
+              COMPATIBILIDAD
+            </span>
+            <h2 id="compatibility-title">
+              Análisis de PC
+            </h2>
+            <p>No aplica a esta plataforma</p>
+          </div>
+        </div>
+      </div>
+
+      <p className={styles.compatibilityEmpty}>
+        Este juego no tiene PC entre sus plataformas publicadas. DeUna Games no calcula FPS de CPU/GPU de PC para una plataforma distinta ni pendiente de confirmar.
+      </p>
+    </aside>
+  );
+}
+
+function PcGameCompatibilityCard({
   slug,
-}: GameCompatibilityCardProps) {
+}: {
+  slug: string;
+}) {
   const {
     profile,
     status,
@@ -324,4 +357,13 @@ export default function GameCompatibilityCard({
       </Link>
     </aside>
   );
+}
+
+export default function GameCompatibilityCard({
+  slug,
+  supportsPc,
+}: GameCompatibilityCardProps) {
+  return supportsPc
+    ? <PcGameCompatibilityCard slug={slug} />
+    : <UnsupportedPlatformCompatibilityCard />;
 }
