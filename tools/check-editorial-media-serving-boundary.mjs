@@ -81,13 +81,13 @@ assert(
     "PUBLIC_EXPOSURE_PUBLICATION_SQL",
     "publication.action IN ('published', 'rollback')",
     "publication.action = 'bootstrap'",
-    "revision.revision = 1",
-    "revision.action = 'draft_saved'",
+    "created_item.source_present = false",
+    "created_item.source_payload = '{}'::jsonb",
     "ON DELETE SET NULL"
   ) &&
     serving.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL") &&
     gameMediaHistory.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL"),
-  "Serving y retención histórica deben compartir una única definición de exposición pública que no dependa de actor_user_id."
+  "Serving y retención histórica deben compartir una única definición de exposición pública basada en origen persistente y no en actor_user_id ni en una revisión histórica concreta."
 );
 
 assert(
