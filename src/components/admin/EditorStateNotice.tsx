@@ -227,6 +227,26 @@ const notices = {
     message:
       "El registro editorial ya no está disponible.",
   },
+  eliminado: {
+    kind: "success",
+    message:
+      "Juego creado desde Admin eliminado definitivamente junto con su historial y dependencias editoriales asociadas.",
+  },
+  "eliminado-media-pendiente": {
+    kind: "warning",
+    message:
+      "El juego y sus datos asociados fueron eliminados, pero la limpieza física de uno o más recursos multimedia quedó pendiente. El contenido ya no es público ni restaurable.",
+  },
+  "historial-compactado": {
+    kind: "success",
+    message:
+      "Historial editorial compactado. Se conservaron el borrador, la publicación y la visibilidad actuales de cada registro; las versiones antiguas dejaron de ser restaurables.",
+  },
+  "mantenimiento-confirmacion": {
+    kind: "error",
+    message:
+      "La compactación no se ejecutó porque la frase de confirmación no coincide exactamente.",
+  },
 } as const;
 
 export default function EditorStateNotice({
