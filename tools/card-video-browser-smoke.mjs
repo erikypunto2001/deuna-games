@@ -458,58 +458,46 @@ function detailPlayingVideoExpression() {
   })()`;
 }
 
-function popularFirstCardLookup() {
+function firstHomeCarouselCardLookup() {
   return `
     (() => {
-      const regions = [...document.querySelectorAll(
+      const firstCarousel = document.querySelector(
         '[role="region"][aria-roledescription="carrusel"]'
-      )];
-      const popular = regions.find((region) =>
-        (region.getAttribute("aria-label") ?? "")
-          .toLowerCase()
-          .includes("popular")
       );
-      return popular?.querySelector(
+      return firstCarousel?.querySelector(
         '[data-game-card-slot="true"] article'
       ) ?? null;
     })()
   `;
 }
 
-function popularFirstCardStateExpression(expectedSlug) {
+function firstHomeCarouselCardStateExpression(expectedSlug) {
   return `(() => {
-    const regions = [...document.querySelectorAll(
+    const firstCarousel = document.querySelector(
       '[role="region"][aria-roledescription="carrusel"]'
-    )];
-    const popular = regions.find((region) =>
-      (region.getAttribute("aria-label") ?? "")
-        .toLowerCase()
-        .includes("popular")
     );
-    const firstCard = popular?.querySelector(
+    const firstCard = firstCarousel?.querySelector(
       '[data-game-card-slot="true"] article'
     );
     if (!(firstCard instanceof HTMLElement)) {
       return false;
     }
     const link = firstCard.querySelector('a[href^="/juegos/"]');
+    const heading = firstCarousel
+      ?.closest("section")
+      ?.querySelector("h2")
+      ?.textContent
+      ?.trim() ?? null;
     return {
       found: true,
+      carouselLabel: firstCarousel?.getAttribute("aria-label") ?? null,
+      sectionHeading: heading,
       href: link instanceof HTMLAnchorElement ? link.getAttribute("href") : null,
       expectedHref: "/juegos/" + ${JSON.stringify(expectedSlug)},
-      revealMode:
-        firstCard instanceof HTMLElement
-          ? firstCard.dataset.cardRevealMode ?? null
-          : null,
-      mediaMode:
-        firstCard instanceof HTMLElement
-          ? firstCard.dataset.cardMediaMode ?? null
-          : null,
-      detailVisible:
-        firstCard instanceof HTMLElement
-          ? firstCard.dataset.detailVisible ?? null
-          : null,
-      hasVideo: Boolean(firstCard?.querySelector("video")),
+      revealMode: firstCard.dataset.cardRevealMode ?? null,
+      mediaMode: firstCard.dataset.cardMediaMode ?? null,
+      detailVisible: firstCard.dataset.detailVisible ?? null,
+      hasVideo: Boolean(firstCard.querySelector("video")),
     };
   })()`;
 }
@@ -520,8 +508,8 @@ async function verifyHomeInteractionFirstCard(cdp, fixture) {
 
   const restState = await waitFor(
     cdp,
-    popularFirstCardStateExpression(fixture.slug),
-    "No se encontró la primera Card de la fila Popular en Home"
+    firstHomeCarouselCardStateExpression(fixture.slug),
+    "No se encontró la primera Card del primer carrusel de Home"
   );
 
   if (
@@ -533,11 +521,11 @@ async function verifyHomeInteractionFirstCard(cdp, fixture) {
     restState.hasVideo
   ) {
     throw new Error(
-      `Home Popular no reproduce el contrato real de la captura: ${JSON.stringify(restState)}.`
+      `El primer carrusel de Home no reproduce el contrato real de la captura: ${JSON.stringify(restState)}.`
     );
   }
 
-  const lookup = popularFirstCardLookup();
+  const lookup = firstHomeCarouselCardLookup();
   await hoverCard(cdp, lookup);
 
   const playing = await waitFor(
