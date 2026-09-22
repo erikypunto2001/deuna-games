@@ -272,73 +272,112 @@ function detailVisibilityExpression(lookup, visible) {
 }
 
 async function hoverCard(cdp, lookup) {
-  await cdp.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: 1,
-    y: 1,
-    buttons: 0,
-    pointerType: "mouse",
-  });
+  await cdp.send("Page.bringToFront");
 
-  await waitFor(
-    cdp,
-    `(() => {
-      const card = ${lookup};
-      if (!(card instanceof HTMLElement)) return false;
-      card.scrollIntoView({ block: "center", inline: "nearest" });
-      return true;
-    })()`,
-    "No se pudo centrar la Card antes del hover"
-  );
-  await delay(150);
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: 1,
+      y: 1,
+      buttons: 0,
+      pointerType: "mouse",
+    });
 
-  const point = await waitFor(
-    cdp,
-    `(() => {
-      const card = ${lookup};
-      if (!(card instanceof HTMLElement)) return false;
-      const rect = card.getBoundingClientRect();
-      if (
-        rect.width <= 0 ||
-        rect.height <= 0 ||
-        rect.bottom <= 0 ||
-        rect.right <= 0 ||
-        rect.top >= innerHeight ||
-        rect.left >= innerWidth
-      ) {
-        return false;
-      }
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (!(card instanceof HTMLElement)) return false;
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        return true;
+      })()`,
+      "No se pudo centrar la Card antes del hover"
+    );
+    await delay(150);
 
-      const x = Math.min(
-        innerWidth - 2,
-        Math.max(2, rect.left + rect.width / 2)
+    const points = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (!(card instanceof HTMLElement)) return false;
+        const rect = card.getBoundingClientRect();
+        if (
+          rect.width <= 0 ||
+          rect.height <= 0 ||
+          rect.bottom <= 0 ||
+          rect.right <= 0 ||
+          rect.top >= innerHeight ||
+          rect.left >= innerWidth
+        ) {
+          return false;
+        }
+
+        const inside = {
+          x: Math.min(
+            innerWidth - 2,
+            Math.max(2, rect.left + rect.width / 2)
+          ),
+          y: Math.min(
+            innerHeight - 2,
+            Math.max(2, rect.top + rect.height / 2)
+          ),
+        };
+        const hit = document.elementFromPoint(inside.x, inside.y);
+        if (!(hit instanceof Element) || !card.contains(hit)) {
+          return false;
+        }
+
+        const leftOutside = rect.left - 12;
+        const rightOutside = rect.right + 12;
+        const outside = {
+          x: leftOutside >= 2
+            ? leftOutside
+            : Math.min(innerWidth - 2, rightOutside),
+          y: inside.y,
+        };
+        const outsideHit = document.elementFromPoint(outside.x, outside.y);
+        if (outsideHit instanceof Element && card.contains(outsideHit)) {
+          return false;
+        }
+
+        return { inside, outside };
+      })()`,
+      "No se pudo resolver una trayectoria visible de hover para la Card"
+    );
+
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: points.outside.x,
+      y: points.outside.y,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+    await delay(60);
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: points.inside.x,
+      y: points.inside.y,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+
+    try {
+      await waitFor(
+        cdp,
+        detailVisibilityExpression(lookup, true),
+        `El hover real no expandió la Card en el intento ${attempt}`,
+        2_500
       );
-      const y = Math.min(
-        innerHeight - 2,
-        Math.max(2, rect.top + rect.height / 2)
-      );
-      const hit = document.elementFromPoint(x, y);
-      if (!(hit instanceof Element) || !card.contains(hit)) {
-        return false;
-      }
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
 
-      return { x, y };
-    })()`,
-    "No se pudo resolver un punto visible de la Card"
-  );
-
-  await cdp.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: point.x,
-    y: point.y,
-    buttons: 0,
-    pointerType: "mouse",
-  });
-  await waitFor(
-    cdp,
-    detailVisibilityExpression(lookup, true),
-    "El hover real no expandió la Card"
-  );
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("El hover real no expandió la Card tras tres reentradas físicas.");
 }
 
 async function leaveCard(cdp, lookup) {
