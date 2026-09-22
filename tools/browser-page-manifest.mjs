@@ -39,6 +39,7 @@ export const coveredPageRoutePatterns = [
   "/admin/juegos/[slug]/vista-previa",
   "/admin/juegos/nuevo",
   "/admin/login",
+  "/admin/mantenimiento",
   "/admin/paginas",
   "/admin/paginas/presentacion",
   "/admin/paginas/quienes-somos",
@@ -195,6 +196,7 @@ export const adminVisualPages = [
   })),
   { id: "admin-accounts", pathname: "/admin/cuentas", expectedText: "Cuentas administrativas" },
   { id: "admin-security", pathname: "/admin/seguridad", expectedText: "Acceso y seguridad" },
+  { id: "admin-maintenance", pathname: "/admin/mantenimiento", expectedText: "Mantenimiento" },
 ];
 
 export const redirectChecks = [
