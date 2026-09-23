@@ -622,7 +622,7 @@ async function verifyHomeDirectDetailFirstCard(cdp, fixture) {
       const link = card.querySelector('a[href^="/juegos/"]');
       if (!(link instanceof HTMLAnchorElement)) return false;
       card.scrollIntoView({ block: "center", inline: "nearest" });
-      return {
+      const state = {
         href: link.getAttribute("href"),
         revealMode: card.dataset.cardRevealMode ?? null,
         mediaMode: card.dataset.cardMediaMode ?? null,
@@ -632,6 +632,13 @@ async function verifyHomeDirectDetailFirstCard(cdp, fixture) {
         directMedia: matchMedia("(hover: none), (pointer: coarse)").matches,
         reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
       };
+      return (
+        state.directMedia &&
+        state.directDetail === "true" &&
+        state.detailVisible === "true"
+      )
+        ? state
+        : false;
     })()`,
     "No se hidrató la primera Card de Home en entrada directa/táctil"
   );
