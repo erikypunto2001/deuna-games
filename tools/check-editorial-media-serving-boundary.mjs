@@ -19,21 +19,19 @@ const [
   serving,
   route,
   publicationHistory,
-  gameMediaHistory,
+  publicationService,
   gameMediaIntegrity,
   publishRoute,
-  restoreRoute,
   lifecycleSmoke,
-  cardVideoLegacyHistoryFixture,
+  cardVideoNoHistoryFixture,
 ] = await Promise.all([
   source("package.json"),
   source("src/lib/media/editorial-media-serving.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/lib/admin/publication-history.ts"),
-  source("src/lib/admin/game-media-history.ts"),
+  source("src/lib/admin/publication-service.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
-  source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("tools/editorial-media-serving-lifecycle-smoke.mjs"),
   source("tools/card-video-legacy-history-fixture.ts"),
 ]);
@@ -45,7 +43,6 @@ assert(
     '"game_taxonomy"',
     '"site_config"',
     "editorial_publications",
-    "publication_number",
     "published_payload",
     "public_visible",
     "parseEditorialPayload",
@@ -55,7 +52,7 @@ assert(
     "taxonomy.tags",
     "site.logoAsset"
   ),
-  "La decisión pública debe derivarse de snapshots publicados reales para juegos, taxonomía y logo, sin leer borradores."
+  "La decisión pública debe derivarse de snapshots editoriales reales para juegos, taxonomía y logo, sin leer borradores."
 );
 
 assert(
@@ -64,15 +61,19 @@ assert(
     "if (item.public_visible)",
     "safePublicationReferences(",
     "item.published_payload",
-    "references.add(reference)"
+    "references.add(reference)",
+    'owner.type === "game"',
+    "? []",
+    "historicalPublicationRows"
   ) &&
     has(
-      cardVideoLegacyHistoryFixture,
-      "DELETE FROM deuna_admin.editorial_publications",
-      "publication_number = $2",
-      "snapshot público preservado"
+      cardVideoNoHistoryFixture,
+      "item.revisions !== 0 || item.publications !== 0",
+      "snapshot público actual",
+      "revisiones históricas=0",
+      "publicaciones históricas=0"
     ),
-  "El snapshot público actual debe autorizar sus propios recursos aunque falte su fila histórica, y el smoke visual debe reproducir exactamente ese gap legacy."
+  "Los juegos deben servir multimedia sólo desde su snapshot público actual y el fixture visual debe exigir cero filas históricas."
 );
 
 assert(
@@ -86,8 +87,9 @@ assert(
     "ON DELETE SET NULL"
   ) &&
     serving.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL") &&
-    gameMediaHistory.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL"),
-  "Serving y retención histórica deben compartir una única definición de exposición pública basada en origen persistente y no en actor_user_id ni en una revisión histórica concreta."
+    serving.includes('owner.type === "game"') &&
+    serving.includes("historicalPublicationRows"),
+  "Las superficies que conservan historial deben compartir la definición de exposición pública; los juegos deben excluir explícitamente esas filas."
 );
 
 assert(
@@ -103,7 +105,7 @@ assert(
     "cached.publishedChecksum === item.published_checksum"
   ) &&
     !serving.includes("cached?.references.has(publicPath)"),
-  "La caché de serving debe revalidar una firma ligera del historial y del snapshot actual antes de reutilizar referencias positivas, incluida una compactación que no avance publication_number."
+  "La caché de serving debe revalidar la firma del estado editorial antes de reutilizar referencias positivas."
 );
 
 assert(
@@ -116,8 +118,9 @@ assert(
     "invalidOwnership.length === 0"
   ) &&
     publishRoute.includes("inspectGameMediaIntegrity") &&
-    restoreRoute.includes("inspectGameMediaIntegrity"),
-  "Publicar y restaurar un juego deben conservar el guard común que rechaza multimedia editorial de otro namespace."
+    publicationService.includes('if (type === "game")') &&
+    publicationService.includes('return { outcome: "not_found" };'),
+  "Publicar debe conservar el guard de ownership y el servicio genérico de restore debe rechazar juegos sin historial restaurable."
 );
 
 assert(
@@ -165,10 +168,9 @@ assert(
 );
 
 assert(
-  has(
-    lifecycleSmoke,
-    'kind="kind"'
-  ) === false &&
+  !lifecycleSmoke.includes("/api/admin/content/publications/") &&
+    !lifecycleSmoke.includes("/history/publications/reset") &&
+    !lifecycleSmoke.includes("/history/reset") &&
     has(
       lifecycleSmoke,
       'name="kind"',
@@ -176,32 +178,30 @@ assert(
       "assertAnonymousPrivate",
       "assertPrivatePreview",
       "assertPublicImmutable",
-      "redirectState",
-      "expectedState",
       "visual-lifecycle-%",
       "public_visible = false",
       "evaluateGamePublicationReadiness",
       "readiness.essentialsReady",
       "croppedReadiness.essentialsReady",
       "/media-upload",
-      "/media",
+      "/media-library",
       "/image-layout",
       'target: "cover"',
       'viewportAspect: "4:5"',
-      '"imagen-encuadre-guardado"',
+      'target: "cover-source"',
+      'resource: "card"',
       "/publish",
       '"publicado"',
-      "/restore",
-      '"publicacion-restaurada"',
       "/hide",
       '"oculto"',
-      "crop=confirmed-private",
-      "historical-public",
-      "snapshot-clean=revision-protected",
-      "history-clean=baseline",
+      "revisions !== 0 ||",
+      "publications !== 0",
+      "recurso-en-uso",
+      "recurso-eliminado",
+      "no-game-history",
       "hard-delete=pending+retry+physical-clean"
     ),
-  "El smoke debe reutilizar sólo el fixture sintético oculto y publication-ready, cubrir upload/borrador/crop/publicación/restauración, protección por revisión y recuperación física del hard-delete validando cada redirect crítico."
+  "El smoke debe cubrir upload, borrador, crop, publicación actual, ocultamiento, protección draft/current-only, huérfano eliminable, cero historial de juegos y recuperación física del hard-delete."
 );
 
 const gameLifecycleIndex = packageJson.indexOf(
@@ -231,5 +231,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Frontera de serving multimedia editorial: OK (snapshot público actual autoritativo; historial público compartido; ownership por slug; cache incremental; fixture publication-ready; draft/biblioteca privados; cleanup oculto)."
+  "Frontera de serving multimedia editorial: OK (juegos=current-only sin historial; historial no-juego preservado; ownership por slug; cache incremental; draft/biblioteca privados; cleanup oculto)."
 );

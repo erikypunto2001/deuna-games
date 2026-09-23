@@ -236,24 +236,27 @@ async function loadEverPublishedReferences(
     return cached;
   }
 
-  const publicationResult =
-    await adminQuery<MediaPublicationRow>(
-      `SELECT publication.payload
-       FROM deuna_admin.editorial_publications AS publication
-       WHERE publication.item_id = $1
-         AND ${PUBLIC_EXPOSURE_PUBLICATION_SQL}
-       ORDER BY publication.publication_number ASC`,
-      [item.id]
-    );
+  const historicalPublicationRows =
+    owner.type === "game"
+      ? []
+      : (
+          await adminQuery<MediaPublicationRow>(
+            `SELECT publication.payload
+             FROM deuna_admin.editorial_publications AS publication
+             WHERE publication.item_id = $1
+               AND ${PUBLIC_EXPOSURE_PUBLICATION_SQL}
+             ORDER BY publication.publication_number ASC`,
+            [item.id]
+          )
+        ).rows;
   const references = new Set<string>();
 
   /*
-   * published_payload es la fuente de verdad de la web pública. El historial
-   * conserva rollback y recursos que alguna vez fueron públicos, pero una fila
-   * histórica legacy faltante o no interpretable no puede negar los recursos
-   * del snapshot público actual. Los items todavía privados no obtienen esta
-   * vía: para ellos seguimos dependiendo exclusivamente de publicaciones que
-   * hayan sido expuestas realmente.
+   * published_payload es la fuente de verdad del estado público actual. Los
+   * juegos no conservan historial restaurable, por lo que nunca exponen assets
+   * desde editorial_publications aunque sobrevivan filas legacy antes de la
+   * migración. Catálogos y configuración sí conservan historial y pueden
+   * mantener públicos recursos de snapshots restaurables previos.
    */
   if (item.public_visible) {
     for (const reference of safePublicationReferences(
@@ -264,7 +267,7 @@ async function loadEverPublishedReferences(
     }
   }
 
-  for (const publication of publicationResult.rows) {
+  for (const publication of historicalPublicationRows) {
     for (const reference of safePublicationReferences(
       owner,
       publication.payload
@@ -332,8 +335,8 @@ export async function resolveEditorialMediaServingAccess(
       return "public";
     }
   } catch {
-    // Fallamos cerrado: un problema leyendo snapshot/historial editorial
-    // nunca convierte un recurso de borrador en público.
+    // Fallamos cerrado: un problema leyendo el snapshot actual o el historial
+    // permitido de superficies no-juego nunca convierte un borrador en público.
   }
 
   return (await hasAdminMediaAccess())

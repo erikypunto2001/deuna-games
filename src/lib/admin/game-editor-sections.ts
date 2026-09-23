@@ -6,7 +6,6 @@ export const gameEditorSections = [
   { id: "multimedia", label: "Multimedia" },
   { id: "descargas", label: "Distribución" },
   { id: "valoracion", label: "Valoración" },
-  { id: "historial", label: "Historial" },
 ] as const;
 
 export type GameEditorSection =
@@ -32,6 +31,4 @@ export function getGameEditorSection(
   return gameEditorSections.find((section) => section.id === id)!;
 }
 
-export const gameReadinessSections = gameEditorSections.filter(
-  (section) => section.id !== "historial"
-);
+export const gameReadinessSections = gameEditorSections;

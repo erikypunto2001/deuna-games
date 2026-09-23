@@ -44,9 +44,10 @@ export default function EditorialMaintenancePanel({
           Mantenimiento de historial
         </h2>
         <p>
-          Las operaciones conservan el borrador, el snapshot publicado y la
-          visibilidad actuales. Sólo eliminan versiones anteriores y dejan un
-          baseline explícito y auditable.
+          Para Inicio, Catálogos, Configuración y las demás superficies que
+          conservan historial, estas operaciones mantienen el estado actual y
+          eliminan versiones anteriores dejando un baseline explícito y
+          auditable. Los juegos no conservan historial restaurable.
         </p>
       </div>
 
@@ -120,19 +121,20 @@ export default function EditorialMaintenancePanel({
 
       <div className={styles.heading}>
         <span>ALCANCE GLOBAL</span>
-        <h3>Reiniciar todo el historial editorial</h3>
+        <h3>Reiniciar historial restaurable</h3>
         <p>
-          Compacta todos los registros editoriales a un único baseline actual.
-          No cambia borradores, payloads publicados, visibilidad, cuentas,
+          Compacta a un único baseline actual todas las superficies que
+          conservan historial. Los juegos quedan excluidos: sólo mantienen su
+          borrador y publicación actuales. No cambia visibilidad, cuentas,
           recompensas ni el log administrativo.
         </p>
       </div>
 
       <div className={styles.facts}>
         <div className={styles.fact}>
-          <span>Registros editoriales</span>
+          <span>Registros con historial</span>
           <strong>{overview.items}</strong>
-          <small>Todos conservarán su estado actual.</small>
+          <small>Los juegos no se incluyen en este conteo.</small>
         </div>
         <div className={styles.fact}>
           <span>Revisiones</span>
@@ -182,7 +184,7 @@ export default function EditorialMaintenancePanel({
         </label>
         <button className={styles.button} type="submit">
           <ArchiveRestore size={16} aria-hidden="true" />
-          Reiniciar todo el historial editorial
+          Reiniciar historial restaurable
         </button>
       </form>
 

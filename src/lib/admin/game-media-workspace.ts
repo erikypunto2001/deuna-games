@@ -4,9 +4,6 @@ import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
 import {
-  getHistoricalGameMediaReferences,
-} from "@/lib/admin/game-media-history";
-import {
   evaluateGameMediaHygiene,
 } from "@/lib/admin/game-media-hygiene";
 import {
@@ -50,33 +47,19 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
   const imageReferences = listGameImageReferences(game);
   const videoReferences = listGameVideoReferences(game);
   const draftReferences = [...imageReferences, ...videoReferences];
-  const [
-    publishedImages,
-    publishedVideos,
-    historicalReferences,
-  ] = await Promise.all([
+  const [publishedImages, publishedVideos] = await Promise.all([
     getPublishedGameImageReferences(slug),
     getPublishedGameVideoReferences(slug),
-    getHistoricalGameMediaReferences(slug),
   ]);
   const publishedReferences = Array.from(
     new Set([...publishedImages, ...publishedVideos])
   );
-  const protectedReferences = Array.from(
-    new Set([
-      ...draftReferences,
-      ...publishedReferences,
-      ...historicalReferences,
-    ])
-  );
-
-  // Una publicación histórica sólo es realmente restaurable mientras sus
-  // masters existan. Cualquier marcador de borrado sobre una referencia viva
-  // o histórica se revierte; sólo se purgan archivos sin ninguna referencia.
+  // Sólo el borrador y la publicación actuales protegen masters editoriales.
+  // Las versiones históricas de juegos no existen ni retienen archivos.
   await reconcileEditorialMediaDeletions(
     slug,
-    protectedReferences,
-    protectedReferences
+    draftReferences,
+    publishedReferences
   );
 
   const [editorial, bundled] = await Promise.all([
@@ -87,8 +70,7 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
   const hygiene = evaluateGameMediaHygiene(
     game,
     resources,
-    publishedReferences,
-    historicalReferences
+    publishedReferences
   );
   const hygieneBySource = new Map(
     hygiene.resources.map((resource) => [resource.src, resource] as const)

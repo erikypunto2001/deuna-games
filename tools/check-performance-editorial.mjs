@@ -100,11 +100,11 @@ assert(
 assert(
   performanceService.includes("verifyAdminSession") &&
     performanceService.includes("FOR UPDATE") &&
-    performanceService.includes("editorial_revisions") &&
+    !performanceService.includes("editorial_revisions") &&
     performanceService.includes("admin_audit_log") &&
     performanceService.includes('section: "performance"') &&
     !/\bDELETE\s+FROM\b/i.test(performanceService),
-  "Guardar Rendimiento debe ser autenticado, transaccional, auditable y no destructivo."
+  "Guardar Rendimiento debe ser autenticado, transaccional y auditable, sin recrear historial restaurable de juegos."
 );
 
 assert(

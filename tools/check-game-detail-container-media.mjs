@@ -181,8 +181,10 @@ assert(
       'requiredVideoViewport("detail")',
       'playback: "always"',
       "protectedReferencesForGame",
-      "getHistoricalGameMediaReferences"
+      "getPublishedGameImageReferences",
+      "getPublishedGameVideoReferences"
     ) &&
+    !libraryRoute.includes("getHistoricalGameMediaReferences") &&
     !libraryRoute.includes("export async function GET") &&
     !libraryRoute.includes('"image-delete"') &&
     !libraryRoute.includes('"video-delete"') &&

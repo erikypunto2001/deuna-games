@@ -250,7 +250,7 @@ export default function AdminContextBar() {
       ? routeSection
       : searchParams.get("seccion") ?? "ficha";
     const directGameSection = (
-      id: "ficha" | "datos" | "multimedia" | "valoracion" | "historial",
+      id: "ficha" | "datos" | "multimedia" | "valoracion",
       icon: ContextIcon
     ): ContextItem => {
       const definition = getGameEditorSection(id);
@@ -324,7 +324,6 @@ export default function AdminContextBar() {
         active: selected === "publicacion",
         icon: Rocket,
       },
-      directGameSection("historial", FileClock),
     ];
 
     return (

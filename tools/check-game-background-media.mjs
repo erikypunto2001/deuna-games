@@ -187,8 +187,10 @@ assert(
       mediaLibraryRoute,
       "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3];",
       "protectedReferencesForGame",
-      "getHistoricalGameMediaReferences"
+      "getPublishedGameImageReferences",
+      "getPublishedGameVideoReferences"
     ) &&
+    !mediaLibraryRoute.includes("getHistoricalGameMediaReferences") &&
     !mediaLibraryRoute.includes("export async function GET") &&
     !mediaLibraryRoute.includes('"image-delete"') &&
     !mediaLibraryRoute.includes('"video-delete"') &&

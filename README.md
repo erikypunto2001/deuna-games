@@ -94,20 +94,20 @@ El panel privado usa PostgreSQL y un flujo explícito de publicación. Guardar y
 ```text
 editar
   ↓
-borrador
-  ↓
-revisión inmutable
+borrador actual
   ↓
 publicar
   ↓
-snapshot público
+snapshot público actual
   ↓
 web pública
 ```
 
 La web pública consume `published_payload` visible; no debe leer `draft_payload`.
 
-El modelo se aplica a las superficies editoriales que correspondan, entre ellas juegos, actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas. Restaurar una revisión crea una nueva revisión; no destruye el historial.
+Los juegos conservan únicamente su estado editorial actual en `editorial_items`: borrador, publicación, `revision` y `publication_number`. Guardar o publicar un juego no crea filas restaurables en `editorial_revisions` ni `editorial_publications`.
+
+Las demás superficies editoriales que usan historial —entre ellas actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas— mantienen revisiones inmutables y restauración. Restaurar una revisión de esas superficies crea una nueva revisión; no destruye su historial.
 
 Catálogos mantiene una taxonomía maestra de **Clasificaciones** y una lista separada de **Etiquetas**. Los campos físicos heredados de `Game` se conservan sólo por compatibilidad de almacenamiento; la interfaz pública y editorial trabaja con el modelo unificado.
 
@@ -162,7 +162,7 @@ El área `/admin` incorpora:
 - bloqueo progresivo y controles de rate limiting;
 - reautenticación del Owner para crear, activar, desactivar o restablecer accesos;
 - validación estricta de origen y de campos de formulario;
-- revisiones inmutables, publicación explícita, restauración e historial;
+- publicación explícita; historial/restauración para las superficies que lo requieren y estado actual único para juegos;
 - `noindex`, `noarchive` y `no-store` en rutas administrativas;
 - ausencia deliberada de telemetría de visitantes en la base administrativa.
 
@@ -177,9 +177,7 @@ horas, marcadores de borrado sin master, namespaces conocidos que sigan vacíos,
 temporales multimedia DeUna reconocidos que lleven más de 24 horas abandonados
 y limpiezas físicas pendientes de juegos ya eliminados.
 
-La protección multimedia recorre fuente, borrador, publicación actual,
-revisiones y snapshots de todos los registros editoriales. Los archivos
-referenciados desde cualquiera de esos estados no son basura. Los archivos sin
+La protección multimedia recorre los estados vigentes y, para las superficies que conservan historial, también sus revisiones y snapshots. En juegos sólo protegen archivos el borrador actual y la publicación actual; una referencia que existía únicamente en una versión antigua de un juego ya no retiene el master. Los archivos sin
 referencia de menos de 24 horas conservan un período de gracia para no competir
 con cargas recientes. Namespaces desconocidos, entradas inesperadas y
 actualizaciones editoriales que apuntan a un juego inexistente se presentan
@@ -205,16 +203,7 @@ desaparece por completo; si el filesystem falla, Mantenimiento permite al
 Owner reintentarlo y una limpieza exitosa elimina también el directorio vacío
 antes de liberar el slug.
 
-El historial editorial permanece separado de la limpieza de basura: una versión
-antigua no se considera basura por definición. Mantenimiento permite compactar
-sólo el historial de Inicio o todo el historial editorial conservando el
-borrador, el snapshot publicado y la visibilidad actuales como baseline. Cada
-juego ofrece además dos limpiezas Owner-only: desde Publicación se pueden
-eliminar sólo snapshots antiguos conservando revisiones, y desde Historial se
-pueden compactar revisiones y publicaciones de ese juego. La multimedia
-referenciada por cualquier revisión o publicación restaurable permanece
-protegida. Todas estas acciones exigen reautenticación y controles de
-concurrencia.
+El historial editorial permanece separado de la limpieza de basura para las superficies que lo conservan: una versión antigua de Inicio, Catálogos, Configuración u otra superficie histórica no se considera basura por definición. Mantenimiento permite compactar sólo el historial de Inicio o todo el historial restaurable, conservando el estado vigente como baseline. Los juegos quedan excluidos de esa compactación porque no conservan revisiones ni publicaciones históricas: sólo existen su borrador y snapshot público actuales. La multimedia histórica sigue protegida únicamente cuando pertenece a una superficie que realmente mantiene restauración. Estas acciones exigen reautenticación y controles de concurrencia.
 
 Antes de ejecutar una limpieza o compactación sobre datos valiosos debe existir
 un backup verificado; en local se puede crear con

@@ -27,10 +27,6 @@ function itemPath(
   key: string,
   state: string
 ) {
-  if (type === "game") {
-    return `/admin/juegos/${encodeURIComponent(key)}?estado=${state}&seccion=historial`;
-  }
-
   if (type === "game_update") {
     return `/admin/actualizaciones/${encodeURIComponent(key)}?estado=${state}&seccion=historial`;
   }

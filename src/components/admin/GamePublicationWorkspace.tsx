@@ -7,14 +7,9 @@ import {
   Eye,
   EyeOff,
   FilePenLine,
-  RotateCcw,
   Rocket,
 } from "lucide-react";
 
-import GameHistoryCleanupPanel from "@/components/admin/GameHistoryCleanupPanel";
-import type {
-  EditorialItemHistoryOverview,
-} from "@/lib/admin/editorial-maintenance-service";
 import {
   gameEditorReadinessTarget,
 } from "@/lib/admin/game-editor-flow";
@@ -36,7 +31,6 @@ type MediaHygieneSummary = {
   blockingCount: number;
   unused: number;
   publishedOnly: number;
-  historical: number;
 };
 
 type GamePublicationWorkspaceProps = {
@@ -46,28 +40,10 @@ type GamePublicationWorkspaceProps = {
   state: EditorialPublicationState;
   requestState?: string;
   neverPublished: boolean;
-  panelCreated: boolean;
   mediaHygiene: MediaHygieneSummary;
-  maintenanceOverview?: EditorialItemHistoryOverview | null;
 };
 
-const publicationActionLabels = {
-  bootstrap: "Base inicial",
-  published: "Publicación",
-  rollback: "Restauración",
-  baseline: "Baseline",
-} as const;
 
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("es", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(value);
-}
 
 function RequestNotice({
   state,
@@ -89,18 +65,11 @@ function RequestNotice({
   if (state === "oculto") {
     return (
       <div className={`${styles.notice} ${styles.noticeWarning}`}>
-        El juego fue retirado de la web. El borrador, el último snapshot y todo el historial siguen conservados.
+        El juego fue retirado de la web. El borrador y el snapshot público actual siguen conservados; los juegos no mantienen historial restaurable.
       </div>
     );
   }
 
-  if (state === "publicacion-restaurada") {
-    return (
-      <div className={`${styles.notice} ${styles.noticeSuccess}`}>
-        La versión histórica fue restaurada como una publicación nueva. Ninguna publicación anterior se eliminó.
-      </div>
-    );
-  }
 
   if (state === "sin-cambios") {
     return (
@@ -114,7 +83,7 @@ function RequestNotice({
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
         <strong>Publicación bloqueada por higiene multimedia.</strong>{" "}
-        Hay masters editoriales realmente huérfanos: no los usa el borrador, la publicación actual ni ningún snapshot histórico restaurable. Asígnalos o elimínalos desde Biblioteca multimedia antes de publicar.{" "}
+        Hay masters editoriales realmente huérfanos: no los usa el borrador ni la publicación actual. Asígnalos o elimínalos desde Biblioteca multimedia antes de publicar.{" "}
         <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}>
           Resolver Biblioteca multimedia
         </Link>
@@ -134,10 +103,7 @@ function RequestNotice({
     );
   }
 
-  if (
-    state === "preparacion-incompleta" ||
-    state === "restauracion-incompleta"
-  ) {
+  if (state === "preparacion-incompleta") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
         <strong>Publicación bloqueada por preparación incompleta.</strong>{" "}
@@ -151,10 +117,7 @@ function RequestNotice({
     );
   }
 
-  if (
-    state === "asset-publicacion" ||
-    state === "asset-restauracion"
-  ) {
+  if (state === "asset-publicacion") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
         <strong>Publicación bloqueada por integridad multimedia.</strong>{" "}
@@ -187,29 +150,8 @@ function RequestNotice({
     );
   }
 
-  if (state === "snapshots-limpiados") {
-    return (
-      <div className={`${styles.notice} ${styles.noticeSuccess}`}>
-        Snapshots antiguos eliminados. Se conservó únicamente el snapshot actual y el historial de revisiones quedó intacto.
-      </div>
-    );
-  }
 
-  if (state === "snapshots-conflicto") {
-    return (
-      <div className={`${styles.notice} ${styles.noticeWarning}`}>
-        El historial de snapshots cambió desde que cargaste la página. No se eliminó ninguna versión; recarga antes de volver a confirmar.
-      </div>
-    );
-  }
 
-  if (state === "snapshots-confirmacion") {
-    return (
-      <div className={`${styles.notice} ${styles.noticeError}`}>
-        La limpieza no se ejecutó porque la contraseña, el identificador o el conteo esperado no son válidos.
-      </div>
-    );
-  }
 
   if (state === "eliminacion-visible") {
     return (
@@ -287,8 +229,8 @@ function resolveStatus(
   if (state.hasUnpublishedChanges) {
     return {
       eyebrow: "CAMBIOS PENDIENTES",
-      title: "La web todavía muestra la versión anterior",
-      text: "Los cambios están guardados únicamente como borrador. Publicar creará un snapshot nuevo sin borrar el anterior.",
+      title: "La web todavía muestra la publicación actual",
+      text: "Los cambios están guardados únicamente como borrador. Publicar reemplazará el snapshot público actual sin crear historial restaurable.",
       tone: "pending" as const,
     };
   }
@@ -308,9 +250,7 @@ export default function GamePublicationWorkspace({
   state,
   requestState,
   neverPublished,
-  panelCreated,
   mediaHygiene,
-  maintenanceOverview,
 }: GamePublicationWorkspaceProps) {
   const readiness = evaluateGamePublicationReadiness(game);
   const publicationChanges = evaluateGamePublicationChanges(
@@ -466,8 +406,8 @@ export default function GamePublicationWorkspace({
               <strong>Higiene multimedia</strong>
               <small>
                 {mediaHygiene.ready
-                  ? "No hay masters editoriales huérfanos. Los recursos necesarios para borrador, publicación o historial permanecen protegidos."
-                  : `${mediaHygiene.blockingCount} master${mediaHygiene.blockingCount === 1 ? "" : "s"} sin ninguna referencia editorial ni histórica. Asígnalos o elimínalos desde Biblioteca.`}
+                  ? "No hay masters editoriales huérfanos. Los recursos necesarios para el borrador o la publicación actual permanecen protegidos."
+                  : `${mediaHygiene.blockingCount} master${mediaHygiene.blockingCount === 1 ? "" : "s"} sin referencia en el borrador ni en la publicación actual. Asígnalos o elimínalos desde Biblioteca.`}
               </small>
             </span>
             <span className={styles.checkState}>
@@ -513,7 +453,7 @@ export default function GamePublicationWorkspace({
           <div className={styles.notice}>
             {state.publicVisible
               ? "No hay diferencias de contenido entre el borrador y el snapshot público actual."
-              : "No hay diferencias de contenido. Al volver a publicar se reactivará el juego conservando el mismo contenido como un snapshot nuevo y auditable."}
+              : "No hay diferencias de contenido. Al volver a publicar se reactivará el juego usando el contenido actual; la acción seguirá quedando registrada en la auditoría administrativa."}
           </div>
         )}
       </section>
@@ -525,7 +465,7 @@ export default function GamePublicationWorkspace({
           <p>
             {neverPublished
               ? "Al confirmar, este borrador empezará a aparecer en el catálogo público. La operación queda auditada y el borrador seguirá separado para futuros cambios."
-              : "Al confirmar, se copiará la revisión actual a un snapshot público nuevo. Las publicaciones anteriores permanecen en el historial."}
+              : "Al confirmar, la revisión actual reemplazará el snapshot público vigente. No se conservan publicaciones históricas restaurables para juegos."}
           </p>
 
           {readiness.recommendedMissing > 0 && (
@@ -601,87 +541,6 @@ export default function GamePublicationWorkspace({
         </div>
       </section>
 
-      <section className={styles.historyPanel}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <span>PUBLICACIONES</span>
-            <h2>Historial de snapshots</h2>
-          </div>
-          <p>
-            Restaurar no borra ni retrocede el historial: crea una publicación nueva con el contenido seleccionado.
-          </p>
-        </div>
-
-        <div className={styles.historyList}>
-          {state.publications.map((publication) => {
-            const current =
-              publication.publicationNumber ===
-              state.publicationNumber;
-            const privateBootstrap =
-              panelCreated &&
-              publication.action === "bootstrap";
-
-            return (
-              <div
-                key={publication.id}
-                className={styles.historyRow}
-              >
-                <div>
-                  <strong>
-                    {privateBootstrap
-                      ? "Base privada inicial"
-                      : `#${publication.publicationNumber} · ${publicationActionLabels[publication.action]}`}
-                  </strong>
-                  <span>
-                    {formatDate(publication.createdAt)} UTC
-                    {publication.sourceRevision
-                      ? ` · revisión ${publication.sourceRevision}`
-                      : " · origen inicial"}
-                    {` · ${publication.checksum.slice(0, 10)}…`}
-                  </span>
-                </div>
-
-                <div className={styles.historyAction}>
-                  {current && (
-                    <span>
-                      {state.publicVisible
-                        ? "Snapshot actual"
-                        : neverPublished
-                          ? "Base privada"
-                          : "Último snapshot"}
-                    </span>
-                  )}
-
-                  {!current && !privateBootstrap && (
-                    <form
-                      method="post"
-                      action={`/api/admin/content/publications/${publication.id}/restore`}
-                    >
-                      <input
-                        type="hidden"
-                        name="expectedPublicationNumber"
-                        value={state.publicationNumber}
-                      />
-                      <button type="submit">
-                        <RotateCcw size={14} aria-hidden="true" />
-                        Restaurar y publicar
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {maintenanceOverview && (
-          <GameHistoryCleanupPanel
-            slug={slug}
-            mode="snapshots"
-            overview={maintenanceOverview}
-          />
-        )}
-      </section>
     </div>
   );
 }

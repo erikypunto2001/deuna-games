@@ -66,7 +66,6 @@ const expectedRuntimeFunctions = [
   "deuna_admin.delete_panel_game(text,uuid,text,integer,integer)",
   "deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)",
   "deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)",
-  "deuna_admin.compact_editorial_publication_history(text,text,uuid,text,integer)",
   "deuna_admin.is_game_media_cleanup_pending(text)",
   "deuna_admin.list_game_media_cleanup_queue(uuid,text)",
   "deuna_admin.begin_game_media_cleanup(text,uuid,text)",

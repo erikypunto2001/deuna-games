@@ -378,33 +378,6 @@ const destructiveEditorialRoutes = await Promise.all([
     "api",
     "admin",
     "content",
-    "games",
-    "[slug]",
-    "history",
-    "publications",
-    "reset",
-    "route.ts"
-  ),
-  path.join(
-    root,
-    "src",
-    "app",
-    "api",
-    "admin",
-    "content",
-    "games",
-    "[slug]",
-    "history",
-    "reset",
-    "route.ts"
-  ),
-  path.join(
-    root,
-    "src",
-    "app",
-    "api",
-    "admin",
-    "content",
     "maintenance",
     "media-cleanup",
     "[slug]",
@@ -472,6 +445,16 @@ const siteMaintenanceMigration = await readFile(
   "utf8"
 );
 
+const retireGameHistoryMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "019_retire_game_history.sql"
+  ),
+  "utf8"
+);
+
 assert(
   editorialCleanupMigration.includes(
     "IF target.public_visible THEN"
@@ -499,6 +482,28 @@ assert(
       "editorial_publication_history_compacted"
     ),
   "Limpiar snapshots por juego debe conservar revisiones, crear un único baseline publicado y dejar auditoría."
+);
+
+assert(
+  retireGameHistoryMigration.includes(
+    "DELETE FROM deuna_admin.editorial_revisions"
+  ) &&
+    retireGameHistoryMigration.includes(
+      "DELETE FROM deuna_admin.editorial_publications"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "editorial_revisions_reject_game_history"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "editorial_publications_reject_game_history"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_publication_history"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "item_type <> 'game'"
+    ),
+  "La migración 019 debe purgar y bloquear el historial restaurable de juegos sin retirar el historial de las demás superficies."
 );
 
 assert(

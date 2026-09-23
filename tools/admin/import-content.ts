@@ -305,25 +305,27 @@ async function importItem(
        )`,
       [id, item.type, item.key, payload, digest]
     );
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions
-         (item_id, revision, payload, action)
-       VALUES ($1, 1, $2::jsonb, 'imported')`,
-      [id, payload]
-    );
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_publications
-         (
-           item_id,
-           publication_number,
-           payload,
-           checksum,
-           source_revision,
-           action
-         )
-       VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap')`,
-      [id, payload, digest]
-    );
+    if (item.type !== "game") {
+      await client.query(
+        `INSERT INTO deuna_admin.editorial_revisions
+           (item_id, revision, payload, action)
+         VALUES ($1, 1, $2::jsonb, 'imported')`,
+        [id, payload]
+      );
+      await client.query(
+        `INSERT INTO deuna_admin.editorial_publications
+           (
+             item_id,
+             publication_number,
+             payload,
+             checksum,
+             source_revision,
+             action
+           )
+         VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap')`,
+        [id, payload, digest]
+      );
+    }
 
     return "created" as const;
   }
@@ -370,12 +372,14 @@ async function importItem(
      WHERE id = $1`,
     [current.id, payload, digest, nextRevision]
   );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions
-       (item_id, revision, payload, action)
-     VALUES ($1, $2, $3::jsonb, 'source_refreshed')`,
-    [current.id, nextRevision, payload]
-  );
+  if (item.type !== "game") {
+    await client.query(
+      `INSERT INTO deuna_admin.editorial_revisions
+         (item_id, revision, payload, action)
+       VALUES ($1, $2, $3::jsonb, 'source_refreshed')`,
+      [current.id, nextRevision, payload]
+    );
+  }
 
   return "refreshed" as const;
 }

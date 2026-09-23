@@ -614,12 +614,6 @@ async function grantRuntimePrivileges(
       )
       TO ${role};
 
-    GRANT EXECUTE
-      ON FUNCTION deuna_admin.compact_editorial_publication_history(
-        text, text, uuid, text, integer
-      )
-      TO ${role};
-
 
     GRANT EXECUTE
       ON FUNCTION deuna_admin.is_game_media_cleanup_pending(text)

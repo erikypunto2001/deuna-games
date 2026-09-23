@@ -33,8 +33,7 @@
 
 .statusCard,
 .checklistPanel,
-.publishPanel,
-.historyPanel {
+.publishPanel {
   border: 1px solid #364352;
   border-radius: 15px;
   background: linear-gradient(155deg, #0f1721, #0a1119);
@@ -174,8 +173,7 @@
   line-height: 1.5;
 }
 
-.checklistPanel,
-.historyPanel {
+.checklistPanel {
   padding: 24px;
 }
 
@@ -351,14 +349,12 @@
   min-width: 230px;
 }
 
-.publishActions form,
-.historyAction form {
+.publishActions form {
   margin: 0;
 }
 
 .publishButton,
-.hideButton,
-.historyAction button {
+.hideButton {
   width: 100%;
   min-height: 44px;
   display: inline-flex;
@@ -397,8 +393,7 @@
 }
 
 .publishButton:focus-visible,
-.hideButton:focus-visible,
-.historyAction button:focus-visible {
+.hideButton:focus-visible {
   box-shadow:
     0 0 0 2px #0a1118,
     0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
@@ -430,86 +425,7 @@
     0 0 0 4px rgba(255, 190, 92, 0.5);
 }
 
-.historyList {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
 
-.historyRow {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 17px;
-  padding: 15px 16px;
-  border: 1px solid #354250;
-  border-radius: 11px;
-  background: #0a1119;
-  transition:
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.historyRow:hover,
-.historyRow:focus-within {
-  border-color: #435262;
-  background: #0d161f;
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 42%, #ffffff);
-}
-
-.historyRow > div:first-child {
-  min-width: 0;
-}
-
-.historyRow strong,
-.historyRow span {
-  display: block;
-}
-
-.historyRow strong {
-  color: #e9eef3;
-  font-size: 14px;
-}
-
-.historyRow > div:first-child > span {
-  margin-top: 5px;
-  color: #91a0af;
-  font-size: 12px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-.historyAction {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-
-.historyAction > span {
-  color: #8ae8b6;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.historyAction button {
-  min-height: 44px;
-  color: #e6ebf0;
-  border: 1px solid #41505f;
-  background: #0e1720;
-  font-size: 12px;
-}
-
-.historyAction button:hover:not(:disabled) {
-  color: #fff;
-  border-color: color-mix(in srgb, var(--brand) 38%, #536273);
-  background: color-mix(in srgb, var(--brand) 5%, #111b26);
-  transform: translateY(-1px);
-}
-
-.historyAction button:disabled,
 .hideButton:disabled {
   cursor: not-allowed;
   opacity: 0.45;
@@ -561,31 +477,20 @@
     grid-column: 2;
   }
 
-  .historyRow {
-    grid-template-columns: 1fr;
-  }
-
-  .historyAction {
-    align-items: stretch;
-    flex-direction: column;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .quickActions a,
   .checklist > a,
   .publishButton,
-  .hideButton,
-  .historyRow,
-  .historyAction button {
+  .hideButton {
     transition: none;
   }
 
   .quickActions a:hover,
   .checklist > a:hover,
   .publishButton:hover,
-  .hideButton:hover,
-  .historyAction button:hover {
+  .hideButton:hover {
     transform: none;
   }
 }

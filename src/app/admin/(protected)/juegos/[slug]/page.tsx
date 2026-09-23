@@ -8,7 +8,6 @@ import GameClassificationEditor from "@/components/admin/GameClassificationEdito
 import GameCompatibilityEditor from "@/components/admin/GameCompatibilityEditor";
 import GameDistributionEditor from "@/components/admin/GameDistributionEditor";
 import GameEditorHealthOverview from "@/components/admin/GameEditorHealthOverview";
-import GameHistoryPanel from "@/components/admin/GameHistoryPanel";
 import GameInformationEditor from "@/components/admin/GameInformationEditor";
 import GameMultimediaEditor from "@/components/admin/GameMultimediaEditor";
 import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
@@ -16,12 +15,6 @@ import GameValuationEditor from "@/components/admin/GameValuationEditor";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
-import {
-  getGameHistoryMaintenanceOverview,
-} from "@/lib/admin/editorial-maintenance-service";
-import {
-  getGameHistory,
-} from "@/lib/admin/game-history";
 import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
@@ -31,9 +24,6 @@ import {
 import {
   getGamePublicationIdentity,
 } from "@/lib/admin/publication-overview";
-import {
-  verifyAdminSession,
-} from "@/lib/admin/session";
 import type {
   GameTaxonomyTerm,
 } from "@/types/game-taxonomy";
@@ -131,7 +121,6 @@ export default async function AdminGameEditorPage({
   params,
   searchParams,
 }: PageProps) {
-  const session = await verifyAdminSession();
   const [{ slug }, parameters] = await Promise.all([
     params,
     searchParams,
@@ -182,15 +171,6 @@ export default async function AdminGameEditorPage({
   const valuationAction = `${coreAction}/valuation`;
   const hasPublicVersion = publicationIdentity?.everPublished ?? false;
   const readiness = evaluateGamePublicationReadiness(game);
-  const [history, historyMaintenance] =
-    section === "historial"
-      ? await Promise.all([
-          getGameHistory(slug),
-          session.role === "owner"
-            ? getGameHistoryMaintenanceOverview(slug)
-            : Promise.resolve(null),
-        ])
-      : [[], null];
 
   return (
     <>
@@ -309,14 +289,6 @@ export default async function AdminGameEditorPage({
         />
       )}
 
-      {section === "historial" && (
-        <GameHistoryPanel
-          events={history}
-          currentRevision={item.revision}
-          slug={slug}
-          maintenanceOverview={historyMaintenance}
-        />
-      )}
     </>
   );
 }

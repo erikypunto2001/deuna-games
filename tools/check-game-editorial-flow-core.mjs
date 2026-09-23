@@ -55,7 +55,6 @@ const files = Object.fromEntries(
       valuationRoute: "src/app/api/admin/content/games/[slug]/valuation/route.ts",
       publishRoute: "src/app/api/admin/content/games/[slug]/publish/route.ts",
       hideRoute: "src/app/api/admin/content/games/[slug]/hide/route.ts",
-      restoreRoute: "src/app/api/admin/content/publications/[publicationId]/restore/route.ts",
       gamesPage: "src/app/admin/(protected)/juegos/page.tsx",
       gameEditor: "src/app/admin/(protected)/juegos/[slug]/page.tsx",
       formActions: "src/components/admin/GameEditorFormActions.tsx",
@@ -68,7 +67,6 @@ const files = Object.fromEntries(
       performanceEditor: "src/components/admin/GamePerformanceEditor.tsx",
       distributionEditor: "src/components/admin/GameDistributionEditor.tsx",
       valuationEditor: "src/components/admin/GameValuationEditor.tsx",
-      historyPanel: "src/components/admin/GameHistoryPanel.tsx",
       publicationPage: "src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx",
       publicationWorkspace: "src/components/admin/GamePublicationWorkspace.tsx",
       previewPage: "src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx",
@@ -129,14 +127,15 @@ assert(
     files.publicationOverview.includes("ever_published") &&
     files.publicationOverview.includes("getGamePublicationIdentity") &&
     files.publicationOverview.includes("has_unpublished_changes"),
-  "El estado editorial debe derivarse del historial y del snapshot real."
+  "El estado editorial del juego debe derivarse del snapshot actual, visibilidad y contadores persistidos."
 );
 assert(
   files.publicationReview.includes("verifyAdminSession") &&
     files.publicationReview.includes("getGameDraftPublicationCandidate") &&
-    files.publicationReview.includes("getHistoricalGamePublicationCandidate") &&
+    files.publicationReview.includes("getPublishedGameSnapshot") &&
+    !files.publicationReview.includes("getHistoricalGamePublicationCandidate") &&
     !/\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(files.publicationReview),
-  "La revisión previa debe ser autenticada y de sólo lectura."
+  "La revisión previa debe ser autenticada, de sólo lectura y limitada al borrador/snapshot actual del juego."
 );
 
 for (const section of [
@@ -219,10 +218,10 @@ assert(
 assert(
   files.performanceService.includes("verifyAdminSession") &&
     files.performanceService.includes("FOR UPDATE") &&
-    files.performanceService.includes("editorial_revisions") &&
+    !files.performanceService.includes("editorial_revisions") &&
     files.performanceService.includes("admin_audit_log") &&
     !/\bDELETE\s+FROM\b/i.test(files.performanceService),
-  "Rendimiento debe seguir siendo transaccional, versionado y auditable."
+  "Rendimiento debe seguir siendo transaccional y auditable, con revisión actual pero sin historial restaurable de juegos."
 );
 assert(
   files.publicPerformanceRoute.includes("getPublicGameBySlug") &&
@@ -298,7 +297,6 @@ assert(
 for (const [name, route] of [
   ["publicar", files.publishRoute],
   ["ocultar", files.hideRoute],
-  ["restaurar", files.restoreRoute],
 ]) {
   assert(
     route.includes("/publicacion") &&
@@ -311,9 +309,10 @@ for (const [name, route] of [
 assert(
   files.publishRoute.includes("getGameDraftPublicationCandidate") &&
     files.publishRoute.includes("inspectGameMediaIntegrity") &&
-    files.restoreRoute.includes("getHistoricalGamePublicationCandidate") &&
-    files.restoreRoute.includes("inspectGameMediaIntegrity"),
-  "Publicar y restaurar deben revalidar el snapshot y sus recursos."
+    files.publicationService.includes('if (type === "game")') &&
+    files.publicationService.includes('return { outcome: "not_found" };') &&
+    !files.publicationReview.includes("getHistoricalGamePublicationCandidate"),
+  "Publicar debe revalidar el snapshot actual y la restauración histórica de juegos debe permanecer retirada."
 );
 assert(
   files.gamesPage.includes('"unpublished"') &&
@@ -331,7 +330,6 @@ for (const componentName of [
   "GameMultimediaEditor",
   "GameDistributionEditor",
   "GameValuationEditor",
-  "GameHistoryPanel",
 ]) {
   assert(
     files.gameEditor.includes(componentName),
@@ -346,7 +344,6 @@ for (const section of [
   'section === "multimedia"',
   'section === "descargas"',
   'section === "valoracion"',
-  'section === "historial"',
 ]) {
   assert(files.gameEditor.includes(section), `El editor debe resolver ${section}.`);
 }
@@ -394,10 +391,11 @@ assert(
   "Valoración debe separar editorial, comunidad e Índice DeUna."
 );
 assert(
-  files.historyPanel.includes("AUDITORÍA Y RECUPERACIÓN") &&
-    files.historyPanel.includes("publication") &&
-    files.historyPanel.includes("Restaurar"),
-  "Historial debe combinar auditoría y recuperación sin borrar snapshots."
+  !files.gameEditor.includes("GameHistoryPanel") &&
+    !files.gameEditor.includes('section === "historial"') &&
+    !files.editorSections.includes('{ id: "historial"') &&
+    !files.contextBar.includes('directGameSection("historial"'),
+  "El editor de juegos no debe reintroducir una superficie de historial restaurable."
 );
 
 assert(
@@ -413,8 +411,8 @@ assert(
     files.contextBar.includes('directGameSection("valoracion", Star)') &&
     files.contextBar.includes('key: "publicacion"') &&
     files.contextBar.includes('label: "Publicación"') &&
-    files.contextBar.includes('directGameSection("historial", FileClock)'),
-  "El contexto del juego debe conservar Rendimiento, Valoración, Publicación e Historial desde el contrato canónico."
+    !files.contextBar.includes('directGameSection("historial"'),
+  "El contexto del juego debe conservar Rendimiento, Valoración y Publicación sin reintroducir Historial."
 );
 assert(
   files.publicationPage.includes("getGamePublicationState") &&
@@ -429,7 +427,7 @@ assert(
     files.publicationWorkspace.includes("expectedRevision") &&
     files.publicationWorkspace.includes("expectedPublicationNumber") &&
     !/\bDELETE\b/i.test(files.publicationWorkspace),
-  "Publicación debe mostrar alcance, concurrencia y recuperación sin acciones destructivas."
+  "Publicación debe mostrar alcance y concurrencia sobre el snapshot actual sin acciones destructivas ni restore histórico."
 );
 assert(
   files.previewPage.includes("/publicacion") &&
@@ -452,6 +450,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (editor modular, secciones con responsabilidad única, Valoración real, avance guiado, snapshots, integridad multimedia, Rendimiento y Publicación protegidos)."
+    "Flujo editorial de juegos: OK (editor modular sin historial restaurable, secciones con responsabilidad única, Valoración real, avance guiado, snapshot actual, integridad multimedia, Rendimiento y Publicación protegidos)."
   );
 }
