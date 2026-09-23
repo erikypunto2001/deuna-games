@@ -228,7 +228,9 @@ assert(
     "new IntersectionObserver",
     "entry.intersectionRatio >= STATIC_DETAIL_VIDEO_THRESHOLD",
     "if (staticDetail) return;",
-    "staticDetailInViewport",
+    "automaticVideoInViewport",
+    "setAutomaticVideoInViewport",
+    "(!staticDetail && !directDetailVisible)",
     "unscaledVideo={staticDetail}",
     'data-card-reveal-mode={revealMode}',
     'data-card-media-mode={cardMode}'
@@ -242,13 +244,19 @@ assert(
     "const PREVIEW_DELAY_MS = 0",
     "function schedulePreview()",
     "setPreviewActive(true)",
-    "!staticDetail && detailVisible && previewActive",
+    "const interactionVideoActive =",
+    "!directDetailVisible &&",
+    "detailVisible &&",
+    "previewActive;",
+    "const automaticVideoActive =",
+    "automaticVideoInViewport &&",
+    "(staticDetail || directDetailVisible) &&",
     'cardMode === "video"',
     'data-card-preview-delay-ms={PREVIEW_DELAY_MS}'
   ) &&
     !cardBase.includes("setTimeout(") &&
     !cardBase.includes("previewTimer"),
-  "Card debe conservar Video sin demora artificial al revelar su detalle y Video automático sólo en detalle estático visible."
+  "Card debe conservar Video sin demora artificial al revelar su detalle y limitar la reproducción automática a detalle estático o directo realmente visible."
 );
 
 assert(

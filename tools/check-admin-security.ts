@@ -334,6 +334,315 @@ assert(
   "Crear, activar o restablecer administradores debe exigir reautenticación del Owner."
 );
 
+
+const destructiveEditorialRoutes = await Promise.all([
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "games",
+    "[slug]",
+    "delete",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "history-reset",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "history-reset",
+    "home",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "media-cleanup",
+    "[slug]",
+    "route.ts"
+  ),
+  path.join(
+    root,
+    "src",
+    "app",
+    "api",
+    "admin",
+    "content",
+    "maintenance",
+    "site-cleanup",
+    "route.ts"
+  ),
+].map((file) => readFile(file, "utf8")));
+
+assert(
+  destructiveEditorialRoutes.every(
+    (source) =>
+      source.includes("currentPassword") &&
+      source.includes("reauthenticateAdmin(")
+  ),
+  "Borrado y compactaciones editoriales deben reautenticar al Owner."
+);
+
+const editorialCleanupMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "015_editorial_cleanup.sql"
+  ),
+  "utf8"
+);
+
+const gameHistoryCleanupMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "016_game_history_cleanup.sql"
+  ),
+  "utf8"
+);
+
+const mediaCleanupRecoveryMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "017_game_media_cleanup_recovery.sql"
+  ),
+  "utf8"
+);
+
+const siteMaintenanceMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "018_site_maintenance.sql"
+  ),
+  "utf8"
+);
+
+const retireGameHistoryMigration = await readFile(
+  path.join(
+    root,
+    "database",
+    "migrations",
+    "019_retire_game_history.sql"
+  ),
+  "utf8"
+);
+
+assert(
+  editorialCleanupMigration.includes(
+    "IF target.public_visible THEN"
+  ) &&
+    editorialCleanupMigration.includes(
+      "'outcome', 'still_public'"
+    ) &&
+    editorialCleanupMigration.includes(
+      "action IN ('bootstrap', 'published', 'rollback', 'baseline')"
+    ),
+  "El hard-delete debe exigir contenido oculto y la compactación debe registrar un baseline explícito."
+);
+
+assert(
+  gameHistoryCleanupMigration.includes(
+    "compact_editorial_publication_history"
+  ) &&
+    gameHistoryCleanupMigration.includes(
+      "DELETE FROM deuna_admin.editorial_publications"
+    ) &&
+    !gameHistoryCleanupMigration.includes(
+      "DELETE FROM deuna_admin.editorial_revisions"
+    ) &&
+    gameHistoryCleanupMigration.includes(
+      "editorial_publication_history_compacted"
+    ),
+  "Limpiar snapshots por juego debe conservar revisiones, crear un único baseline publicado y dejar auditoría."
+);
+
+assert(
+  retireGameHistoryMigration.includes(
+    "DELETE FROM deuna_admin.editorial_revisions"
+  ) &&
+    retireGameHistoryMigration.includes(
+      "DELETE FROM deuna_admin.editorial_publications"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "editorial_revisions_reject_game_history"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "editorial_publications_reject_game_history"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_publication_history"
+    ) &&
+    retireGameHistoryMigration.includes(
+      "item_type <> 'game'"
+    ),
+  "La migración 019 debe purgar y bloquear el historial restaurable de juegos sin retirar el historial de las demás superficies."
+);
+
+assert(
+  mediaCleanupRecoveryMigration.includes(
+    "game_media_cleanup_queue"
+  ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "AFTER DELETE ON deuna_admin.editorial_items"
+    ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "BEFORE INSERT ON deuna_admin.editorial_items"
+    ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "begin_game_media_cleanup"
+    ) &&
+    mediaCleanupRecoveryMigration.includes(
+      "complete_game_media_cleanup"
+    ),
+  "El hard-delete debe registrar la limpieza multimedia en la misma transacción, bloquear reutilización del slug y permitir un reintento Owner."
+);
+
+assert(
+  siteMaintenanceMigration.includes(
+    "inspect_site_runtime_junk"
+  ) &&
+    siteMaintenanceMigration.includes(
+      "purge_site_runtime_junk"
+    ) &&
+    siteMaintenanceMigration.includes(
+      "LOCK TABLE"
+    ) &&
+    siteMaintenanceMigration.includes(
+      "'site_runtime_junk_purged'"
+    ) &&
+    !siteMaintenanceMigration.includes(
+      "DELETE FROM deuna_admin.admin_audit_log"
+    ) &&
+    !siteMaintenanceMigration.includes(
+      "DELETE FROM deuna_accounts.reward_events"
+    ),
+  "La limpieza general debe ser Owner-only, optimista y auditada sin borrar auditoría ni recompensas."
+);
+
+const editorialMaintenanceService = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "editorial-maintenance-service.ts"
+  ),
+  "utf8"
+);
+const editorialMediaLibrary = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "media",
+    "editorial-media-library.ts"
+  ),
+  "utf8"
+);
+
+const siteMaintenanceService = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "site-maintenance-service.ts"
+  ),
+  "utf8"
+);
+
+const siteMaintenanceMedia = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "site-maintenance-media.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  editorialMaintenanceService.includes(
+    "inspectEditorialMediaDeletionInventory"
+  ) &&
+    editorialMaintenanceService.includes(
+      "deleteAllEditorialMediaResources"
+    ) &&
+    !editorialMaintenanceService.includes(
+      "listEditorialMediaLibrary(slug)"
+    ) &&
+    editorialMediaLibrary.includes(
+      "deleteAllEditorialMediaResources"
+    ),
+  "El hard-delete debe usar inventario multimedia destructivo completo y no la biblioteca visual limitada."
+);
+
+assert(
+  siteMaintenanceService.includes(
+    "purge_site_runtime_junk"
+  ) &&
+    siteMaintenanceService.includes(
+      "purgeSiteMediaJunk"
+    ) &&
+    siteMaintenanceService.includes(
+      "expectedFingerprint"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "editorial_revisions"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "editorial_publications"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "source_payload"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "draft_payload"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "published_payload"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "MIN_ORPHAN_AGE_MS"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "unknownNamespaces"
+    ) &&
+    siteMaintenanceMedia.includes(
+      "unexpectedEntries"
+    ),
+  "Mantenimiento general debe proteger todos los payloads editoriales, usar gracia temporal y separar basura segura de revisión manual."
+);
+
 const migrator = await readFile(
   path.join(
     root,

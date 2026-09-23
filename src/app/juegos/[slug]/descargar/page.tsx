@@ -260,7 +260,7 @@ export default async function DownloadPage({
               Elige una fuente para continuar
             </h2>
             <p>
-              Sólo mostramos destinos activos configurados para este juego. El estado de cada servidor se informa de forma independiente.
+              Mostramos los destinos configurados para este juego y su estado actual. Las fuentes caídas o en mantenimiento permanecen visibles como información, pero no se pueden abrir.
             </p>
           </div>
 

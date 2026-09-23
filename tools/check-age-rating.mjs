@@ -87,9 +87,10 @@ assert(
     route.includes("ageRating,") &&
     service.includes('"category" | "genres" | "tags" | "ageRating"') &&
     service.includes("FOR UPDATE") &&
-    service.includes("editorial_revisions") &&
+    service.includes("revision = $4") &&
+    !service.includes("editorial_revisions") &&
     service.includes("admin_audit_log"),
-  "Clasificación etaria debe guardarse dentro de la misma revisión transaccional y auditada de Clasificación."
+  "Clasificación etaria debe guardarse en la misma mutación transaccional y auditada de Clasificación, avanzando la revisión actual sin recrear historial restaurable de juegos."
 );
 
 assert(

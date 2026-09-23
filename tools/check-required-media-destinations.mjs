@@ -41,7 +41,6 @@ const [
   publicationReadiness,
   publicationWorkspace,
   publishRoute,
-  restoreRoute,
 ] = await Promise.all([
   source("src/lib/media/game-media-requirements.ts"),
   source("src/types/game.ts"),
@@ -73,7 +72,6 @@ const [
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
-  source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
 ]);
 
 assert(
@@ -204,9 +202,12 @@ assert(
       "card: STANDARD_GAME_MEDIA_MODES",
       "detail: STANDARD_GAME_MEDIA_MODES",
       "background: STANDARD_GAME_MEDIA_MODES",
-      'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
+      'target === "card"',
+      'mode === "hover-video"',
+      'return "video";',
+      'return "image";'
     ),
-  "La política compartida debe reservar Imagen + hover exclusivamente para Hero y degradar snapshots legacy de Card/Contenedor/Fondo a Imagen."
+  "La política compartida debe reservar Imagen + hover exclusivamente para Hero, migrar Card legacy a Video y degradar Contenedor/Fondo legacy a Imagen."
 );
 
 assert(
@@ -564,14 +565,8 @@ assert(
       "evaluateGamePublicationReadiness",
       "readiness.essentialsReady",
       "preparacion-incompleta"
-    ) &&
-    has(
-      restoreRoute,
-      "evaluateGamePublicationReadiness",
-      "readiness.essentialsReady",
-      "restauracion-incompleta"
     ),
-  "Publicación, restauración y el score del rail deben compartir los mismos destinos multimedia esenciales, incluido Fondo cuando está activo."
+  "Publicación y el score del rail deben compartir los mismos destinos multimedia esenciales, incluido Fondo cuando está activo."
 );
 
 if (failures.length) {

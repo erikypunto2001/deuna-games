@@ -66,8 +66,10 @@ assert(
     createRoute.includes("?estado=duplicado") &&
     createRoute.includes("?estado=clasificacion") &&
     creationService.includes("ON CONFLICT (item_type, item_key)") &&
+    creationService.includes("is_game_media_cleanup_pending") &&
+    creationService.includes('"cleanup_pending"') &&
     creationService.includes('outcome: created ? "created" : "exists"'),
-  "La prevención visual nunca debe sustituir el rechazo transaccional de duplicados ni la validación de clasificación en el servidor."
+  "La prevención visual nunca debe sustituir el rechazo transaccional de duplicados, el bloqueo de slugs con limpieza pendiente ni la validación de clasificación en el servidor."
 );
 
 if (failures.length > 0) {

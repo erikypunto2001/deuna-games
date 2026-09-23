@@ -454,7 +454,8 @@ SQL
 say "Aplicando migraciones y contenido editorial"
 npm run db:migrate
 npm run admin:import-content
-npm run admin:purge-junk
+npm run admin:purge-junk:check
+npm run admin:purge-media-junk:check
 
 owner_count="$(
   PGPASSWORD="${migration_password}" \

@@ -302,7 +302,9 @@ export default async function GameDetailPage({
                 </div>
               )}
 
-              <GamePerformanceEstimate slug={game.slug} />
+              {platforms.includes("PC") && (
+                <GamePerformanceEstimate slug={game.slug} />
+              )}
 
               <GameAccountActions
                 gameSlug={game.slug}
@@ -465,7 +467,10 @@ export default async function GameDetailPage({
             id="compatibility"
             className={styles.compatibilityAnchor}
           >
-            <GameCompatibilityCard slug={game.slug} />
+            <GameCompatibilityCard
+              slug={game.slug}
+              supportsPc={platforms.includes("PC")}
+            />
           </div>
         </section>
 

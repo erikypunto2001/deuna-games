@@ -26,22 +26,12 @@ type PublishedTaxonomyRow = {
   published_payload: unknown;
 };
 
-type HistoricalGamePublicationRow = {
-  payload: unknown;
-  item_key: string;
-  current_publication_number: number;
-};
 
 export type GameDraftPublicationCandidate = {
   game: Game;
   revision: number;
 };
 
-export type HistoricalGamePublicationCandidate = {
-  game: Game;
-  key: string;
-  currentPublicationNumber: number;
-};
 
 export type GameTaxonomyPublicationIntegrity =
   | { ok: true }
@@ -187,39 +177,5 @@ export async function getGameDraftPublicationCandidate(
       row.draft_payload
     ),
     revision: row.revision,
-  };
-}
-
-export async function getHistoricalGamePublicationCandidate(
-  publicationId: string
-): Promise<HistoricalGamePublicationCandidate | null> {
-  await verifyAdminSession();
-
-  const result =
-    await adminQuery<HistoricalGamePublicationRow>(
-      `SELECT
-         publication.payload,
-         item.item_key,
-         item.publication_number AS current_publication_number
-       FROM deuna_admin.editorial_publications AS publication
-       INNER JOIN deuna_admin.editorial_items AS item
-         ON item.id = publication.item_id
-       WHERE publication.id = $1
-         AND item.item_type = 'game'
-       LIMIT 1`,
-      [publicationId]
-    );
-  const row = result.rows[0];
-
-  if (!row) return null;
-
-  return {
-    game: parseEditorialPayload(
-      "game",
-      row.payload
-    ),
-    key: row.item_key,
-    currentPublicationNumber:
-      row.current_publication_number,
   };
 }

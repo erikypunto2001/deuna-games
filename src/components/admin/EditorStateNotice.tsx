@@ -130,7 +130,7 @@ const notices = {
   "recurso-en-historial": {
     kind: "warning",
     message:
-      "Ese master está protegido por una publicación histórica restaurable. No se eliminó el archivo: conservarlo garantiza que el botón Restaurar siga pudiendo reconstruir ese snapshot.",
+      "Ese master está protegido por una revisión o publicación histórica restaurable. No se eliminó el archivo: conservarlo garantiza que Restaurar siga pudiendo reconstruir esa versión.",
   },
   "recurso-eliminado": {
     kind: "success",
@@ -226,6 +226,106 @@ const notices = {
     kind: "warning",
     message:
       "El registro editorial ya no está disponible.",
+  },
+  eliminado: {
+    kind: "success",
+    message:
+      "Juego creado desde Admin eliminado definitivamente junto con su historial y dependencias editoriales asociadas.",
+  },
+  "eliminado-media-pendiente": {
+    kind: "warning",
+    message:
+      "El juego y sus datos asociados fueron eliminados, pero la limpieza física de uno o más recursos multimedia quedó pendiente. El contenido ya no es público ni restaurable.",
+  },
+  "eliminacion-media-no-verificada": {
+    kind: "error",
+    message:
+      "La eliminación definitiva no se ejecutó porque el namespace multimedia no pudo verificarse de forma exhaustiva. La base no fue modificada.",
+  },
+  "limpieza-media-pendiente": {
+    kind: "warning",
+    message:
+      "Existe una limpieza multimedia pendiente para ese identificador. El slug permanece bloqueado hasta que Mantenimiento elimine por completo el namespace anterior.",
+  },
+  "limpieza-media-completa": {
+    kind: "success",
+    message:
+      "La limpieza multimedia pendiente terminó correctamente. El namespace anterior fue eliminado y el identificador volvió a quedar disponible.",
+  },
+  "limpieza-media-confirmacion": {
+    kind: "error",
+    message:
+      "El reintento no se ejecutó porque la contraseña o el identificador de confirmación no son válidos.",
+  },
+  "limpieza-general-completa": {
+    kind: "success",
+    message:
+      "Limpieza general completada. Se eliminaron únicamente residuos seguros y el sitio fue analizado nuevamente al finalizar.",
+  },
+  "limpieza-general-parcial": {
+    kind: "warning",
+    message:
+      "La limpieza general eliminó lo que pudo verificar con seguridad, pero quedaron residuos pendientes o el estado cambió durante la operación. Revisa el diagnóstico actualizado.",
+  },
+  "limpieza-general-conflicto": {
+    kind: "warning",
+    message:
+      "El diagnóstico cambió desde que cargaste Mantenimiento. No se inició la limpieza general; revisa los conteos y vuelve a confirmar.",
+  },
+  "limpieza-general-confirmacion": {
+    kind: "error",
+    message:
+      "La limpieza general no se ejecutó porque la contraseña, la frase de confirmación o el snapshot esperado no son válidos.",
+  },
+  "historial-compactado": {
+    kind: "success",
+    message:
+      "Historial editorial compactado. Se conservaron el borrador, la publicación y la visibilidad actuales de cada registro; las versiones antiguas dejaron de ser restaurables.",
+  },
+  "mantenimiento-confirmacion": {
+    kind: "error",
+    message:
+      "La compactación no se ejecutó porque la confirmación, contraseña o snapshot esperado no son válidos.",
+  },
+  "mantenimiento-conflicto": {
+    kind: "warning",
+    message:
+      "El historial cambió después de cargar esta pantalla. No se eliminó ninguna versión. Recarga Mantenimiento y revisa nuevamente los conteos.",
+  },
+  "inicio-mantenimiento-confirmacion": {
+    kind: "error",
+    message:
+      "La compactación de Inicio no se ejecutó porque la confirmación, contraseña o snapshot esperado no son válidos.",
+  },
+  "inicio-mantenimiento-conflicto": {
+    kind: "warning",
+    message:
+      "El historial de Inicio cambió después de cargar esta pantalla. No se eliminó ninguna versión. Recarga antes de volver a confirmar.",
+  },
+  "inicio-historial-compactado": {
+    kind: "success",
+    message:
+      "Historial de Inicio compactado a un baseline actual sin modificar los historiales de juegos ni otras superficies editoriales.",
+  },
+  "historial-limpiado": {
+    kind: "success",
+    message:
+      "Respaldos históricos del juego eliminados. Se conservaron el borrador y el snapshot actuales como baseline; las versiones anteriores dejaron de ser restaurables.",
+  },
+  "historial-conflicto": {
+    kind: "warning",
+    message:
+      "El historial del juego cambió desde que cargaste la página. No se eliminó ninguna versión. Recarga Historial antes de volver a confirmar.",
+  },
+  "historial-confirmacion": {
+    kind: "error",
+    message:
+      "La limpieza del historial no se ejecutó porque la contraseña, el identificador o los conteos esperados no son válidos.",
+  },
+  reauth: {
+    kind: "error",
+    message:
+      "La contraseña actual del Owner no pudo verificarse. La operación crítica no se ejecutó.",
   },
 } as const;
 

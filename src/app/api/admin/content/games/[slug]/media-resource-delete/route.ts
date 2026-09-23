@@ -8,9 +8,6 @@ import {
 import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import { getEditorialItem } from "@/lib/admin/content-service";
 import {
-  getHistoricalGameMediaReferences,
-} from "@/lib/admin/game-media-history";
-import {
   listGameImageReferences,
   listGameVideoReferences,
 } from "@/lib/admin/game-media-integrity";
@@ -97,13 +94,11 @@ export async function POST(
     bundled,
     publishedImages,
     publishedVideos,
-    historicalReferences,
   ] = await Promise.all([
     listEditorialMediaLibrary(slug),
     listAssignedBundledImageResources(imageReferences),
     getPublishedGameImageReferences(slug),
     getPublishedGameVideoReferences(slug),
-    getHistoricalGameMediaReferences(slug),
   ]);
   const resources = mergeEditorialMediaResources(editorial, bundled);
   const expectedKind = target.data === "image-delete" ? "image" : "video";
@@ -120,15 +115,6 @@ export async function POST(
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "recurso-eliminado-base")
-    );
-  }
-
-  // Un snapshot histórico sólo puede anunciarse como restaurable si sus
-  // masters siguen existiendo. La biblioteca no permite romper esa garantía.
-  if (new Set(historicalReferences).has(selected.src)) {
-    return adminRedirect(
-      authorized.adminOrigin,
-      redirectPath(slug, "recurso-en-historial")
     );
   }
 

@@ -12,6 +12,7 @@ const actionLabels: Record<
   source_refreshed: "Fuente actualizada",
   draft_saved: "Borrador guardado",
   draft_restored: "Revisión restaurada",
+  baseline: "Baseline tras mantenimiento",
 };
 
 export default function EditorialHistory({

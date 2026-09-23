@@ -37,6 +37,16 @@ function defaultViewport(): GameVideoViewport {
   return { ...DEFAULT_PREVIEW_VIEWPORT };
 }
 
+function legacyCardViewport(): GameVideoViewport {
+  return {
+    x: 0.5,
+    y: 0.5,
+    zoom: 1,
+    aspect: "3:2",
+    confirmed: true,
+  };
+}
+
 function hasVideoMedia(media: GameVideoMedia | undefined) {
   return Boolean(
     media?.hero ||
@@ -109,6 +119,10 @@ export function resolveGameDestinationMediaMode(
     );
   }
 
+  if (target === "card" && game.previewClip?.trim()) {
+    return "video";
+  }
+
   if (resolveGameDestinationImage(game, target)) return "image";
   return DEFAULT_GAME_MEDIA_MODES[target];
 }
@@ -176,7 +190,7 @@ export function resolveGameCardVideo(
 
   return {
     src: legacy,
-    viewport: defaultViewport(),
+    viewport: legacyCardViewport(),
     source: "legacy",
   };
 }
@@ -198,7 +212,7 @@ export function withSavedGameVideoClip(
         ? {
             source: "independent",
             clip: game.previewClip,
-            viewport: defaultViewport(),
+            viewport: legacyCardViewport(),
           }
         : undefined;
     }

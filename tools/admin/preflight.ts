@@ -62,6 +62,18 @@ type SequencePrivilegeRow = {
   can_update: boolean;
 };
 
+const expectedRuntimeFunctions = [
+  "deuna_admin.delete_panel_game(text,uuid,text,integer,integer)",
+  "deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)",
+  "deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)",
+  "deuna_admin.is_game_media_cleanup_pending(text)",
+  "deuna_admin.list_game_media_cleanup_queue(uuid,text)",
+  "deuna_admin.begin_game_media_cleanup(text,uuid,text)",
+  "deuna_admin.complete_game_media_cleanup(text,uuid,text)",
+  "deuna_admin.inspect_site_runtime_junk(uuid,text)",
+  "deuna_admin.purge_site_runtime_junk(uuid,text,integer,integer,integer,integer,integer,integer,integer)",
+] as const;
+
 const migrationsDirectory = path.join(
   process.cwd(),
   "database",
@@ -570,6 +582,24 @@ async function checkRuntimePrivileges(pool: Pool, runtimeRole: string) {
       expected === (sequence.can_usage && sequence.can_select) &&
         !sequence.can_update,
       `Los permisos de la secuencia ${key} no son mínimos.`
+    );
+  }
+
+  for (const signature of expectedRuntimeFunctions) {
+    const privilege = await pool.query<{
+      can_execute: boolean;
+    }>(
+      `SELECT has_function_privilege(
+         $1,
+         $2,
+         'EXECUTE'
+       ) AS can_execute`,
+      [runtimeRole, signature]
+    );
+
+    assert(
+      privilege.rows[0]?.can_execute === true,
+      `Falta EXECUTE runtime mínimo sobre ${signature}.`
     );
   }
 }

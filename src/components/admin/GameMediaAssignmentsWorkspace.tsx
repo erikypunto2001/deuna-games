@@ -146,7 +146,7 @@ function cardModeCopy(mode: GameDestinationMediaMode): CardModeCopy {
       imageHelp: "No compite con el video: aparece durante carga, errores, reduced motion y estados donde el video no debe reproducirse.",
       imagePickerLabel: "Imagen de respaldo 3:2",
       videoRole: "Video principal",
-      videoHelp: "Es el medio que se reproduce cuando la Card permite movimiento y el recurso está disponible.",
+      videoHelp: "En filas interactivas la imagen queda visible en reposo y el video entra al hover/foco. En filas de detalle estático, el video se reproduce mientras la Card está visible. Reduced motion conserva la imagen.",
       readyLabel: "CARD LISTA · VIDEO 3:2 + RESPALDO",
     };
   }
@@ -517,7 +517,7 @@ export default function GameMediaAssignmentsWorkspace({ slug }: Props) {
                 {cardMode === "video" ? <Clapperboard size={16} aria-hidden="true" /> : <Info size={16} aria-hidden="true" />}
                 <span>
                   {cardMode === "video"
-                    ? "Video es el medio principal. La imagen se mantiene sólo como fallback seguro y nunca reemplaza al video mientras éste pueda reproducirse."
+                    ? "Video es el medio dinámico de la Card. En filas interactivas la imagen se ve en reposo y el video entra al hover/foco; en filas de detalle estático se reproduce al estar visible. La imagen también cubre carga, errores y reduced motion."
                     : "Imagen es el único medio de esta vista; no se monta video."}
                 </span>
               </div>

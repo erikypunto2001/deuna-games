@@ -577,6 +577,10 @@ export function parseEditorialPayload(
   const hasActiveVideoMedia = Boolean(
     activeVideoMedia && Object.keys(activeVideoMedia).length > 0
   );
+  const legacyCardPreview =
+    !activeVideoMedia?.card && game.previewClip
+      ? { playback: "hover" as const }
+      : undefined;
   const backgroundMode = inferredOptionalMode(
     mediaModes?.background,
     activeVideoMedia?.background,
@@ -596,7 +600,7 @@ export function parseEditorialPayload(
       "card",
       inferredMode(
         mediaModes?.card,
-        activeVideoMedia?.card,
+        activeVideoMedia?.card ?? legacyCardPreview,
         resolvedCardImage,
         "image"
       )

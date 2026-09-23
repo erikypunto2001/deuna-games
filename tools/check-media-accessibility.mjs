@@ -92,10 +92,11 @@ assert(
     !files.service.includes("game.cardImage ?? game.coverImage") &&
     files.service.includes('"media-accessibility"') &&
     files.service.includes("FOR UPDATE") &&
-    files.service.includes("editorial_revisions") &&
+    files.service.includes("revision = $4") &&
+    !files.service.includes("editorial_revisions") &&
     files.service.includes("admin_audit_log") &&
     !/\bDELETE\s+FROM\b/i.test(files.service),
-  "Guardar accesibilidad debe reutilizar resolvers canónicos, concurrencia, revisiones y auditoría sin perder metadata de snapshots históricos."
+  "Guardar accesibilidad debe reutilizar resolvers canónicos, concurrencia optimista y auditoría, avanzando el snapshot actual sin recrear historial restaurable de juegos."
 );
 
 assert(
@@ -219,6 +220,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Accesibilidad multimedia contextual: OK (snapshot versionado, edición segura, fallbacks históricos, Card accesible también en Video, Galería por recurso y capas decorativas separadas)."
+    "Accesibilidad multimedia contextual: OK (snapshot actual revisionado, edición segura sin historial restaurable, fallbacks legacy, Card accesible también en Video, Galería por recurso y capas decorativas separadas)."
   );
 }

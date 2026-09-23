@@ -10,10 +10,11 @@ const files = Object.fromEntries(
       valuationRoute: "src/app/api/admin/content/games/[slug]/valuation/route.ts",
       valuationEditor: "src/components/admin/GameValuationEditor.tsx",
       sectionService: "src/lib/admin/game-editor-sections-service.ts",
+      contentService: "src/lib/admin/content-service.ts",
       insights: "src/lib/admin/game-insights.ts",
       notices: "src/components/admin/EditorStateNotice.tsx",
-      history: "src/lib/admin/game-history.ts",
-      historyPanel: "src/components/admin/GameHistoryPanel.tsx",
+      editorSections: "src/lib/admin/game-editor-sections.ts",
+      gameEditor: "src/app/admin/(protected)/juegos/[slug]/page.tsx",
     }).map(async ([key, path]) => [key, await readFile(path, "utf8")])
   )
 );
@@ -35,7 +36,7 @@ expect(
     files.compatibilityEditor.includes('game.platforms?.includes("PC")') &&
     files.compatibilityEditor.includes("borrador histórico") &&
     files.compatibilityEditor.includes("elimina los requisitos"),
-  "Compatibilidad debe advertir y permitir corregir snapshots históricos con requisitos PC contradictorios."
+  "Compatibilidad debe advertir y permitir corregir payloads legacy con requisitos PC contradictorios."
 );
 
 expect(
@@ -45,8 +46,10 @@ expect(
     files.healthOverview.includes("Revisar publicación") &&
     files.contextBar.includes('key: "publicacion"') &&
     files.contextBar.includes('label: "Publicación"') &&
-    files.contextBar.includes('directGameSection("historial", FileClock)'),
-  "El estado global debe enlazar Publicación cuando corresponde y la navegación canónica debe conservar Historial como auditoría separada."
+    !files.contextBar.includes('directGameSection("historial"') &&
+    !files.editorSections.includes('{ id: "historial"') &&
+    !files.gameEditor.includes("GameHistoryPanel"),
+  "El estado global debe enlazar Publicación y la navegación de juegos no debe reintroducir Historial restaurable."
 );
 
 expect(
@@ -81,8 +84,10 @@ expect(
     files.sectionService.includes("insightScore") &&
     files.sectionService.includes("insightConfidence") &&
     files.sectionService.includes("insightEvidenceCount") &&
-    files.sectionService.includes("auditDetails"),
-  "La revisión de Valoración debe registrar el origen y la evidencia de una sugerencia automática."
+    files.sectionService.includes("auditDetails") &&
+    files.sectionService.includes("admin_audit_log") &&
+    !files.sectionService.includes("editorial_revisions"),
+  "La revisión de Valoración debe registrar origen/evidencia en auditoría sin recrear historial restaurable de juegos."
 );
 expect(
   files.insights.includes("evidenceCount >= 250 && ratingCount >= 25") &&
@@ -92,30 +97,17 @@ expect(
   "El umbral de confianza del Índice debe permanecer explícito y auditable."
 );
 
-for (const field of [
-  "ageRating",
-  "compatibilityMetadata",
-  "performanceMetadata",
-  "mediaAccessibility",
-  "distributionMetadata",
-]) {
-  expect(
-    files.history.includes(`["${field}"`),
-    `Historial debe rastrear ${field}.`
-  );
-}
 expect(
-  files.history.includes("JSON.stringify(value)") &&
-    files.history.includes("Configuración modificada"),
-  "Historial debe intentar mostrar cambios complejos reales antes de degradar a un mensaje genérico."
+  files.contentService.includes("admin_audit_log") &&
+    files.contentService.includes('item.item_type !== "game"') &&
+    files.contentService.includes("writeRevision"),
+  "Retirar el historial restaurable no debe retirar la auditoría administrativa de los cambios de juego."
 );
 expect(
-  files.historyPanel.includes('timeZone: "Etc/GMT+3"') &&
-    files.historyPanel.includes("UTC−3") &&
-    !files.historyPanel.includes('timeZone: "UTC"') &&
-    !files.historyPanel.includes("America/Argentina") &&
-    !files.historyPanel.includes("Buenos_Aires"),
-  "Historial administrativo debe mostrar la zona horaria operativa UTC−3 sin introducir identificadores geográficos prohibidos."
+  !files.gameEditor.includes("GameHistoryPanel") &&
+    !files.editorSections.includes('id: "historial"') &&
+    !files.contextBar.includes('directGameSection("historial"'),
+  "La auditoría debe permanecer en admin_audit_log sin exponer una UI de restore/historial para juegos."
 );
 
 if (failures.length > 0) {
@@ -125,5 +117,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Auditoría transversal del editor: OK (Compatibilidad coherente, Publicación visible, sugerencias servidor-autoritativas, Historial ampliado y zona horaria operativa protegida)."
+  "Auditoría transversal del editor: OK (Compatibilidad coherente, Publicación visible, sugerencias servidor-autoritativas y auditoría persistente sin historial restaurable de juegos)."
 );

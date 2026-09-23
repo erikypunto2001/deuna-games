@@ -29,6 +29,11 @@ export const adminLoginSchema = z.object({
     .max(ADMIN_PASSWORD_MAX_LENGTH),
 });
 
+export const adminCurrentPasswordSchema = z
+  .string()
+  .min(1)
+  .max(ADMIN_PASSWORD_MAX_LENGTH);
+
 export const adminCreateAccountSchema = z.object({
   username: adminUsernameSchema,
   password: z
@@ -39,13 +44,13 @@ export const adminCreateAccountSchema = z.object({
     optionalAdminDisplayName,
     z.string().max(80).optional()
   ),
-  currentPassword: z.string().min(1).max(ADMIN_PASSWORD_MAX_LENGTH),
+  currentPassword: adminCurrentPasswordSchema,
 });
 
 export const adminAccountStatusSchema = z.object({
   userId: z.string().uuid(),
   active: z.enum(["true", "false"]).transform((value) => value === "true"),
-  currentPassword: z.string().min(1).max(ADMIN_PASSWORD_MAX_LENGTH),
+  currentPassword: adminCurrentPasswordSchema,
 });
 
 export const adminAccountPasswordSchema = z.object({
@@ -54,7 +59,7 @@ export const adminAccountPasswordSchema = z.object({
     .string()
     .min(ADMIN_PASSWORD_MIN_LENGTH)
     .max(ADMIN_PASSWORD_MAX_LENGTH),
-  currentPassword: z.string().min(1).max(ADMIN_PASSWORD_MAX_LENGTH),
+  currentPassword: adminCurrentPasswordSchema,
 });
 
 export function normalizeAdminUsername(

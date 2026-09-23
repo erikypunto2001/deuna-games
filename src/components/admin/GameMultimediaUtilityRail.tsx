@@ -66,7 +66,6 @@ function statusLabel(resource: MultimediaLibraryResource) {
   if (status === "active") return "En uso";
   if (status === "reserved") return "Reserva";
   if (status === "published-only") return "Publicado";
-  if (status === "historical") return "Historial";
   if (status === "unused") return "Sin uso";
   return "Disponible";
 }
@@ -86,8 +85,7 @@ function isProtectedResource(resource: MultimediaLibraryResource) {
   const status = resource.hygiene?.status;
   return status === "active" ||
     status === "reserved" ||
-    status === "published-only" ||
-    status === "historical";
+    status === "published-only";
 }
 
 function libraryFilterMatch(
@@ -167,8 +165,7 @@ export default function GameMultimediaUtilityRail({
   const protectedCount =
     (hygiene?.active ?? 0) +
     (hygiene?.reserved ?? 0) +
-    (hygiene?.publishedOnly ?? 0) +
-    (hygiene?.historical ?? 0);
+    (hygiene?.publishedOnly ?? 0);
   const essentialMediaStates = requirements
     ? [
         requirements.cover.cropReady,
@@ -233,11 +230,9 @@ export default function GameMultimediaUtilityRail({
         <span
           className={shellStyles.libraryBundledBadge}
           title={
-            resource.hygiene?.status === "historical"
-              ? "Protegido porque lo necesita una publicación histórica restaurable"
-              : resource.hygiene?.status === "published-only"
-                ? "Protegido porque lo utiliza la publicación pública actual"
-                : "Protegido porque forma parte del borrador"
+            resource.hygiene?.status === "published-only"
+              ? "Protegido porque lo utiliza la publicación pública actual"
+              : "Protegido porque forma parte del borrador"
           }
         >
           Protegido
@@ -250,7 +245,7 @@ export default function GameMultimediaUtilityRail({
         action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`}
         method="post"
         onSubmit={(event) => {
-          if (!window.confirm("Este master no tiene ninguna referencia editorial ni histórica. Se eliminará de la biblioteca y del almacenamiento. ¿Continuar?")) {
+          if (!window.confirm("Este master no está referenciado por el borrador ni por la publicación actual. Se eliminará de la biblioteca y del almacenamiento. ¿Continuar?")) {
             event.preventDefault();
           }
         }}
@@ -502,7 +497,7 @@ export default function GameMultimediaUtilityRail({
         <ContextualMediaDialog
           eyebrow="BIBLIOTECA MULTIMEDIA"
           title="Biblioteca multimedia compartida"
-          description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos."
+          description="Administra masters reutilizables. Los recursos que sostienen el borrador o la publicación actual se conservan protegidos."
           onClose={() => closeLibrary()}
         >
           <div className={shellStyles.libraryDialogTopbar}>
@@ -553,7 +548,7 @@ export default function GameMultimediaUtilityRail({
             <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional mientras usa el fondo global. Al activar un Fondo propio pasa a ser un destino esencial para publicar. Modos disponibles: {modeOptionsLabel("background")}.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero. Modos disponibles: {modeOptionsLabel("detail")}; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>
-            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin ninguna referencia de borrador, publicación actual ni historial restaurable es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
+            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin referencia en el borrador ni en la publicación actual es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
           </div>
         </ContextualMediaDialog>
       )}

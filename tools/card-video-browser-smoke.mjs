@@ -18,11 +18,27 @@ const outputRoot = path.resolve(
 const fixturePath = path.join(outputRoot, "card-video-fixture.json");
 const screenshotPath = path.join(
   outputRoot,
-  "card-video-active-desktop.png"
+  "card-video-hogwarts-legacy-active-desktop.png"
+);
+const redDeadScreenshotPath = path.join(
+  outputRoot,
+  "card-video-red-dead-redemption-2-active-desktop.png"
+);
+const cyberpunkScreenshotPath = path.join(
+  outputRoot,
+  "card-video-cyberpunk-2077-previewclip-active-desktop.png"
 );
 const detailScreenshotPath = path.join(
   outputRoot,
   "detail-container-video-active-desktop.png"
+);
+const homeInteractionScreenshotPath = path.join(
+  outputRoot,
+  "home-popular-hogwarts-interaction-video-active-desktop.png"
+);
+const homeDirectDetailScreenshotPath = path.join(
+  outputRoot,
+  "home-popular-hogwarts-direct-detail-video-active-desktop.png"
 );
 
 function assertVisualCiOnly() {
@@ -264,33 +280,112 @@ function detailVisibilityExpression(lookup, visible) {
 }
 
 async function hoverCard(cdp, lookup) {
-  const point = await waitFor(
-    cdp,
-    `(() => {
-      const card = ${lookup};
-      if (!(card instanceof HTMLElement)) return false;
-      const rect = card.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return false;
-      return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-    })()`,
-    "No se pudo resolver el área interactiva de la Card"
-  );
+  await cdp.send("Page.bringToFront");
 
-  await cdp.send("Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x: point.x,
-    y: point.y,
-    buttons: 0,
-    pointerType: "mouse",
-  });
-  await waitFor(
-    cdp,
-    detailVisibilityExpression(lookup, true),
-    "El hover real no expandió la Card"
-  );
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: 1,
+      y: 1,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (!(card instanceof HTMLElement)) return false;
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        return true;
+      })()`,
+      "No se pudo centrar la Card antes del hover"
+    );
+    await delay(150);
+
+    const points = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (!(card instanceof HTMLElement)) return false;
+        const rect = card.getBoundingClientRect();
+        if (
+          rect.width <= 0 ||
+          rect.height <= 0 ||
+          rect.bottom <= 0 ||
+          rect.right <= 0 ||
+          rect.top >= innerHeight ||
+          rect.left >= innerWidth
+        ) {
+          return false;
+        }
+
+        const inside = {
+          x: Math.min(
+            innerWidth - 2,
+            Math.max(2, rect.left + rect.width / 2)
+          ),
+          y: Math.min(
+            innerHeight - 2,
+            Math.max(2, rect.top + rect.height / 2)
+          ),
+        };
+        const hit = document.elementFromPoint(inside.x, inside.y);
+        if (!(hit instanceof Element) || !card.contains(hit)) {
+          return false;
+        }
+
+        const leftOutside = rect.left - 12;
+        const rightOutside = rect.right + 12;
+        const outside = {
+          x: leftOutside >= 2
+            ? leftOutside
+            : Math.min(innerWidth - 2, rightOutside),
+          y: inside.y,
+        };
+        const outsideHit = document.elementFromPoint(outside.x, outside.y);
+        if (outsideHit instanceof Element && card.contains(outsideHit)) {
+          return false;
+        }
+
+        return { inside, outside };
+      })()`,
+      "No se pudo resolver una trayectoria visible de hover para la Card"
+    );
+
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: points.outside.x,
+      y: points.outside.y,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+    await delay(60);
+    await cdp.send("Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x: points.inside.x,
+      y: points.inside.y,
+      buttons: 0,
+      pointerType: "mouse",
+    });
+
+    try {
+      await waitFor(
+        cdp,
+        detailVisibilityExpression(lookup, true),
+        `El hover real no expandió la Card en el intento ${attempt}`,
+        2_500
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("El hover real no expandió la Card tras tres reentradas físicas.");
 }
 
 async function leaveCard(cdp, lookup) {
@@ -320,10 +415,37 @@ function playingVideoExpression(lookup) {
   return `(() => {
     const card = ${lookup};
     const video = card?.querySelector("video");
-    if (!(video instanceof HTMLVideoElement)) return false;
+    const frame = video?.parentElement;
+    if (
+      !(video instanceof HTMLVideoElement) ||
+      !(frame instanceof HTMLElement)
+    ) {
+      return false;
+    }
+
+    const frameStyle = getComputedStyle(frame);
+    const videoStyle = getComputedStyle(video);
+    const frameRect = frame.getBoundingClientRect();
+    const videoRect = video.getBoundingClientRect();
+    const frameOpacity = Number.parseFloat(frameStyle.opacity);
+    const videoOpacity = Number.parseFloat(videoStyle.opacity);
+    const visuallyExposed =
+      frameStyle.display !== "none" &&
+      frameStyle.visibility !== "hidden" &&
+      videoStyle.display !== "none" &&
+      videoStyle.visibility !== "hidden" &&
+      frameOpacity >= 0.99 &&
+      videoOpacity >= 0.99 &&
+      frameRect.width > 2 &&
+      frameRect.height > 2 &&
+      videoRect.width > 2 &&
+      videoRect.height > 2;
+
     if (
       video.paused ||
-      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+      video.currentTime <= 0.02 ||
+      !visuallyExposed
     ) {
       return false;
     }
@@ -338,6 +460,12 @@ function playingVideoExpression(lookup) {
       currentTime: video.currentTime,
       hidden: document.hidden,
       reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      frameOpacity,
+      videoOpacity,
+      frameWidth: frameRect.width,
+      frameHeight: frameRect.height,
+      videoWidth: videoRect.width,
+      videoHeight: videoRect.height,
     };
   })()`;
 }
@@ -367,11 +495,352 @@ function detailPlayingVideoExpression() {
   })()`;
 }
 
+// La etiqueta de la primera fila es editorial y puede cambiar.
+// La regresión que importa es posicional: primer carrusel visible de Home,
+// primera Card, exactamente como en la captura pública reportada.
+function firstHomeCarouselCardLookup() {
+  return `
+    (() => {
+      const firstCarousel = document.querySelector(
+        '[role="region"][aria-roledescription="carrusel"]'
+      );
+      return firstCarousel?.querySelector(
+        '[data-game-card-slot="true"] article'
+      ) ?? null;
+    })()
+  `;
+}
+
+function firstHomeCarouselCardStateExpression(expectedSlug) {
+  return `(() => {
+    const firstCarousel = document.querySelector(
+      '[role="region"][aria-roledescription="carrusel"]'
+    );
+    const firstCard = firstCarousel?.querySelector(
+      '[data-game-card-slot="true"] article'
+    );
+    if (!(firstCard instanceof HTMLElement)) {
+      return false;
+    }
+    const link = firstCard.querySelector('a[href^="/juegos/"]');
+    const heading = firstCarousel
+      ?.closest("section")
+      ?.querySelector("h2")
+      ?.textContent
+      ?.trim() ?? null;
+    return {
+      found: true,
+      carouselLabel: firstCarousel?.getAttribute("aria-label") ?? null,
+      sectionHeading: heading,
+      href: link instanceof HTMLAnchorElement ? link.getAttribute("href") : null,
+      expectedHref: "/juegos/" + ${JSON.stringify(expectedSlug)},
+      revealMode: firstCard.dataset.cardRevealMode ?? null,
+      mediaMode: firstCard.dataset.cardMediaMode ?? null,
+      detailVisible: firstCard.dataset.detailVisible ?? null,
+      hasVideo: Boolean(firstCard.querySelector("video")),
+    };
+  })()`;
+}
+
+async function verifyHomeInteractionFirstCard(cdp, fixture) {
+  await navigate(cdp, `${baseUrl}/`);
+  const expectedHref = `/juegos/${fixture.slug}`;
+
+  const restState = await waitFor(
+    cdp,
+    firstHomeCarouselCardStateExpression(fixture.slug),
+    "No se encontró la primera Card del primer carrusel de Home"
+  );
+
+  if (
+    !restState.found ||
+    restState.href !== expectedHref ||
+    restState.revealMode !== "interaction" ||
+    restState.mediaMode !== "video" ||
+    restState.detailVisible !== "false" ||
+    restState.hasVideo
+  ) {
+    throw new Error(
+      `El primer carrusel de Home no reproduce el contrato real de la captura: ${JSON.stringify(restState)}.`
+    );
+  }
+
+  const lookup = firstHomeCarouselCardLookup();
+  await hoverCard(cdp, lookup);
+
+  const playing = await waitFor(
+    cdp,
+    playingVideoExpression(lookup),
+    "Hogwarts primera Card de Home interaction no reprodujo un WebM visible"
+  );
+
+  if (
+    playing.src !== fixture.clip ||
+    playing.paused ||
+    playing.readyState < 2 ||
+    playing.currentTime <= 0.02
+  ) {
+    throw new Error(
+      `Hogwarts primera Card de Home no reprodujo correctamente: ${JSON.stringify(playing)}.`
+    );
+  }
+
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    homeInteractionScreenshotPath,
+    Buffer.from(capture.data, "base64")
+  );
+
+  await leaveCard(cdp, lookup);
+
+  return playing;
+}
+
+async function verifyHomeDirectDetailFirstCard(cdp, fixture) {
+  await cdp.send("Emulation.setTouchEmulationEnabled", {
+    enabled: true,
+    maxTouchPoints: 1,
+  });
+  await cdp.send("Emulation.setEmulatedMedia", {
+    features: [
+      { name: "prefers-reduced-motion", value: "no-preference" },
+      { name: "hover", value: "none" },
+      { name: "pointer", value: "coarse" },
+    ],
+  });
+  await navigate(cdp, `${baseUrl}/`);
+
+  const lookup = firstHomeCarouselCardLookup();
+  const directState = await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (!(card instanceof HTMLElement)) return false;
+      const link = card.querySelector('a[href^="/juegos/"]');
+      if (!(link instanceof HTMLAnchorElement)) return false;
+      card.scrollIntoView({ block: "center", inline: "nearest" });
+      const state = {
+        href: link.getAttribute("href"),
+        revealMode: card.dataset.cardRevealMode ?? null,
+        mediaMode: card.dataset.cardMediaMode ?? null,
+        directDetail: card.dataset.cardDirectDetail ?? null,
+        detailVisible: card.dataset.detailVisible ?? null,
+        videoActive: card.dataset.cardVideoActive ?? null,
+        directMedia: matchMedia("(hover: none), (pointer: coarse)").matches,
+        reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      };
+      return (
+        state.directMedia &&
+        state.directDetail === "true" &&
+        state.detailVisible === "true"
+      )
+        ? state
+        : false;
+    })()`,
+    "No se hidrató la primera Card de Home en entrada directa/táctil"
+  );
+
+  if (
+    directState.href !== `/juegos/${fixture.slug}` ||
+    directState.revealMode !== "interaction" ||
+    directState.mediaMode !== "video" ||
+    directState.directDetail !== "true" ||
+    directState.detailVisible !== "true" ||
+    !directState.directMedia ||
+    directState.reduced
+  ) {
+    throw new Error(
+      `La primera Card no entró al modo directo/táctil esperado: ${JSON.stringify(directState)}.`
+    );
+  }
+
+  const playing = await waitFor(
+    cdp,
+    playingVideoExpression(lookup),
+    "Hogwarts no reprodujo automáticamente su WebM visible en modo directo/táctil"
+  );
+  const activeState = await cdp.evaluate(`(() => {
+    const card = ${lookup};
+    return card instanceof HTMLElement
+      ? { videoActive: card.dataset.cardVideoActive ?? null }
+      : null;
+  })()`);
+
+  if (
+    playing.src !== fixture.clip ||
+    playing.paused ||
+    playing.readyState < 2 ||
+    playing.currentTime <= 0.02 ||
+    activeState?.videoActive !== "true"
+  ) {
+    throw new Error(
+      `Hogwarts no sostuvo el video directo/táctil visible: ${JSON.stringify({ playing, activeState })}.`
+    );
+  }
+
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    homeDirectDetailScreenshotPath,
+    Buffer.from(capture.data, "base64")
+  );
+
+  await cdp.send("Emulation.setEmulatedMedia", {
+    features: [
+      { name: "prefers-reduced-motion", value: "reduce" },
+      { name: "hover", value: "none" },
+      { name: "pointer", value: "coarse" },
+    ],
+  });
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      return Boolean(
+        card instanceof HTMLElement &&
+        card.dataset.cardVideoActive === "false" &&
+        !card.querySelector("video")
+      );
+    })()`,
+    "Reduced motion no desmontó el video automático de la Card directa/táctil"
+  );
+
+  return playing;
+}
+
+async function verifyLegacyCardPlayback(
+  cdp,
+  fixture,
+  label,
+  screenshotFile
+) {
+  const lookup = cardLookup(fixture.slug);
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (
+        !(card instanceof HTMLElement) ||
+        document.readyState !== "complete"
+      ) {
+        return false;
+      }
+      card.scrollIntoView({ block: "center", inline: "nearest" });
+      return Object.keys(card).some((key) =>
+        key.startsWith("__reactProps$") ||
+        key.startsWith("__reactFiber$")
+      );
+    })()`,
+    `No se hidrató la Card legacy de ${label}`
+  );
+  await delay(300);
+
+  const restState = await cdp.evaluate(`(() => {
+    const card = ${lookup};
+    return {
+      found: card instanceof HTMLElement,
+      mediaMode: card?.dataset.cardMediaMode ?? null,
+      detailVisible: card?.dataset.detailVisible ?? null,
+      hasVideo: Boolean(card?.querySelector("video")),
+    };
+  })()`);
+
+  if (
+    !restState?.found ||
+    restState.mediaMode !== "video" ||
+    restState.detailVisible !== "false" ||
+    restState.hasVideo
+  ) {
+    throw new Error(
+      `${label} no migró a Card Video en reposo: ${JSON.stringify(restState)}.`
+    );
+  }
+
+  const asset = await cdp.evaluate(`
+    fetch(${JSON.stringify(fixture.clip)}, { cache: "no-store" })
+      .then(async (response) => ({
+        ok: response.ok,
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        bytes: (await response.arrayBuffer()).byteLength,
+      }))
+  `);
+
+  if (
+    !asset?.ok ||
+    asset.status !== 200 ||
+    asset.bytes < 128 ||
+    !String(asset.contentType ?? "")
+      .toLowerCase()
+      .includes("video/webm")
+  ) {
+    throw new Error(
+      `El WebM legacy de ${label} no se sirvió correctamente: ${JSON.stringify(asset)}.`
+    );
+  }
+
+  await hoverCard(cdp, lookup);
+  const playing = await waitFor(
+    cdp,
+    playingVideoExpression(lookup),
+    `${label} no llegó a reproducir una capa de video visible`
+  );
+
+  if (
+    playing.src !== fixture.clip ||
+    playing.paused ||
+    playing.readyState < 2 ||
+    playing.currentTime <= 0.02
+  ) {
+    throw new Error(
+      `${label} no reprodujo correctamente: ${JSON.stringify(playing)}.`
+    );
+  }
+
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    screenshotFile,
+    Buffer.from(capture.data, "base64")
+  );
+  await leaveCard(cdp, lookup);
+
+  return playing;
+}
+
 async function main() {
   assertVisualCiOnly();
   const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
-  if (!fixture.slug || !fixture.clip) {
-    throw new Error("El descriptor del fixture Card video es inválido.");
+  if (
+    !fixture.slug ||
+    !fixture.clip ||
+    !Array.isArray(fixture.legacyCards) ||
+    fixture.legacyCards.length !== 3
+  ) {
+    throw new Error("El descriptor del fixture Card video legacy es inválido.");
+  }
+  const redDeadFixture = fixture.legacyCards.find(
+    (entry) => entry?.slug === "red-dead-redemption-2"
+  );
+  const cyberpunkFixture = fixture.legacyCards.find(
+    (entry) => entry?.slug === "cyberpunk-2077"
+  );
+  if (
+    fixture.slug !== "hogwarts-legacy" ||
+    !redDeadFixture?.clip ||
+    !cyberpunkFixture?.clip ||
+    cyberpunkFixture.legacyMode !== "preview-clip-only"
+  ) {
+    throw new Error(
+      "El fixture Card video debe cubrir Hogwarts Legacy, Red Dead Redemption 2 y Cyberpunk 2077 previewClip-only."
+    );
   }
 
   const profileDir = await mkdtemp(
@@ -466,16 +935,139 @@ async function main() {
       );
     }
 
+    const redDeadLookup = cardLookup(redDeadFixture.slug);
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${redDeadLookup};
+        if (
+          !(card instanceof HTMLElement) ||
+          document.readyState !== "complete"
+        ) {
+          return false;
+        }
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        return Object.keys(card).some((key) =>
+          key.startsWith("__reactProps$") ||
+          key.startsWith("__reactFiber$")
+        );
+      })()`,
+      "No se hidrató la Card legacy de Red Dead Redemption 2"
+    );
+    await delay(300);
+
+    const redDeadRestState = await cdp.evaluate(`(() => {
+      const card = ${redDeadLookup};
+      return {
+        found: card instanceof HTMLElement,
+        mediaMode: card?.dataset.cardMediaMode ?? null,
+        detailVisible: card?.dataset.detailVisible ?? null,
+        hasVideo: Boolean(card?.querySelector("video")),
+      };
+    })()`);
+    if (
+      !redDeadRestState?.found ||
+      redDeadRestState.mediaMode !== "video" ||
+      redDeadRestState.detailVisible !== "false" ||
+      redDeadRestState.hasVideo
+    ) {
+      throw new Error(
+        `RDR2 legacy no migró a Card Video en reposo: ${JSON.stringify(redDeadRestState)}.`
+      );
+    }
+
+    const redDeadAsset = await cdp.evaluate(`
+      fetch(${JSON.stringify(redDeadFixture.clip)}, { cache: "no-store" })
+        .then(async (response) => ({
+          ok: response.ok,
+          status: response.status,
+          contentType: response.headers.get("content-type"),
+          bytes: (await response.arrayBuffer()).byteLength,
+        }))
+    `);
+    if (
+      !redDeadAsset?.ok ||
+      redDeadAsset.status !== 200 ||
+      redDeadAsset.bytes < 128 ||
+      !String(redDeadAsset.contentType ?? "")
+        .toLowerCase()
+        .includes("video/webm")
+    ) {
+      throw new Error(
+        `El WebM legacy de RDR2 no se sirvió correctamente: ${JSON.stringify(redDeadAsset)}.`
+      );
+    }
+
+    await hoverCard(cdp, redDeadLookup);
+    const redDeadPlaying = await waitFor(
+      cdp,
+      playingVideoExpression(redDeadLookup),
+      "RDR2 legacy no llegó a reproducir una capa de video visible"
+    );
+    if (
+      redDeadPlaying.src !== redDeadFixture.clip ||
+      redDeadPlaying.paused ||
+      redDeadPlaying.readyState < 2 ||
+      redDeadPlaying.currentTime <= 0.02
+    ) {
+      throw new Error(
+        `RDR2 legacy no reprodujo correctamente: ${JSON.stringify(redDeadPlaying)}.`
+      );
+    }
+
+    const redDeadCapture = await cdp.send("Page.captureScreenshot", {
+      format: "png",
+      fromSurface: true,
+    });
+    await writeFile(
+      redDeadScreenshotPath,
+      Buffer.from(redDeadCapture.data, "base64")
+    );
+    await leaveCard(cdp, redDeadLookup);
+
+    const cyberpunkPlaying = await verifyLegacyCardPlayback(
+      cdp,
+      cyberpunkFixture,
+      "Cyberpunk 2077 previewClip-only",
+      cyberpunkScreenshotPath
+    );
+
+    // Cada generación legacy debe poder verificarse desde un catálogo recién
+    // hidratado. Evita que el hover/scroll de una Card previa contamine la
+    // geometría o el estado de puntero de Hogwarts.
+    await navigate(cdp, `${baseUrl}/juegos`);
+    await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (
+          !(card instanceof HTMLElement) ||
+          document.readyState !== "complete"
+        ) {
+          return false;
+        }
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        return Object.keys(card).some((key) =>
+          key.startsWith("__reactProps$") ||
+          key.startsWith("__reactFiber$")
+        );
+      })()`,
+      "No se rehidrató Hogwarts Legacy antes de su prueba aislada"
+    );
+    await delay(300);
+
     const restState = await cdp.evaluate(`(() => {
       const card = ${lookup};
       return {
         found: card instanceof HTMLElement,
+        mediaMode: card?.dataset.cardMediaMode ?? null,
         detailVisible: card?.dataset.detailVisible ?? null,
         hasVideo: Boolean(card?.querySelector("video")),
       };
     })()`);
     if (
       !restState?.found ||
+      restState.mediaMode !== "video" ||
       restState.detailVisible !== "false" ||
       restState.hasVideo
     ) {
@@ -525,6 +1117,27 @@ async function main() {
     ) {
       throw new Error(
         `El estado visible del video no respeta el contrato: ${JSON.stringify(visibleState)}.`
+      );
+    }
+
+    const advancedState = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        const video = card?.querySelector("video");
+        if (!(video instanceof HTMLVideoElement)) return false;
+        return !video.paused && video.currentTime > 0.02
+          ? { currentTime: video.currentTime, readyState: video.readyState }
+          : false;
+      })()`,
+      "Hogwarts Legacy montó el video pero quedó pausado en 0.000 s"
+    );
+    if (
+      advancedState.currentTime <= 0.02 ||
+      advancedState.readyState < 2
+    ) {
+      throw new Error(
+        `Hogwarts Legacy no avanzó la reproducción: ${JSON.stringify(advancedState)}.`
       );
     }
 
@@ -728,11 +1341,34 @@ async function main() {
       );
     }
 
+    await cdp.send("Target.activateTarget", {
+      targetId: target.id,
+    });
+    await waitFor(
+      cdp,
+      "document.hidden === false && document.visibilityState === 'visible'",
+      "La pestaña principal no volvió a visible antes de probar Home interaction"
+    );
+
+    const homeInteractionPlaying =
+      await verifyHomeInteractionFirstCard(
+        cdp,
+        fixture
+      );
+    const homeDirectDetailPlaying =
+      await verifyHomeDirectDetailFirstCard(
+        cdp,
+        fixture
+      );
+
     console.log(
       "Card + Contenedor video browser smoke: OK " +
-        `(slug=${fixture.slug}, bytes=${asset.bytes}, ` +
-        `cardReady=${visibleState.readyState}, detailReady=${detailVisibleState.readyState}, ` +
-        "Card hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
+        `(hogwarts=${fixture.slug}, rdr2=${redDeadFixture.slug}, cyberpunk=${cyberpunkFixture.slug}, bytes=${asset.bytes}, ` +
+        `cardReady=${visibleState.readyState}, hogwartsTime=${advancedState.currentTime.toFixed(3)}, ` +
+        `rdr2Time=${redDeadPlaying.currentTime.toFixed(3)}, cyberpunkTime=${cyberpunkPlaying.currentTime.toFixed(3)}, ` +
+        `homeFirstTime=${homeInteractionPlaying.currentTime.toFixed(3)}, ` +
+        `homeDirectTime=${homeDirectDetailPlaying.currentTime.toFixed(3)}, detailReady=${detailVisibleState.readyState}, ` +
+        "Home interaction + entrada directa/táctil de la primera Card + tres generaciones legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
     );
   } catch (error) {
     if (browserError.trim()) {

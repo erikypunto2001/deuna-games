@@ -104,9 +104,12 @@ assert(
     modePolicy,
     "STANDARD_GAME_MEDIA_MODES",
     "detail: STANDARD_GAME_MEDIA_MODES",
-    'return isGameMediaModeAllowed(target, mode) ? mode : "image"'
+    'target === "card"',
+    'mode === "hover-video"',
+    'return "video";',
+    'return "image";'
   ),
-  "La política activa del Contenedor debe limitarse a Imagen/Video y degradar hover histórico a Imagen."
+  "La política activa del Contenedor debe seguir limitada a Imagen/Video y degradar hover histórico a Imagen aunque Card tenga una migración legacy específica."
 );
 
 assert(
@@ -178,8 +181,10 @@ assert(
       'requiredVideoViewport("detail")',
       'playback: "always"',
       "protectedReferencesForGame",
-      "getHistoricalGameMediaReferences"
+      "getPublishedGameImageReferences",
+      "getPublishedGameVideoReferences"
     ) &&
+    !libraryRoute.includes("getHistoricalGameMediaReferences") &&
     !libraryRoute.includes("export async function GET") &&
     !libraryRoute.includes('"image-delete"') &&
     !libraryRoute.includes('"video-delete"') &&

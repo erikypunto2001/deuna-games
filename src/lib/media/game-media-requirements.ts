@@ -10,6 +10,7 @@ import {
   normalizeGameMediaMode,
 } from "./game-media-mode-policy";
 import {
+  resolveGameCardVideo,
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
@@ -140,10 +141,8 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.heroImage
   );
 
-  const cardVideo = game.videoMedia?.card;
-  const cardClipAssigned = cardVideo?.source === "hero"
-    ? Boolean(game.videoMedia?.hero?.clip)
-    : Boolean(cardVideo?.clip);
+  const cardVideo = resolveGameCardVideo(game);
+  const cardClipAssigned = Boolean(cardVideo?.src);
   const cardImage = resolveGameCardBaseImage(game);
   const cardImageReady = Boolean(cardImage) && isImageCropConfirmed(
     game.imageMedia?.card,

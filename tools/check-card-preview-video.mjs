@@ -47,7 +47,6 @@ const [
   layoutRoute,
   integrity,
   hygiene,
-  history,
   serving,
   legacyCover,
   gameTypes,
@@ -86,7 +85,6 @@ const [
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-media-hygiene.ts"),
-  source("src/lib/admin/game-media-history.ts"),
   source("src/lib/media/editorial-media-serving.ts"),
   source("src/lib/media/legacy-game-cover-video.ts"),
   source("src/types/game.ts"),
@@ -406,6 +404,8 @@ assert(
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
+    'target === "card" && game.previewClip?.trim()',
+    "legacyCardViewport",
     "withGameVideoLayout",
     "withoutGameVideoTarget"
   ) &&
@@ -439,6 +439,7 @@ assert(
     "viewport.source !== expectedSource",
     "const coverImage = resolveGameCoverImage(game)",
     "const cardImageReady",
+    "resolveGameCardVideo(game)",
     "cardImageReady && cardVideoReady"
   ) &&
     !requirements.includes("videoMedia?.cover") &&
@@ -490,6 +491,8 @@ assert(
     "activeVideoMedia",
     "videoMedia.hero",
     "videoMedia.card",
+    "legacyCardPreview",
+    "game.previewClip",
     "const normalizedGame: Game"
   ),
   "La validación debe aceptar historial legado, normalizar shared/custom, sincronizar Portada compartida con Card y eliminar video activo de Portada."
@@ -536,9 +539,15 @@ assert(
     "cover",
     "clip.trim()"
   ) &&
-    has(history, "legacyGameCoverVideoReference(row.payload)", "references.add(legacyCoverVideo)") &&
-    has(serving, "legacyGameCoverVideoReference(payload)", "legacyCoverVideo ? [legacyCoverVideo] : []"),
-  "Los WebM históricos de Portada deben conservarse sólo para historial/serving restaurable."
+    has(
+      serving,
+      'owner.type === "game"',
+      "legacyGameCoverVideoReference(payload)",
+      "legacyCoverVideo ? [legacyCoverVideo] : []",
+      "const historicalPublicationRows"
+    ) &&
+    !serving.includes("getHistoricalGameMediaReferences"),
+  "Los WebM legacy de Portada sólo pueden servirse desde el snapshot público actual; el historial de juegos no debe protegerlos ni exponerlos."
 );
 
 assert(
@@ -586,10 +595,19 @@ assert(
     'data-detail-visible={detailPresented ? "true" : "false"}',
     "aria-hidden={detailPresented ? \"true\" : undefined}",
     "aria-hidden={!detailPresented ? \"true\" : undefined}",
-    "detailVisible && previewActive",
+    "const interactionVideoActive =",
+    "!staticDetail &&",
+    "!directDetailVisible &&",
+    "detailVisible &&",
+    "previewActive;",
+    "const automaticVideoActive =",
+    "automaticVideoInViewport &&",
+    "(staticDetail || directDetailVisible) &&",
+    'data-card-direct-detail={directDetailVisible ? "true" : "false"}',
+    'data-card-video-active={videoActive ? "true" : "false"}',
     "PREVIEW_DELAY_MS"
   ),
-  "La Card pública debe alinear semántica touch con la cara visible y activar su Video sólo cuando la Vista informativa correspondiente está presentada."
+  "La Card pública debe alinear la cara visible con touch y activar Video tanto en interacción como en detalle directo sólo bajo el estado y visibilidad correspondientes."
 );
 
 assert(

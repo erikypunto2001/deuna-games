@@ -25,6 +25,7 @@ const actionLabels = {
   bootstrap: "Snapshot inicial",
   published: "Publicación",
   rollback: "Restauración",
+  baseline: "Baseline",
 } as const;
 
 function formatDate(value: Date) {

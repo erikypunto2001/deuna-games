@@ -11,9 +11,6 @@ import {
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
-  getHistoricalGameMediaReferences,
-} from "@/lib/admin/game-media-history";
-import {
   listGameImageReferences,
   listGameVideoReferences,
 } from "@/lib/admin/game-media-integrity";
@@ -111,12 +108,11 @@ function pendingImageViewport(source: string): GameImageViewport {
 }
 
 async function protectedReferencesForGame(slug: string) {
-  const [images, videos, historical] = await Promise.all([
+  const [images, videos] = await Promise.all([
     getPublishedGameImageReferences(slug),
     getPublishedGameVideoReferences(slug),
-    getHistoricalGameMediaReferences(slug),
   ]);
-  return Array.from(new Set([...images, ...videos, ...historical]));
+  return Array.from(new Set([...images, ...videos]));
 }
 
 async function resourcesForGame(

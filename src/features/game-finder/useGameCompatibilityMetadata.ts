@@ -15,7 +15,13 @@ type CompatibilityState = {
   metadata: GameCompatibilityMetadata | null;
 };
 
-const resolved = new Map<string, GameCompatibilityMetadata | null>();
+type CachedCompatibilityMetadata = {
+  value: GameCompatibilityMetadata | null;
+  loadedAt: number;
+};
+
+const PUBLIC_GAME_METADATA_CACHE_MS = 60_000;
+const resolved = new Map<string, CachedCompatibilityMetadata>();
 const pending = new Map<string, Promise<GameCompatibilityMetadata | null>>();
 
 function parsePublishedCompatibilityMetadata(
@@ -71,11 +77,23 @@ function parsePublishedCompatibilityMetadata(
   };
 }
 
+function getFreshCachedMetadata(slug: string) {
+  const cached = resolved.get(slug);
+  if (
+    !cached ||
+    Date.now() - cached.loadedAt >= PUBLIC_GAME_METADATA_CACHE_MS
+  ) {
+    return undefined;
+  }
+  return cached.value;
+}
+
 function loadCompatibilityMetadata(
   slug: string
 ): Promise<GameCompatibilityMetadata | null> {
-  if (resolved.has(slug)) {
-    return Promise.resolve(resolved.get(slug) ?? null);
+  const cached = getFreshCachedMetadata(slug);
+  if (cached !== undefined) {
+    return Promise.resolve(cached);
   }
 
   const existing = pending.get(slug);
@@ -86,13 +104,21 @@ function loadCompatibilityMetadata(
     { cache: "no-store" }
   )
     .then(async (response) => {
-      if (!response.ok) return null;
+      if (!response.ok) {
+        if (response.status >= 500) {
+          return resolved.get(slug)?.value ?? null;
+        }
+        return null;
+      }
       const payload = await response.json() as { metadata?: unknown };
       return parsePublishedCompatibilityMetadata(payload.metadata);
     })
-    .catch(() => null)
+    .catch(() => resolved.get(slug)?.value ?? null)
     .then((metadata) => {
-      resolved.set(slug, metadata);
+      resolved.set(slug, {
+        value: metadata,
+        loadedAt: Date.now(),
+      });
       pending.delete(slug);
       return metadata;
     });
@@ -103,27 +129,40 @@ function loadCompatibilityMetadata(
 
 export function useGameCompatibilityMetadata(slug: string) {
   const cached = resolved.get(slug);
+  const freshCached = getFreshCachedMetadata(slug);
   const [state, setState] = useState<CompatibilityState>(() => ({
     slug,
-    loaded: resolved.has(slug),
-    metadata: cached ?? null,
+    loaded: freshCached !== undefined,
+    metadata: cached?.value ?? null,
   }));
 
   useEffect(() => {
     let active = true;
+    let timer: number | null = null;
 
-    loadCompatibilityMetadata(slug).then((metadata) => {
-      if (active) {
-        setState({
-          slug,
-          loaded: true,
-          metadata,
-        });
-      }
-    });
+    async function refresh() {
+      const metadata = await loadCompatibilityMetadata(slug);
+      if (!active) return;
+
+      setState({
+        slug,
+        loaded: true,
+        metadata,
+      });
+
+      timer = window.setTimeout(
+        refresh,
+        PUBLIC_GAME_METADATA_CACHE_MS
+      );
+    }
+
+    void refresh();
 
     return () => {
       active = false;
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
     };
   }, [slug]);
 
@@ -134,9 +173,10 @@ export function useGameCompatibilityMetadata(slug: string) {
     };
   }
 
-  if (resolved.has(slug)) {
+  const nextCached = getFreshCachedMetadata(slug);
+  if (nextCached !== undefined) {
     return {
-      metadata: resolved.get(slug) ?? null,
+      metadata: nextCached,
       loading: false,
     };
   }

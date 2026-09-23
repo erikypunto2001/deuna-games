@@ -108,7 +108,6 @@ assert(
     "findEditorialMediaResource",
     "resourcesForGame",
     "protectedReferencesForGame",
-    "getHistoricalGameMediaReferences",
     "listGameImageReferences",
     "listGameVideoReferences",
     "getPublishedGameImageReferences",
@@ -132,8 +131,9 @@ assert(
     !libraryRoute.includes("withoutVideoResource") &&
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile(") &&
-    !libraryRoute.includes("unlink("),
-  "media-workspace debe ser la única lectura autenticada; media-library debe limitarse a asignación, proteger publicación/historial y no contener borrado físico."
+    !libraryRoute.includes("unlink(") &&
+    !libraryRoute.includes("getHistoricalGameMediaReferences"),
+  "media-workspace debe ser la única lectura autenticada; media-library debe limitarse a asignación, proteger borrador/publicación actual y no contener borrado físico ni historial de juegos."
 );
 
 assert(
@@ -168,13 +168,16 @@ assert(
     "authorizeAdminFormRequest",
     "hasExactAdminFormFields",
     "draftReferences.has(resource)",
-    "getHistoricalGameMediaReferences",
-    "historicalReferences",
-    'redirectPath(slug, "recurso-en-historial")',
+    "getPublishedGameImageReferences",
+    "getPublishedGameVideoReferences",
+    "publishedReferences.has(selected.src)",
     "markEditorialMediaForDeletion",
     "deleteEditorialMediaResource"
-  ) && !mediaResourceDeleteRoute.includes("saveGameMediaDraft"),
-  "El borrado destructivo debe vivir sólo en su ruta dedicada y rechazar referencias activas/históricas."
+  ) &&
+    !mediaResourceDeleteRoute.includes("saveGameMediaDraft") &&
+    !mediaResourceDeleteRoute.includes("getHistoricalGameMediaReferences") &&
+    !mediaResourceDeleteRoute.includes("recurso-en-historial"),
+  "El borrado destructivo debe vivir sólo en su ruta dedicada y rechazar referencias del borrador o de la publicación actual."
 );
 
 assert(
@@ -323,14 +326,14 @@ assert(
     "media-resource-delete",
     'resource.hygiene?.status !== "unused"',
     "Protegido",
-    "Historial",
     "Por resolver ·",
     "AdminMediaLibraryPreview",
     'renderLibraryGroup("IMÁGENES", "image", filteredImages)',
     'renderLibraryGroup("VIDEOS", "video", filteredVideos)',
     "setPreviewResource(resource)"
-  ),
-  "El rail debe centralizar biblioteca/higiene y ofrecer borrado sólo a masters realmente huérfanos."
+  ) &&
+    !utilityRail.includes("Historial"),
+  "El rail debe centralizar biblioteca/higiene y ofrecer borrado sólo a masters realmente huérfanos, sin una categoría histórica para juegos."
 );
 
 assert(
@@ -392,5 +395,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Biblioteca multimedia compartida: OK (WebP/WebM seguros · asignación por referencia · borrado dedicado con historial protegido · workspace dividido vigente · preview grande · crops independientes)."
+  "Biblioteca multimedia compartida: OK (WebP/WebM seguros · asignación por referencia · borrado dedicado con borrador/publicación protegidos · sin historial de juegos · workspace dividido vigente · preview grande · crops independientes)."
 );

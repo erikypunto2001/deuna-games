@@ -1,0 +1,373 @@
+.panel {
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid var(--admin-border-soft, #2b3846);
+  border-radius: 14px;
+  background: var(--admin-surface-solid, #0a1119);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 18px;
+  align-items: start;
+}
+
+.header > div:first-child {
+  display: grid;
+  gap: 7px;
+}
+
+.header > div:first-child > span,
+.sectionHeading > span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+
+.header h2,
+.sectionHeading h3 {
+  margin: 0;
+}
+
+.header h2 {
+  font-size: 22px;
+}
+
+.header p,
+.sectionHeading p,
+.manualReview p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.healthOk,
+.healthAction,
+.healthWarning {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 11px;
+}
+
+.healthOk {
+  border: 1px solid rgba(88, 214, 141, 0.28);
+  background: rgba(88, 214, 141, 0.07);
+}
+
+.healthAction {
+  border: 1px solid rgba(91, 173, 255, 0.3);
+  background: rgba(91, 173, 255, 0.07);
+}
+
+.healthWarning {
+  border: 1px solid rgba(255, 190, 92, 0.38);
+  background: rgba(255, 190, 92, 0.08);
+}
+
+.healthOk > div,
+.healthAction > div,
+.healthWarning > div {
+  display: grid;
+  gap: 3px;
+}
+
+.healthOk strong,
+.healthAction strong,
+.healthWarning strong {
+  font-size: 13px;
+}
+
+.healthOk small,
+.healthAction small,
+.healthWarning small {
+  color: rgba(255, 255, 255, 0.64);
+  line-height: 1.45;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.summaryCard {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid var(--admin-border-soft, #2b3846);
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.summaryCard > span {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.summaryCard > strong {
+  font-size: 24px;
+}
+
+.summaryCard > small {
+  color: rgba(255, 255, 255, 0.58);
+  line-height: 1.45;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sectionCard,
+.cleanupBlock,
+.pendingBlock,
+.manualReview {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--admin-border-soft, #2b3846);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.11);
+}
+
+.sectionHeading {
+  display: grid;
+  gap: 6px;
+}
+
+.sectionHeading h3 {
+  font-size: 17px;
+}
+
+.counts {
+  display: grid;
+  gap: 4px;
+}
+
+.countRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.countRow:last-child {
+  border-bottom: 0;
+}
+
+.countRow span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+}
+
+.countRow strong {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+.protectedList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 19px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.referenceStat {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(88, 214, 141, 0.2);
+  border-radius: 9px;
+  background: rgba(88, 214, 141, 0.045);
+  font-size: 12px;
+}
+
+.manualReview {
+  border-color: rgba(255, 190, 92, 0.3);
+  background: rgba(255, 190, 92, 0.045);
+}
+
+.manualReview > div:first-child {
+  display: flex;
+  gap: 10px;
+}
+
+.manualReview > div:first-child > div {
+  display: grid;
+  gap: 4px;
+}
+
+.details {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+}
+
+.details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.details ul {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.cleanupBlock {
+  border-color: rgba(255, 103, 132, 0.24);
+  background: rgba(255, 76, 111, 0.035);
+}
+
+.cleanupForm,
+.retryForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.cleanupForm label,
+.retryForm label {
+  display: grid;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cleanupForm input,
+.retryForm input {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 12px;
+  color: #fff;
+  border: 1px solid #3c4856;
+  border-radius: 9px;
+  outline: none;
+  background: #080d14;
+  font: inherit;
+}
+
+.cleanupForm input:focus-visible,
+.retryForm input:focus-visible {
+  border-color: #ffbe5c;
+  box-shadow: 0 0 0 3px rgba(255, 190, 92, 0.14);
+}
+
+.cleanupForm button,
+.retryForm button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 118, 145, 0.42);
+  border-radius: 9px;
+  background: rgba(255, 76, 111, 0.1);
+  color: #ffd8df;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cleanupForm button:hover,
+.cleanupForm button:focus-visible,
+.retryForm button:hover,
+.retryForm button:focus-visible {
+  border-color: rgba(255, 130, 155, 0.64);
+  background: rgba(255, 76, 111, 0.16);
+}
+
+.empty {
+  padding: 13px;
+  color: rgba(255, 255, 255, 0.62);
+  border: 1px dashed rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.pendingList {
+  display: grid;
+  gap: 10px;
+}
+
+.pendingItem {
+  display: grid;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid rgba(255, 190, 92, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 190, 92, 0.035);
+}
+
+.pendingItem > div {
+  display: grid;
+  gap: 3px;
+}
+
+.pendingItem > div > strong {
+  font-size: 13px;
+}
+
+.pendingItem > div > small {
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+@media (max-width: 1050px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .header,
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 780px) {
+  .cleanupForm,
+  .retryForm {
+    grid-template-columns: 1fr;
+  }
+
+  .cleanupForm button,
+  .retryForm button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .panel {
+    padding: 16px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

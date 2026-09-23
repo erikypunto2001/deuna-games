@@ -13,6 +13,21 @@ import { resolveHomeConfig } from "../src/data/home-config.ts";
 
 const FIXTURE_FLAG = "DEUNA_CARD_VIDEO_VISUAL_FIXTURE";
 
+type HomeRowFixtureMode = "interaction" | "static-detail";
+
+function requestedRevealMode(): HomeRowFixtureMode {
+  const raw = process.argv.find((value) => value.startsWith("--mode="));
+  const value = raw?.slice("--mode=".length) ?? "static-detail";
+
+  if (value === "interaction" || value === "static-detail") {
+    return value;
+  }
+
+  throw new Error(
+    "El modo del fixture Home debe ser interaction o static-detail."
+  );
+}
+
 function assertVisualCiOnly() {
   if (
     process.env[FIXTURE_FLAG] !== "1" ||
@@ -37,6 +52,11 @@ function assertVisualCiOnly() {
 
 async function main() {
   assertVisualCiOnly();
+  const revealMode = requestedRevealMode();
+  const fixtureName =
+    revealMode === "interaction"
+      ? "home-row-interaction"
+      : "home-row-static-detail";
 
   const outputRoot = path.resolve(
     process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
@@ -128,7 +148,7 @@ async function main() {
       section.id === "popular"
         ? {
             ...section,
-            cardRevealMode: "static-detail" as const,
+            cardRevealMode: revealMode,
           }
         : section
     );
@@ -175,7 +195,7 @@ async function main() {
         item.item_key,
         JSON.stringify({
           revision: nextRevision,
-          fixture: "home-row-static-detail-browser-runtime",
+          fixture: `${fixtureName}-browser-runtime`,
         }),
       ]
     );
@@ -231,7 +251,7 @@ async function main() {
           publicationNumber: nextPublication,
           revision: nextRevision,
           firstVisibility: false,
-          fixture: "home-row-static-detail-browser-runtime",
+          fixture: `${fixtureName}-browser-runtime`,
         }),
       ]
     );
@@ -240,7 +260,7 @@ async function main() {
 
     await mkdir(outputRoot, { recursive: true });
     await writeFile(
-      path.join(outputRoot, "home-row-static-detail-fixture.json"),
+      path.join(outputRoot, `${fixtureName}-fixture.json`),
       `${JSON.stringify(
         {
           slug: cardFixture.slug,
@@ -256,7 +276,7 @@ async function main() {
     );
 
     console.log(
-      `Home row static detail fixture: OK (video=${cardFixture.slug}, image=${cardFixture.imageSlug}, revision=${nextRevision}, publication=${nextPublication}).`
+      `Home row ${revealMode} fixture: OK (video=${cardFixture.slug}, image=${cardFixture.imageSlug}, revision=${nextRevision}, publication=${nextPublication}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

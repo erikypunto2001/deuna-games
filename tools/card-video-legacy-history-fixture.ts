@@ -15,14 +15,14 @@ function assertVisualCiOnly() {
     process.env.DEUNA_VISUAL_OUTPUT_DIR === undefined
   ) {
     throw new Error(
-      "El fixture de historial legacy sólo puede ejecutarse dentro del job visual aislado de GitHub Actions."
+      "El fixture Card video sin historial sólo puede ejecutarse dentro del job visual aislado de GitHub Actions."
     );
   }
 
   const host = process.env.DEUNA_DATABASE_HOST?.trim();
   if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
     throw new Error(
-      "El fixture de historial legacy exige una PostgreSQL local/efímera."
+      "El fixture Card video sin historial exige una PostgreSQL local/efímera."
     );
   }
 }
@@ -53,22 +53,33 @@ async function main() {
   await client.connect();
 
   try {
-    await client.query("BEGIN");
-
-    const itemResult = await client.query<{
-      id: string;
+    const result = await client.query<{
       publication_number: number;
       public_visible: boolean;
+      revisions: number;
+      publications: number;
     }>(
-      `SELECT id::text, publication_number, public_visible
-       FROM deuna_admin.editorial_items
-       WHERE item_type = 'game'
-         AND item_key = $1
-       LIMIT 1
-       FOR UPDATE`,
+      `SELECT
+         item.publication_number,
+         item.public_visible,
+         (
+           SELECT count(*)::int
+             FROM deuna_admin.editorial_revisions AS revision
+            WHERE revision.item_id = item.id
+         ) AS revisions,
+         (
+           SELECT count(*)::int
+             FROM deuna_admin.editorial_publications AS publication
+            WHERE publication.item_id = item.id
+         ) AS publications
+       FROM deuna_admin.editorial_items AS item
+       WHERE item.item_type = 'game'
+         AND item.item_key = $1
+       LIMIT 1`,
       [fixture.itemKey]
     );
-    const item = itemResult.rows[0];
+    const item = result.rows[0];
+
     if (!item) {
       throw new Error("No se encontró el juego del fixture Card video.");
     }
@@ -80,77 +91,20 @@ async function main() {
         "El fixture Card video no coincide con el snapshot público actual."
       );
     }
-    const itemId = item.id;
-
-    const legacyResult = await client.query<{
-      id: string;
-      publication_number: number;
-    }>(
-      `SELECT id::text, publication_number
-       FROM deuna_admin.editorial_publications
-       WHERE item_id = $1
-         AND publication_number < $2
-       ORDER BY publication_number ASC
-       LIMIT 1
-       FOR UPDATE`,
-      [itemId, fixture.publicationNumber]
-    );
-    const legacy = legacyResult.rows[0];
-    if (!legacy) {
+    if (item.revisions !== 0 || item.publications !== 0) {
       throw new Error(
-        "El juego del fixture necesita al menos una publicación histórica previa."
-      );
-    }
-
-    await client.query(
-      `UPDATE deuna_admin.editorial_publications
-       SET payload = $2::jsonb
-       WHERE id = $1`,
-      [
-        legacy.id,
-        JSON.stringify({
-          slug: fixture.itemKey,
-          legacyMalformedFixture: true,
-        }),
-      ]
-    );
-
-    const currentPublication = await client.query<{ id: string }>(
-      `SELECT id::text
-       FROM deuna_admin.editorial_publications
-       WHERE item_id = $1
-         AND publication_number = $2
-       LIMIT 1
-       FOR UPDATE`,
-      [itemId, fixture.publicationNumber]
-    );
-    const currentPublicationId = currentPublication.rows[0]?.id;
-    if (!currentPublicationId) {
-      throw new Error(
-        "No se encontró la fila histórica de la publicación actual del fixture."
+        `El juego del fixture conserva historial restaurable: revisiones=${item.revisions}, publicaciones=${item.publications}.`
       );
     }
 
     /*
-     * Simulamos un gap legacy: editorial_items conserva el snapshot público
-     * canónico y su publication_number, pero la tabla histórica perdió la fila
-     * equivalente. El serving debe seguir autorizando el WebM actual sin abrir
-     * borradores privados.
+     * El navegador que corre inmediatamente después debe reproducir el WebM
+     * usando sólo editorial_items.published_payload. Esta aserción evita que
+     * el serving vuelva a depender de filas históricas de juegos.
      */
-    await client.query(
-      `DELETE FROM deuna_admin.editorial_publications
-       WHERE id = $1`,
-      [currentPublicationId]
-    );
-
-    await client.query("COMMIT");
-
     console.log(
-      `Card media legacy history fixture: OK (${fixture.itemKey}, publicación legacy #${legacy.publication_number} inválida; fila histórica actual #${fixture.publicationNumber} ausente; snapshot público preservado).`
+      `Card media no-history fixture: OK (${fixture.itemKey}, publicación actual #${fixture.publicationNumber}, revisiones históricas=0, publicaciones históricas=0).`
     );
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => {});
-    throw error;
   } finally {
     await client.end();
   }

@@ -3,7 +3,14 @@ import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-const [presentation, page, downloadPage, updatePage] = await Promise.all([
+const [
+  presentation,
+  page,
+  downloadPage,
+  updatePage,
+  requirementsPage,
+  compatibilityCard,
+] = await Promise.all([
   readFile(
     path.join(root, "src", "lib", "games", "game-detail-presentation.ts"),
     "utf8"
@@ -28,6 +35,14 @@ const [presentation, page, downloadPage, updatePage] = await Promise.all([
       "actualizacion",
       "page.tsx"
     ),
+    "utf8"
+  ),
+  readFile(
+    path.join(root, "src", "app", "requisitos", "page.tsx"),
+    "utf8"
+  ),
+  readFile(
+    path.join(root, "src", "app", "juegos", "[slug]", "GameCompatibilityCard.tsx"),
     "utf8"
   ),
 ]);
@@ -75,6 +90,17 @@ assert(
     updatePage.includes('placeholder="A confirmar"') &&
     !updatePage.includes('defaultValue={download?.platform ?? "PC"}'),
   "Nueva versión debe partir de una plataforma publicada/confirmada o quedar vacía; nunca inventar PC."
+);
+
+assert(
+  requirementsPage.includes('game.platforms?.includes("PC") === true') &&
+    requirementsPage.includes("games={pcGames}") &&
+    requirementsPage.includes("pcGames.flatMap") &&
+    page.includes('platforms.includes("PC") && (') &&
+    page.includes('supportsPc={platforms.includes("PC")}') &&
+    compatibilityCard.includes("supportsPc: boolean") &&
+    compatibilityCard.includes("no tiene PC entre sus plataformas publicadas"),
+  "El Finder y la ficha no deben calcular ni presentar FPS de PC para juegos cuya plataforma PC no esté publicada explícitamente."
 );
 
 if (failures.length > 0) {

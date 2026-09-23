@@ -191,13 +191,6 @@ async function writeRevision(
   );
 
   await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions
-       (item_id, revision, payload, action, actor_user_id)
-     VALUES ($1, $2, $3::jsonb, 'draft_saved', $4)`,
-    [item.id, nextRevision, serialized, actorUserId]
-  );
-
-  await client.query(
     `INSERT INTO deuna_admin.admin_audit_log
        (user_id, action, entity_type, entity_id, details)
      VALUES ($1, 'draft_saved', 'game', $2, $3::jsonb)`,

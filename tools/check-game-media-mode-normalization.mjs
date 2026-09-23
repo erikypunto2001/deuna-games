@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import { games } from "@/data/games";
 import { parseEditorialPayload } from "@/lib/admin/content-validation";
+import { resolveGameCardPreview } from "@/lib/media/game-card-preview";
 
 const source = games[0];
 assert.ok(source, "Debe existir al menos un juego fuente para probar normalización multimedia.");
@@ -28,6 +29,14 @@ const explicitLegacy = parseEditorialPayload("game", {
     detail: "hover-video",
     background: "hover-video",
   },
+  videoMedia: {
+    card: {
+      source: "independent",
+      clip,
+      viewport: viewport("3:2"),
+      playback: "hover",
+    },
+  },
 });
 
 assert.equal(
@@ -37,8 +46,8 @@ assert.equal(
 );
 assert.equal(
   explicitLegacy.mediaModes?.card,
-  "image",
-  "Card legacy con hover debe normalizarse a Imagen en la frontera editorial."
+  "video",
+  "Card legacy con hover y WebM publicado debe migrar al modo Video moderno."
 );
 assert.equal(
   explicitLegacy.mediaModes?.detail,
@@ -92,8 +101,8 @@ assert.equal(
 );
 assert.equal(
   inferredLegacy.mediaModes?.card,
-  "image",
-  "Card no debe reactivar hover aunque un video legacy conserve playback=hover."
+  "video",
+  "Card con playback hover legacy debe conservar el WebM mediante el modo Video moderno."
 );
 assert.equal(
   inferredLegacy.mediaModes?.detail,
@@ -109,6 +118,57 @@ assert.equal(
   inferredLegacy.videoMedia?.card?.playback,
   "hover",
   "La normalización del modo no debe destruir metadata histórica del recurso."
+);
+
+assert.equal(
+  resolveGameCardPreview(explicitLegacy)?.src,
+  clip,
+  "La Card con hover explícito legacy debe seguir resolviendo su WebM público."
+);
+assert.equal(
+  resolveGameCardPreview(inferredLegacy)?.src,
+  clip,
+  "La Card con playback hover legacy debe seguir resolviendo su WebM público."
+);
+
+const previewClipOnlyPayload = {
+  ...structuredClone(source),
+  previewClip: clip,
+};
+delete previewClipOnlyPayload.mediaModes;
+delete previewClipOnlyPayload.videoMedia;
+
+const previewClipOnly = parseEditorialPayload(
+  "game",
+  previewClipOnlyPayload
+);
+assert.equal(
+  previewClipOnly.mediaModes?.card,
+  "video",
+  "Un snapshot previewClip-only debe migrar a Card Video."
+);
+assert.equal(
+  resolveGameCardPreview(previewClipOnly)?.src,
+  clip,
+  "El snapshot previewClip-only debe seguir resolviendo su WebM público."
+);
+
+const explicitImageWithLegacyPreview = parseEditorialPayload("game", {
+  ...structuredClone(source),
+  previewClip: clip,
+  mediaModes: {
+    card: "image",
+  },
+});
+assert.equal(
+  explicitImageWithLegacyPreview.mediaModes?.card,
+  "image",
+  "Una intención explícita de Imagen debe seguir prevaleciendo sobre previewClip residual."
+);
+assert.equal(
+  resolveGameCardPreview(explicitImageWithLegacyPreview),
+  null,
+  "previewClip residual no debe reactivar video cuando Card está explícitamente en Imagen."
 );
 
 const validVideo = parseEditorialPayload("game", {
@@ -165,5 +225,5 @@ assert.equal(
 );
 
 console.log(
-  "Normalización multimedia: OK (Hero conserva hover; Card/Contenedor/Fondo degradan hover legacy a Imagen)."
+  "Normalización multimedia: OK (Hero conserva hover; Card legacy hover/previewClip migra a Video; Imagen explícita prevalece; Contenedor/Fondo degradan hover legacy a Imagen)."
 );

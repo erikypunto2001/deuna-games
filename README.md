@@ -94,20 +94,20 @@ El panel privado usa PostgreSQL y un flujo explícito de publicación. Guardar y
 ```text
 editar
   ↓
-borrador
-  ↓
-revisión inmutable
+borrador actual
   ↓
 publicar
   ↓
-snapshot público
+snapshot público actual
   ↓
 web pública
 ```
 
 La web pública consume `published_payload` visible; no debe leer `draft_payload`.
 
-El modelo se aplica a las superficies editoriales que correspondan, entre ellas juegos, actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas. Restaurar una revisión crea una nueva revisión; no destruye el historial.
+Los juegos conservan únicamente su estado editorial actual en `editorial_items`: borrador, publicación, `revision` y `publication_number`. Guardar o publicar un juego no crea filas restaurables en `editorial_revisions` ni `editorial_publications`.
+
+Las demás superficies editoriales que usan historial —entre ellas actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas— mantienen revisiones inmutables y restauración. Restaurar una revisión de esas superficies crea una nueva revisión; no destruye su historial.
 
 Catálogos mantiene una taxonomía maestra de **Clasificaciones** y una lista separada de **Etiquetas**. Los campos físicos heredados de `Game` se conservan sólo por compatibilidad de almacenamiento; la interfaz pública y editorial trabaja con el modelo unificado.
 
@@ -162,9 +162,52 @@ El área `/admin` incorpora:
 - bloqueo progresivo y controles de rate limiting;
 - reautenticación del Owner para crear, activar, desactivar o restablecer accesos;
 - validación estricta de origen y de campos de formulario;
-- revisiones inmutables, publicación explícita, restauración e historial;
+- publicación explícita; historial/restauración para las superficies que lo requieren y estado actual único para juegos;
 - `noindex`, `noarchive` y `no-store` en rutas administrativas;
 - ausencia deliberada de telemetría de visitantes en la base administrativa.
+
+La cuenta propietaria dispone además de **Mantenimiento** como consola general
+de higiene del sitio. La pantalla combina un diagnóstico de PostgreSQL y del
+almacén multimedia con una limpieza general segura. La acción automática sólo
+elimina residuos deterministas: sesiones administrativas o de cuenta
+revocadas/vencidas, códigos de recuperación ya usados, eventos transitorios
+administrativos de más de 90 días, preferencias/ratings/insights cuyo juego ya
+no existe, masters multimedia sin ninguna referencia editorial y con más de 24
+horas, marcadores de borrado sin master, namespaces conocidos que sigan vacíos,
+temporales multimedia DeUna reconocidos que lleven más de 24 horas abandonados
+y limpiezas físicas pendientes de juegos ya eliminados.
+
+La protección multimedia recorre los estados vigentes y, para las superficies que conservan historial, también sus revisiones y snapshots. En juegos sólo protegen archivos el borrador actual y la publicación actual; una referencia que existía únicamente en una versión antigua de un juego ya no retiene el master. Los archivos sin
+referencia de menos de 24 horas conservan un período de gracia para no competir
+con cargas recientes. Namespaces desconocidos, entradas inesperadas y
+actualizaciones editoriales que apuntan a un juego inexistente se presentan
+como **revisión manual** y nunca se eliminan mediante la limpieza general. La
+operación tampoco borra cuentas válidas, avatares, perfiles de hardware,
+recompensas, `admin_audit_log`, contenido editorial vigente ni historial
+restaurable.
+
+La limpieza general exige Owner, reautenticación, la frase exacta de
+confirmación y un fingerprint del diagnóstico mostrado. El servidor recalcula
+el estado antes de mutar; PostgreSQL vuelve a comparar los conteos dentro de una
+función transaccional y cada archivo se revalida inmediatamente antes del
+`unlink`. Si el estado cambió, la operación aborta o informa una limpieza
+parcial y obliga a revisar el diagnóstico actualizado.
+
+Los juegos creados exclusivamente desde Admin pueden eliminarse de forma
+definitiva sólo después de ocultarlos y cuando Inicio no los referencia; los
+juegos respaldados por `src/data/games.ts` se retiran mediante visibilidad o
+cambios versionados de la fuente. El hard-delete registra en PostgreSQL una
+limpieza multimedia pendiente dentro de la misma transacción que elimina el
+juego. El identificador queda bloqueado hasta que el namespace físico
+desaparece por completo; si el filesystem falla, Mantenimiento permite al
+Owner reintentarlo y una limpieza exitosa elimina también el directorio vacío
+antes de liberar el slug.
+
+El historial editorial permanece separado de la limpieza de basura para las superficies que lo conservan: una versión antigua de Inicio, Catálogos, Configuración u otra superficie histórica no se considera basura por definición. Mantenimiento permite compactar sólo el historial de Inicio o todo el historial restaurable, conservando el estado vigente como baseline. Los juegos quedan excluidos de esa compactación porque no conservan revisiones ni publicaciones históricas: sólo existen su borrador y snapshot público actuales. La multimedia histórica sigue protegida únicamente cuando pertenece a una superficie que realmente mantiene restauración. Estas acciones exigen reautenticación y controles de concurrencia.
+
+Antes de ejecutar una limpieza o compactación sobre datos valiosos debe existir
+un backup verificado; en local se puede crear con
+`npm run admin:backup-local`.
 
 `DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
 
@@ -185,6 +228,11 @@ Para actualizar un entorno ya instalado después de traer cambios editoriales/mi
 ```bash
 npm run admin:update-local
 ```
+
+Tanto `local:setup` como `admin:update-local` diagnostican residuos, pero no
+ejecutan purgas destructivas automáticamente. La eliminación se realiza desde
+**Mantenimiento** con reautenticación y confirmación explícita, o mediante los
+comandos `admin:purge-*` cuando el operador los invoca deliberadamente.
 
 Para rotar la contraseña propietaria:
 

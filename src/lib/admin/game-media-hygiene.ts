@@ -23,7 +23,6 @@ export type GameMediaResourceHygieneStatus =
   | "active"
   | "reserved"
   | "published-only"
-  | "historical"
   | "unused";
 
 export type GameMediaResourceHygiene = {
@@ -41,7 +40,6 @@ export type GameMediaHygieneResult = {
   active: number;
   reserved: number;
   publishedOnly: number;
-  historical: number;
   unused: number;
   blockingCount: number;
   blocking: GameMediaResourceHygiene[];
@@ -149,21 +147,18 @@ function activeUsageLabels(
 export function evaluateGameMediaHygiene(
   game: Game,
   resources: readonly EditorialMediaLibraryResource[],
-  publishedReferences: readonly string[],
-  historicalReferences: readonly string[] = []
+  publishedReferences: readonly string[]
 ): GameMediaHygieneResult {
   const draftReferences = new Set([
     ...listGameImageReferences(game),
     ...listGameVideoReferences(game),
   ]);
   const published = new Set(publishedReferences);
-  const historical = new Set(historicalReferences);
 
   const classified = resources.map((resource): GameMediaResourceHygiene => {
     const usage = activeUsageLabels(game, resource.kind, resource.src);
     const draftReferenced = draftReferences.has(resource.src);
     const publishedReferenced = published.has(resource.src);
-    const historicalReferenced = historical.has(resource.src);
 
     let status: GameMediaResourceHygieneStatus;
     if (usage.length > 0) {
@@ -172,15 +167,12 @@ export function evaluateGameMediaHygiene(
       status = "reserved";
     } else if (publishedReferenced) {
       status = "published-only";
-    } else if (historicalReferenced) {
-      status = "historical";
     } else {
       status = "unused";
     }
 
-    // Sólo un master editorial sin referencia alguna es basura. Un recurso
-    // del snapshot público o del historial sigue teniendo una función real:
-    // sostener la web actual o permitir una restauración verificable.
+    // Sólo un master editorial sin referencia en borrador ni publicación
+    // actual es basura. Los juegos no conservan historial restaurable.
     const blocksPublication =
       resource.origin === "editorial" &&
       status === "unused";
@@ -196,9 +188,7 @@ export function evaluateGameMediaHygiene(
           ? ["Reserva del borrador"]
           : status === "published-only"
             ? ["Publicación actual"]
-            : status === "historical"
-              ? ["Historial restaurable"]
-              : [],
+            : [],
       blocksPublication,
     };
   });
@@ -211,7 +201,6 @@ export function evaluateGameMediaHygiene(
     active: classified.filter((resource) => resource.status === "active").length,
     reserved: classified.filter((resource) => resource.status === "reserved").length,
     publishedOnly: classified.filter((resource) => resource.status === "published-only").length,
-    historical: classified.filter((resource) => resource.status === "historical").length,
     unused: classified.filter((resource) => resource.status === "unused").length,
     blockingCount: blocking.length,
     blocking,

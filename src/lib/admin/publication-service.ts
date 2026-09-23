@@ -41,7 +41,8 @@ type PublishableEditorialType =
 type PublicationAction =
   | "bootstrap"
   | "published"
-  | "rollback";
+  | "rollback"
+  | "baseline";
 
 type PublicationItemRow = {
   id: string;
@@ -271,21 +272,22 @@ async function getPublicationState(
     item.draft_payload
   );
   const draftChecksum = hashEditorialPayload(draft);
-  const historyResult =
-    await adminQuery<PublicationHistoryRow>(
-      `SELECT
-         id::text,
-         publication_number,
-         checksum,
-         source_revision,
-         action,
-         created_at
-       FROM deuna_admin.editorial_publications
-       WHERE item_id = $1
-       ORDER BY publication_number DESC
-       LIMIT 12`,
-      [item.id]
-    );
+  const historyResult = type === "game"
+    ? { rows: [] as PublicationHistoryRow[] }
+    : await adminQuery<PublicationHistoryRow>(
+        `SELECT
+           id::text,
+           publication_number,
+           checksum,
+           source_revision,
+           action,
+           created_at
+         FROM deuna_admin.editorial_publications
+         WHERE item_id = $1
+         ORDER BY publication_number DESC
+         LIMIT 12`,
+        [item.id]
+      );
 
   return {
     itemId: item.id,
@@ -391,27 +393,29 @@ async function publishEditorialDraft(
         actorUserId,
       ]
     );
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_publications
-         (
-           item_id,
-           publication_number,
-           payload,
-           checksum,
-           source_revision,
-           action,
-           actor_user_id
-         )
-       VALUES ($1, $2, $3::jsonb, $4, $5, 'published', $6)`,
-      [
-        item.id,
-        nextPublication,
-        serialized,
-        digest,
-        item.revision,
-        actorUserId,
-      ]
-    );
+    if (type !== "game") {
+      await client.query(
+        `INSERT INTO deuna_admin.editorial_publications
+           (
+             item_id,
+             publication_number,
+             payload,
+             checksum,
+             source_revision,
+             action,
+             actor_user_id
+           )
+         VALUES ($1, $2, $3::jsonb, $4, $5, 'published', $6)`,
+        [
+          item.id,
+          nextPublication,
+          serialized,
+          digest,
+          item.revision,
+          actorUserId,
+        ]
+      );
+    }
     await writePublicationAudit(
       client,
       actorUserId,
@@ -439,6 +443,10 @@ async function restoreEditorialPublication(
   actorUserId: string
 ): Promise<RestorePublicationResult> {
   await assertActor(actorUserId);
+
+  if (type === "game") {
+    return { outcome: "not_found" };
+  }
 
   return withAdminTransaction(async (client) => {
     const result =
@@ -699,18 +707,6 @@ export function publishPublicPagesConfigDraft(
   );
 }
 
-export function restoreGamePublication(
-  publicationId: string,
-  expectedPublicationNumber: number,
-  actorUserId: string
-) {
-  return restoreEditorialPublication(
-    "game",
-    publicationId,
-    expectedPublicationNumber,
-    actorUserId
-  );
-}
 
 export function restoreUpdatePublication(
   publicationId: string,

@@ -596,6 +596,52 @@ async function grantRuntimePrivileges(
                   deuna_admin.admin_audit_log_id_seq
       TO ${role};
 
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.delete_panel_game(
+        text, uuid, text, integer, integer
+      )
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.compact_editorial_history(
+        uuid, text, integer, integer, integer
+      )
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.compact_editorial_item_history(
+        text, text, uuid, text, integer, integer
+      )
+      TO ${role};
+
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.is_game_media_cleanup_pending(text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.list_game_media_cleanup_queue(uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.begin_game_media_cleanup(text, uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.complete_game_media_cleanup(text, uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.inspect_site_runtime_junk(uuid, text)
+      TO ${role};
+
+    GRANT EXECUTE
+      ON FUNCTION deuna_admin.purge_site_runtime_junk(
+        uuid, text, integer, integer, integer, integer,
+        integer, integer, integer
+      )
+      TO ${role};
+
     REVOKE ALL
       ON deuna_admin.schema_migrations
       FROM ${role};

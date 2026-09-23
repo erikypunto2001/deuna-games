@@ -1,7 +1,13 @@
 import {
   createHash,
 } from "node:crypto";
+import {
+  mkdir,
+  readdir,
+  writeFile,
+} from "node:fs/promises";
 import https from "node:https";
+import path from "node:path";
 import process from "node:process";
 
 import {
@@ -362,20 +368,29 @@ if (!initialReadiness.essentialsReady) {
   );
 }
 
-const previousPublicationResult = await adminQuery(
-  `SELECT id::text
-   FROM deuna_admin.editorial_publications
-   WHERE item_id = $1
-     AND publication_number = $2
-   LIMIT 1`,
-  [fixture.id, fixture.publication_number]
+const initialHistoryResult = await adminQuery(
+  `SELECT
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_revisions
+        WHERE item_id = $1
+     ) AS revisions,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_publications
+        WHERE item_id = $1
+     ) AS publications`,
+  [fixture.id]
 );
-const previousPublicationId =
-  previousPublicationResult.rows[0]?.id;
+const initialHistory = initialHistoryResult.rows[0];
 
-if (!previousPublicationId) {
+if (
+  !initialHistory ||
+  initialHistory.revisions !== 0 ||
+  initialHistory.publications !== 0
+) {
   throw new Error(
-    "No se encontró la publicación actual previa al smoke."
+    `El fixture multimedia conserva historial restaurable de juego (revisiones=${String(initialHistory?.revisions)}, publicaciones=${String(initialHistory?.publications)}).`
   );
 }
 
@@ -598,17 +613,42 @@ expectRedirect(
 );
 
 const publishedResult = await adminQuery(
-  `SELECT publication_number
+  `SELECT
+     draft_payload,
+     published_payload,
+     revision,
+     publication_number,
+     public_visible,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_revisions
+        WHERE item_id = $1
+     ) AS revisions,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_publications
+        WHERE item_id = $1
+     ) AS publications
    FROM deuna_admin.editorial_items
    WHERE id = $1`,
   [fixture.id]
 );
-const publishedNumber =
-  publishedResult.rows[0]?.publication_number;
+const published = publishedResult.rows[0];
+const publishedNumber = published?.publication_number;
+const publishedGame = published
+  ? parseEditorialPayload("game", published.published_payload)
+  : null;
 
-if (publishedNumber !== fixture.publication_number + 1) {
+if (
+  !published ||
+  publishedNumber !== fixture.publication_number + 1 ||
+  published.public_visible !== true ||
+  publishedGame?.coverImage !== publicPath ||
+  published.revisions !== 0 ||
+  published.publications !== 0
+) {
   throw new Error(
-    `Publicar no avanzó publication_number (${fixture.publication_number} -> ${String(publishedNumber)}).`
+    "Publicar no dejó exactamente el snapshot actual esperado con cero historial restaurable de juego."
   );
 }
 
@@ -618,60 +658,27 @@ assertPublicImmutable(
   digest
 );
 
-const restoreBody = new URLSearchParams({
-  expectedPublicationNumber: String(publishedNumber),
+const protectedDeleteBody = new URLSearchParams({
+  expectedRevision: String(published.revision),
+  target: "image-delete",
+  resource: publicPath,
 }).toString();
-const restoreResponse = await request(
-  `/api/admin/content/publications/${encodeURIComponent(previousPublicationId)}/restore`,
+const protectedDelete = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`,
   {
     method: "POST",
-    headers: formHeaders(
-      `/admin/juegos/${encodeURIComponent(slug)}/publicacion`,
-      cookie
-    ),
-    body: restoreBody,
+    headers: formHeaders(editorPath, cookie),
+    body: protectedDeleteBody,
   }
 );
 expectRedirect(
-  restoreResponse,
-  "La restauración de la publicación previa",
-  "publicacion-restaurada"
-);
-
-const restoredResult = await adminQuery(
-  `SELECT publication_number, published_payload
-   FROM deuna_admin.editorial_items
-   WHERE id = $1`,
-  [fixture.id]
-);
-const restored = restoredResult.rows[0];
-const restoredGame = restored
-  ? parseEditorialPayload(
-      "game",
-      restored.published_payload
-    )
-  : null;
-
-if (
-  !restored ||
-  restored.publication_number !== publishedNumber + 1 ||
-  restoredGame?.coverImage === publicPath
-) {
-  throw new Error(
-    "La restauración no recuperó el snapshot anterior de forma verificable."
-  );
-}
-
-assertPublicImmutable(
-  await request(publicPath),
-  "El GET del asset históricamente publicado después de restaurar",
-  digest
+  protectedDelete,
+  "La eliminación de un master usado por el borrador actual",
+  "recurso-en-uso"
 );
 
 const hideBody = new URLSearchParams({
-  expectedPublicationNumber: String(
-    restored.publication_number
-  ),
+  expectedPublicationNumber: String(publishedNumber),
 }).toString();
 const hideResponse = await request(
   `/api/admin/content/games/${encodeURIComponent(slug)}/hide`,
@@ -686,38 +693,285 @@ const hideResponse = await request(
 );
 expectRedirect(
   hideResponse,
-  "La limpieza final del fixture multimedia",
+  "El ocultamiento del snapshot actual",
   "oculto"
 );
 
-const cleanupResult = await adminQuery(
-  `SELECT public_visible, publication_number
+assertAnonymousPrivate(
+  await request(publicPath),
+  "El GET anónimo después de ocultar el juego"
+);
+assertPrivatePreview(
+  await request(publicPath, {
+    headers: { cookie },
+  }),
+  "El GET Admin del master aún usado por el borrador oculto",
+  digest
+);
+
+const switchCoverBody = new URLSearchParams({
+  expectedRevision: String(published.revision),
+  target: "cover-source",
+  resource: "card",
+}).toString();
+const switchCoverResponse = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+  {
+    method: "POST",
+    headers: formHeaders(editorPath, cookie),
+    body: switchCoverBody,
+  }
+);
+expectRedirect(
+  switchCoverResponse,
+  "La salida del master custom del borrador actual",
+  "recurso-asignado"
+);
+
+const detachedResult = await adminQuery(
+  `SELECT
+     draft_payload,
+     revision,
+     publication_number,
+     public_visible,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_revisions
+        WHERE item_id = $1
+     ) AS revisions,
+     (
+       SELECT count(*)::int
+         FROM deuna_admin.editorial_publications
+        WHERE item_id = $1
+     ) AS publications
    FROM deuna_admin.editorial_items
    WHERE id = $1`,
   [fixture.id]
 );
-const cleanup = cleanupResult.rows[0];
+const detached = detachedResult.rows[0];
+const detachedGame = detached
+  ? parseEditorialPayload("game", detached.draft_payload)
+  : null;
 
 if (
-  !cleanup ||
-  cleanup.public_visible !== false ||
-  cleanup.publication_number !== restored.publication_number
+  !detached ||
+  detached.revision !== published.revision + 1 ||
+  detached.publication_number !== publishedNumber ||
+  detached.public_visible !== false ||
+  detachedGame?.coverArtworkSource !== "card" ||
+  detachedGame.coverImage === publicPath ||
+  detached.revisions !== 0 ||
+  detached.publications !== 0
 ) {
   throw new Error(
-    "El smoke no restauró el estado oculto del fixture sintético al finalizar."
+    "Desasignar el master no conservó el estado actual del juego sin recrear historial."
   );
 }
 
-assertPublicImmutable(
-  await request(publicPath),
-  "El GET del asset históricamente publicado con el juego nuevamente oculto",
-  digest
+const orphanDeleteBody = new URLSearchParams({
+  expectedRevision: String(detached.revision),
+  target: "image-delete",
+  resource: publicPath,
+}).toString();
+const orphanDelete = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`,
+  {
+    method: "POST",
+    headers: formHeaders(editorPath, cookie),
+    body: orphanDeleteBody,
+  }
 );
+expectRedirect(
+  orphanDelete,
+  "La eliminación del master ya huérfano",
+  "recurso-eliminado"
+);
+
+assertAnonymousPrivate(
+  await request(publicPath),
+  "El GET anónimo del master eliminado"
+);
+
+const deleteStateResult = await adminQuery(
+  `SELECT revision, publication_number
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+const deleteState = deleteStateResult.rows[0];
+
+if (!deleteState) {
+  throw new Error(
+    "El fixture desapareció antes de probar el hard-delete."
+  );
+}
+
+const deleteReferer =
+  `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
+const rejectedDeleteBody = new URLSearchParams({
+  expectedRevision: String(deleteState.revision),
+  deletePublicationNumber: String(deleteState.publication_number),
+  confirmSlug: slug,
+  currentPassword: `${adminPassword}-incorrecta`,
+}).toString();
+const rejectedDelete = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/delete`,
+  {
+    method: "POST",
+    headers: formHeaders(deleteReferer, cookie),
+    body: rejectedDeleteBody,
+  }
+);
+expectRedirect(
+  rejectedDelete,
+  "El hard-delete con contraseña incorrecta",
+  "reauth"
+);
+
+const preservedAfterRejectedDelete = await adminQuery(
+  `SELECT count(*)::int AS count
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+if (preservedAfterRejectedDelete.rows[0]?.count !== 1) {
+  throw new Error(
+    "Una reautenticación incorrecta alteró el fixture."
+  );
+}
+
+const mediaRoot =
+  process.env.DEUNA_EDITORIAL_MEDIA_ROOT;
+if (!mediaRoot) {
+  throw new Error(
+    "El hard-delete E2E requiere DEUNA_EDITORIAL_MEDIA_ROOT aislado."
+  );
+}
+
+const physicalPath = path.join(
+  mediaRoot,
+  slug,
+  `${digest}.webp`
+);
+await mkdir(path.dirname(physicalPath), {
+  recursive: true,
+  mode: 0o700,
+});
+await writeFile(
+  physicalPath,
+  Buffer.from("corrupt-after-preflight", "utf8")
+);
+
+const deleteBody = new URLSearchParams({
+  expectedRevision: String(deleteState.revision),
+  deletePublicationNumber: String(deleteState.publication_number),
+  confirmSlug: slug,
+  currentPassword: adminPassword,
+}).toString();
+const deleted = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/delete`,
+  {
+    method: "POST",
+    headers: formHeaders(deleteReferer, cookie),
+    body: deleteBody,
+  }
+);
+expectRedirect(
+  deleted,
+  "El hard-delete con fallo físico recuperable",
+  "eliminado-media-pendiente"
+);
+
+const remainingItem = await adminQuery(
+  `SELECT count(*)::int AS count
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+if (remainingItem.rows[0]?.count !== 0) {
+  throw new Error(
+    "El hard-delete no eliminó el registro editorial."
+  );
+}
+
+const pendingCleanup = await adminQuery(
+  `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
+  [slug]
+);
+if (pendingCleanup.rows[0]?.pending !== true) {
+  throw new Error(
+    "El hard-delete fallido no dejó una limpieza multimedia durable y reintentable."
+  );
+}
+
+const blockedReuse = await adminQuery(
+  `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
+  [slug]
+);
+if (blockedReuse.rows[0]?.pending !== true) {
+  throw new Error(
+    "El slug eliminado dejó de estar bloqueado mientras existía limpieza pendiente."
+  );
+}
+
+await writeFile(physicalPath, image, { mode: 0o600 });
+
+const retryBody = new URLSearchParams({
+  confirmSlug: slug,
+  currentPassword: adminPassword,
+}).toString();
+const retryCleanup = await request(
+  `/api/admin/content/maintenance/media-cleanup/${encodeURIComponent(slug)}`,
+  {
+    method: "POST",
+    headers: formHeaders("/admin/mantenimiento", cookie),
+    body: retryBody,
+  }
+);
+expectRedirect(
+  retryCleanup,
+  "El reintento de limpieza multimedia pendiente",
+  "limpieza-media-completa"
+);
+
+const queueAfterRetry = await adminQuery(
+  `SELECT deuna_admin.is_game_media_cleanup_pending($1) AS pending`,
+  [slug]
+);
+if (queueAfterRetry.rows[0]?.pending !== false) {
+  throw new Error(
+    "La cola multimedia siguió pendiente después de una limpieza física exitosa."
+  );
+}
+
+let residualMedia = [];
+try {
+  residualMedia = await readdir(
+    path.join(mediaRoot, slug)
+  );
+} catch (error) {
+  if (
+    !(
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    )
+  ) {
+    throw error;
+  }
+}
+
+if (residualMedia.length !== 0) {
+  throw new Error(
+    `El reintento dejó entradas residuales en el namespace multimedia: ${residualMedia.join(", ")}.`
+  );
+}
 
 console.log(
   "Editorial media serving lifecycle smoke: OK " +
     `(slug=${slug}, bytes=${image.length}, ` +
     "upload=anon404/admin-private, draft=custom-pending-private, " +
-    "crop=confirmed-private, published=public-immutable, " +
-    "restored=historical-public, cleanup=hidden)."
+    "crop=confirmed-private, published=current-public, hidden=private, " +
+    "draft/current-only-protection, orphan=deletable, no-game-history, hard-delete=pending+retry+physical-clean)."
 );

@@ -193,12 +193,20 @@ export async function getPublicationOverview():
            item.public_visible,
            item.draft_payload IS DISTINCT FROM item.published_payload
              AS draft_differs,
-           EXISTS (
-             SELECT 1
-             FROM deuna_admin.editorial_publications AS publication
-             WHERE publication.item_id = item.id
-               AND publication.action IN ('published', 'rollback')
-           ) AS ever_published
+           CASE
+             WHEN item.item_type = 'game' THEN
+               NOT (
+                 item.source_present = false
+                 AND item.source_payload = '{}'::jsonb
+                 AND item.publication_number = 1
+               )
+             ELSE EXISTS (
+               SELECT 1
+               FROM deuna_admin.editorial_publications AS publication
+               WHERE publication.item_id = item.id
+                 AND publication.action IN ('published', 'rollback')
+             )
+           END AS ever_published
          FROM deuna_admin.editorial_items AS item
          WHERE item.item_type = ANY($1::text[])
            AND (
@@ -278,19 +286,24 @@ export async function listPublicationStates(
            item.public_visible = false OR
            item.draft_payload IS DISTINCT FROM item.published_payload
          ) AS has_unpublished_changes,
-         EXISTS (
-           SELECT 1
-           FROM deuna_admin.editorial_revisions AS revision
-           WHERE revision.item_id = item.id
-             AND revision.revision = 1
-             AND revision.action = 'draft_saved'
+         (
+           item.source_present = false
+           AND item.source_payload = '{}'::jsonb
          ) AS panel_created,
-         EXISTS (
-           SELECT 1
-           FROM deuna_admin.editorial_publications AS publication
-           WHERE publication.item_id = item.id
-             AND publication.action IN ('published', 'rollback')
-         ) AS ever_published
+         CASE
+             WHEN item.item_type = 'game' THEN
+               NOT (
+                 item.source_present = false
+                 AND item.source_payload = '{}'::jsonb
+                 AND item.publication_number = 1
+               )
+             ELSE EXISTS (
+               SELECT 1
+               FROM deuna_admin.editorial_publications AS publication
+               WHERE publication.item_id = item.id
+                 AND publication.action IN ('published', 'rollback')
+             )
+           END AS ever_published
        FROM deuna_admin.editorial_items AS item
        WHERE item.item_type = $1
        ORDER BY item.item_key ASC`,
@@ -326,19 +339,24 @@ export async function getGamePublicationIdentity(
            item.public_visible = false OR
            item.draft_payload IS DISTINCT FROM item.published_payload
          ) AS has_unpublished_changes,
-         EXISTS (
-           SELECT 1
-           FROM deuna_admin.editorial_revisions AS revision
-           WHERE revision.item_id = item.id
-             AND revision.revision = 1
-             AND revision.action = 'draft_saved'
+         (
+           item.source_present = false
+           AND item.source_payload = '{}'::jsonb
          ) AS panel_created,
-         EXISTS (
-           SELECT 1
-           FROM deuna_admin.editorial_publications AS publication
-           WHERE publication.item_id = item.id
-             AND publication.action IN ('published', 'rollback')
-         ) AS ever_published
+         CASE
+             WHEN item.item_type = 'game' THEN
+               NOT (
+                 item.source_present = false
+                 AND item.source_payload = '{}'::jsonb
+                 AND item.publication_number = 1
+               )
+             ELSE EXISTS (
+               SELECT 1
+               FROM deuna_admin.editorial_publications AS publication
+               WHERE publication.item_id = item.id
+                 AND publication.action IN ('published', 'rollback')
+             )
+           END AS ever_published
        FROM deuna_admin.editorial_items AS item
        WHERE item.item_type = 'game'
          AND item.item_key = $1

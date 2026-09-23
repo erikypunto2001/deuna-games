@@ -1388,12 +1388,16 @@ if (publicationB <= publicationA) {
   );
 }
 const historicalAfterB = restoreActions(publicationHtml);
-if (historicalAfterB.length !== 1) {
+if (historicalAfterB.length !== 0) {
   throw new Error(
-    `Después de publicar B se esperaba una única restauración histórica para A y aparecieron ${historicalAfterB.length}.`
+    `Después de publicar B aparecieron ${historicalAfterB.length} acciones de restauración; los juegos no deben exponer historial restaurable.`
   );
 }
-const restorePublicationA = historicalAfterB[0];
+if (inputValues(publicationHtml, "expectedPublications").length !== 0) {
+  throw new Error(
+    "Publicación expuso un token de limpieza histórica de juegos retirado."
+  );
+}
 
 const publicB = requirePage(
   await request(publicPath),
@@ -1408,106 +1412,23 @@ assertImageViewport(
   "El snapshot público B"
 );
 
-const restoreA = await postAdminForm(
-  restorePublicationA,
+await assertRetiredAdminMutation(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/history/publications/reset`,
   `${editorPath}/publicacion`,
   cookie,
-  {
-    expectedPublicationNumber: String(publicationB),
-  },
-  "La restauración del snapshot A"
+  "La limpieza legacy de snapshots de juego"
 );
-assertRedirectState(
-  restoreA,
-  "publicacion-restaurada",
-  "Restauración A"
+await assertRetiredAdminMutation(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/history/reset`,
+  `${editorPath}?seccion=ficha`,
+  cookie,
+  "La limpieza legacy del historial de juego"
 );
-
-publicationHtml = await publicationPage(slug, cookie);
-const publicationRestoredA = positiveInputNumber(
-  publicationHtml,
-  "expectedPublicationNumber"
-);
-if (publicationRestoredA <= publicationB) {
-  throw new Error(
-    `Restaurar no creó una publicación nueva (${publicationB} -> ${publicationRestoredA}).`
-  );
-}
-
-const publicRestoredA = requirePage(
-  await request(publicPath),
-  "Juego después de restaurar A"
-);
-if (!firstH1(publicRestoredA.body).includes(markerA)) {
-  throw new Error(
-    "Restaurar A no cambió el snapshot público al contenido histórico esperado."
-  );
-}
-assertImageViewport(
-  publicRestoredA.body,
-  detailViewportA,
-  "El snapshot público restaurado A"
-);
-
-const previewAfterRestore = requirePage(
-  await request(`${editorPath}/vista-previa`, { headers: { cookie } }),
-  "Borrador después de restaurar A"
-);
-if (!visibleText(previewAfterRestore.body).includes(markerB)) {
-  throw new Error(
-    "Restaurar una publicación histórica reescribió o perdió el borrador B."
-  );
-}
-assertImageViewport(
-  previewAfterRestore.body,
-  detailViewportB,
-  "El borrador B después de restaurar A"
-);
-
-publicationHtml = await publicationPage(slug, cookie);
-const revisionAfterRestore = positiveInputNumber(
-  publicationHtml,
-  "expectedRevision"
-);
-if (revisionAfterRestore !== revisionB) {
-  throw new Error(
-    `Restaurar cambió la revisión del borrador (${revisionB} -> ${revisionAfterRestore}).`
-  );
-}
-
-const republishB = await postAdminForm(
-  `/api/admin/content/games/${encodeURIComponent(slug)}/publish`,
+await assertRetiredAdminMutation(
+  "/api/admin/content/publications/00000000-0000-4000-8000-000000000000/restore",
   `${editorPath}/publicacion`,
   cookie,
-  { expectedRevision: String(revisionB) },
-  "La republicación del borrador B"
-);
-assertRedirectState(republishB, "publicado", "Republicación B");
-
-publicationHtml = await publicationPage(slug, cookie);
-const publicationResyncedB = positiveInputNumber(
-  publicationHtml,
-  "expectedPublicationNumber"
-);
-if (publicationResyncedB <= publicationRestoredA) {
-  throw new Error(
-    `Republicar B no avanzó publicación (${publicationRestoredA} -> ${publicationResyncedB}).`
-  );
-}
-
-const publicResyncedB = requirePage(
-  await request(publicPath),
-  "Juego B resincronizado"
-);
-if (!firstH1(publicResyncedB.body).includes(markerB)) {
-  throw new Error(
-    "Republicar el borrador B no resincronizó la web pública."
-  );
-}
-assertImageViewport(
-  publicResyncedB.body,
-  detailViewportB,
-  "El snapshot público B resincronizado"
+  "La restauración legacy de publicación de juego"
 );
 
 const updateRedirect = await postAdminForm(
@@ -1555,10 +1476,10 @@ const publicationAfterUpdate = positiveInputNumber(
 );
 if (
   revisionAfterUpdate <= revisionB ||
-  publicationAfterUpdate <= publicationResyncedB
+  publicationAfterUpdate <= publicationB
 ) {
   throw new Error(
-    `La actualización integrada no avanzó revisión/publicación (${revisionB}/${publicationResyncedB} -> ${revisionAfterUpdate}/${publicationAfterUpdate}).`
+    `La actualización integrada no avanzó revisión/publicación (${revisionB}/${publicationB} -> ${revisionAfterUpdate}/${publicationAfterUpdate}).`
   );
 }
 
@@ -1579,6 +1500,31 @@ const publicUpdates = requirePage(
 if (!visibleText(publicUpdates.body).includes(updateSummary)) {
   throw new Error(
     "La actualización integrada no apareció en la superficie pública de Actualizaciones."
+  );
+}
+
+publicationHtml = await publicationPage(slug, cookie);
+if (restoreActions(publicationHtml).length !== 0) {
+  throw new Error(
+    "El juego volvió a exponer restauraciones históricas después de publicar la actualización."
+  );
+}
+if (inputValues(publicationHtml, "expectedPublications").length !== 0) {
+  throw new Error(
+    "El juego volvió a exponer controles de compactación histórica retirados."
+  );
+}
+
+const publicWithoutHistory = requirePage(
+  await request(publicPath),
+  "Juego público sin historial restaurable"
+);
+if (
+  !firstH1(publicWithoutHistory.body).includes(markerB) ||
+  !visibleText(publicWithoutHistory.body).includes(updateVersion)
+) {
+  throw new Error(
+    "Retirar el historial restaurable alteró el snapshot público actual."
   );
 }
 
@@ -1610,5 +1556,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, restauración multimedia, update integrada, ocultamiento y 6 mutaciones legacy retiradas y asignaciones directas de imagen/video bloqueadas verificadas).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationAfterUpdate}; Portada image-only con fuente custom↔Card y crop preservado, reasignaciones idempotentes con crops preservados, Fondo idempotente, viewport de Contenedor A/B, preview, separación draft/público, juego sin historial restaurable, update integrada, ocultamiento y mutaciones legacy retiradas verificadas).`
 );

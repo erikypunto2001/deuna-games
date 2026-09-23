@@ -55,7 +55,8 @@ type EditorialRevisionRow = {
     | "imported"
     | "source_refreshed"
     | "draft_saved"
-    | "draft_restored";
+    | "draft_restored"
+    | "baseline";
   created_at: Date;
 };
 
@@ -277,18 +278,20 @@ export async function getEditorialItem<
 
   if (!row) return null;
 
-  const revisions = await adminQuery<EditorialRevisionRow>(
-    `SELECT
-       id::text,
-       revision,
-       action,
-       created_at
-     FROM deuna_admin.editorial_revisions
-     WHERE item_id = $1
-     ORDER BY revision DESC
-     LIMIT 10`,
-    [row.id]
-  );
+  const revisions = type === "game"
+    ? { rows: [] as EditorialRevisionRow[] }
+    : await adminQuery<EditorialRevisionRow>(
+        `SELECT
+           id::text,
+           revision,
+           action,
+           created_at
+         FROM deuna_admin.editorial_revisions
+         WHERE item_id = $1
+         ORDER BY revision DESC
+         LIMIT 10`,
+        [row.id]
+      );
 
   return {
     id: row.id,
@@ -338,18 +341,20 @@ async function writeRevision(
       actorUserId,
     ]
   );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions
-       (item_id, revision, payload, action, actor_user_id)
-     VALUES ($1, $2, $3::jsonb, $4, $5)`,
-    [
-      item.id,
-      nextRevision,
-      serialized,
-      action,
-      actorUserId,
-    ]
-  );
+  if (item.item_type !== "game") {
+    await client.query(
+      `INSERT INTO deuna_admin.editorial_revisions
+         (item_id, revision, payload, action, actor_user_id)
+       VALUES ($1, $2, $3::jsonb, $4, $5)`,
+      [
+        item.id,
+        nextRevision,
+        serialized,
+        action,
+        actorUserId,
+      ]
+    );
+  }
   await client.query(
     `INSERT INTO deuna_admin.admin_audit_log
        (user_id, action, entity_type, entity_id, details)
@@ -671,7 +676,9 @@ export async function restoreEditorialRevision(
     );
     const row = result.rows[0];
 
-    if (!row) return { outcome: "not_found" };
+    if (!row || row.item_type === "game") {
+      return { outcome: "not_found" };
+    }
 
     if (row.current_revision !== expectedRevision) {
       return {

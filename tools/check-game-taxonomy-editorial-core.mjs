@@ -28,7 +28,6 @@ const [
   contextBar,
   gamePublicationReview,
   gamePublishRoute,
-  gameRestoreRoute,
   gamePublicationWorkspace,
   createRoute,
   classificationRoute,
@@ -61,7 +60,6 @@ const [
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/lib/admin/game-publication-review.ts"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
-  source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/classification/route.ts"),
@@ -195,11 +193,10 @@ assert(
     gamePublicationReview.includes('parseEditorialPayload(\n    "game_taxonomy"') &&
     gamePublishRoute.includes("inspectPublishedGameTaxonomyIntegrity") &&
     gamePublishRoute.includes("catalogos-sin-publicar") &&
-    gameRestoreRoute.includes("inspectPublishedGameTaxonomyIntegrity") &&
-    gameRestoreRoute.includes("catalogos-sin-publicar") &&
+    !gamePublicationReview.includes("getHistoricalGamePublicationCandidate") &&
     gamePublicationWorkspace.includes("catalogos-sin-publicar") &&
     gamePublicationWorkspace.includes("/admin/catalogos?seccion=publicacion"),
-  "Publicar o restaurar un juego debe bloquear referencias a clasificaciones/etiquetas que aún no existen en el snapshot publicado de Catálogos."
+  "Publicar un juego debe bloquear referencias a clasificaciones/etiquetas ausentes del snapshot publicado de Catálogos, sin restore histórico de juegos."
 );
 
 assert(
