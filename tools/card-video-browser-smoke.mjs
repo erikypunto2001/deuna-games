@@ -36,6 +36,10 @@ const homeInteractionScreenshotPath = path.join(
   outputRoot,
   "home-popular-hogwarts-interaction-video-active-desktop.png"
 );
+const homeDirectDetailScreenshotPath = path.join(
+  outputRoot,
+  "home-popular-hogwarts-direct-detail-video-active-desktop.png"
+);
 
 function assertVisualCiOnly() {
   if (
@@ -591,6 +595,113 @@ async function verifyHomeInteractionFirstCard(cdp, fixture) {
   );
 
   await leaveCard(cdp, lookup);
+
+  return playing;
+}
+
+async function verifyHomeDirectDetailFirstCard(cdp, fixture) {
+  await cdp.send("Emulation.setTouchEmulationEnabled", {
+    enabled: true,
+    maxTouchPoints: 1,
+  });
+  await cdp.send("Emulation.setEmulatedMedia", {
+    features: [
+      { name: "prefers-reduced-motion", value: "no-preference" },
+      { name: "hover", value: "none" },
+      { name: "pointer", value: "coarse" },
+    ],
+  });
+  await navigate(cdp, `${baseUrl}/`);
+
+  const lookup = firstHomeCarouselCardLookup();
+  const directState = await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (!(card instanceof HTMLElement)) return false;
+      const link = card.querySelector('a[href^="/juegos/"]');
+      if (!(link instanceof HTMLAnchorElement)) return false;
+      card.scrollIntoView({ block: "center", inline: "nearest" });
+      return {
+        href: link.getAttribute("href"),
+        revealMode: card.dataset.cardRevealMode ?? null,
+        mediaMode: card.dataset.cardMediaMode ?? null,
+        directDetail: card.dataset.cardDirectDetail ?? null,
+        detailVisible: card.dataset.detailVisible ?? null,
+        videoActive: card.dataset.cardVideoActive ?? null,
+        directMedia: matchMedia("(hover: none), (pointer: coarse)").matches,
+        reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      };
+    })()`,
+    "No se hidrató la primera Card de Home en entrada directa/táctil"
+  );
+
+  if (
+    directState.href !== `/juegos/${fixture.slug}` ||
+    directState.revealMode !== "interaction" ||
+    directState.mediaMode !== "video" ||
+    directState.directDetail !== "true" ||
+    directState.detailVisible !== "true" ||
+    !directState.directMedia ||
+    directState.reduced
+  ) {
+    throw new Error(
+      `La primera Card no entró al modo directo/táctil esperado: ${JSON.stringify(directState)}.`
+    );
+  }
+
+  const playing = await waitFor(
+    cdp,
+    playingVideoExpression(lookup),
+    "Hogwarts no reprodujo automáticamente su WebM visible en modo directo/táctil"
+  );
+  const activeState = await cdp.evaluate(`(() => {
+    const card = ${lookup};
+    return card instanceof HTMLElement
+      ? { videoActive: card.dataset.cardVideoActive ?? null }
+      : null;
+  })()`);
+
+  if (
+    playing.src !== fixture.clip ||
+    playing.paused ||
+    playing.readyState < 2 ||
+    playing.currentTime <= 0.02 ||
+    activeState?.videoActive !== "true"
+  ) {
+    throw new Error(
+      `Hogwarts no sostuvo el video directo/táctil visible: ${JSON.stringify({ playing, activeState })}.`
+    );
+  }
+
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    homeDirectDetailScreenshotPath,
+    Buffer.from(capture.data, "base64")
+  );
+
+  await cdp.send("Emulation.setEmulatedMedia", {
+    features: [
+      { name: "prefers-reduced-motion", value: "reduce" },
+      { name: "hover", value: "none" },
+      { name: "pointer", value: "coarse" },
+    ],
+  });
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      return Boolean(
+        card instanceof HTMLElement &&
+        card.dataset.cardVideoActive === "false" &&
+        !card.querySelector("video")
+      );
+    })()`,
+    "Reduced motion no desmontó el video automático de la Card directa/táctil"
+  );
 
   return playing;
 }
@@ -1237,14 +1348,20 @@ async function main() {
         cdp,
         fixture
       );
+    const homeDirectDetailPlaying =
+      await verifyHomeDirectDetailFirstCard(
+        cdp,
+        fixture
+      );
 
     console.log(
       "Card + Contenedor video browser smoke: OK " +
         `(hogwarts=${fixture.slug}, rdr2=${redDeadFixture.slug}, cyberpunk=${cyberpunkFixture.slug}, bytes=${asset.bytes}, ` +
         `cardReady=${visibleState.readyState}, hogwartsTime=${advancedState.currentTime.toFixed(3)}, ` +
         `rdr2Time=${redDeadPlaying.currentTime.toFixed(3)}, cyberpunkTime=${cyberpunkPlaying.currentTime.toFixed(3)}, ` +
-        `homeFirstTime=${homeInteractionPlaying.currentTime.toFixed(3)}, detailReady=${detailVisibleState.readyState}, ` +
-        "Home interaction primera Card + tres generaciones legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
+        `homeFirstTime=${homeInteractionPlaying.currentTime.toFixed(3)}, ` +
+        `homeDirectTime=${homeDirectDetailPlaying.currentTime.toFixed(3)}, detailReady=${detailVisibleState.readyState}, ` +
+        "Home interaction + entrada directa/táctil de la primera Card + tres generaciones legacy + hover/reduced/hidden y Contenedor autoplay/reduced/hidden verificados)."
     );
   } catch (error) {
     if (browserError.trim()) {

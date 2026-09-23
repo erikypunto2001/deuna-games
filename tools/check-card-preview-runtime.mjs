@@ -38,14 +38,15 @@ assert(
     hoverPreview.includes("if (!video.isConnected || !video.paused) return;") &&
     hoverPreview.includes("void video.play().catch(() => {") &&
     hoverPreview.includes(
-      "onCanPlay={unscaled ? (event) => ensurePlayback(event.currentTarget) : undefined}"
+      "onCanPlay={(event) => ensurePlayback(event.currentTarget)}"
     ) &&
+    !hoverPreview.includes("onCanPlay={unscaled ?") &&
     hoverPreview.includes("playing ? styles.videoReady") &&
     hoverPreview.includes("onPlaying={() => setPlaying(true)}") &&
     hoverPreview.includes("onWaiting={() => setPlaying(false)}") &&
     hoverPreview.includes("onStalled={() => setPlaying(false)}") &&
     hoverPreview.includes("onError={() => setPlaying(false)}"),
-  "El detalle estático debe dar margen al autoplay nativo antes de reintentar reproducción, sin intervenir en Cards interactivas, y la imagen sólo puede ceder cuando el WebM realmente está avanzando."
+  "Toda Card Video debe dar margen al autoplay nativo y reintentar reproducción si el navegador queda pausado; la imagen sólo puede ceder cuando el WebM realmente está avanzando."
 );
 
 if (failures.length > 0) {
@@ -55,5 +56,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Card preview runtime: OK (sin video antes de hidratación -> documento visible -> reduced-motion respetado -> Card interactiva intacta -> fallback tardío sólo en detalle estático -> videoReady sólo al reproducir)."
+  "Card preview runtime: OK (sin video antes de hidratación -> documento visible -> reduced-motion respetado -> retry de autoplay en toda Card Video -> videoReady sólo al reproducir)."
 );

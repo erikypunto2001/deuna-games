@@ -239,7 +239,7 @@ export default function UniversalGameCardBase({
   const [directDetailVisible, setDirectDetailVisible] = useState(false);
   const [previewActive, setPreviewActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [staticDetailInViewport, setStaticDetailInViewport] = useState(false);
+  const [automaticVideoInViewport, setAutomaticVideoInViewport] = useState(false);
   const [expandedGeometry, setExpandedGeometry] =
     useState<ExpandedCardGeometry | null>(null);
   const cardExpanded = expandedGeometry !== null;
@@ -272,14 +272,19 @@ export default function UniversalGameCardBase({
   }, []);
 
   useEffect(() => {
-    if (!staticDetail || typeof IntersectionObserver === "undefined") return;
+    if (
+      (!staticDetail && !directDetailVisible) ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
 
     const slot = slotRef.current;
     if (!slot) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setStaticDetailInViewport(Boolean(
+        setAutomaticVideoInViewport(Boolean(
           entry?.isIntersecting &&
           entry.intersectionRatio >= STATIC_DETAIL_VIDEO_THRESHOLD
         ));
@@ -291,7 +296,7 @@ export default function UniversalGameCardBase({
 
     observer.observe(slot);
     return () => observer.disconnect();
-  }, [staticDetail]);
+  }, [directDetailVisible, staticDetail]);
 
   useEffect(() => {
     if (!expandedGeometry) return;
@@ -538,17 +543,20 @@ export default function UniversalGameCardBase({
 
   const detailPresented = detailVisible || directDetailVisible;
   const interactionVideoActive =
-    !staticDetail && detailVisible && previewActive;
-  const staticVideoActive =
-    staticDetail &&
-    staticDetailInViewport &&
+    !staticDetail &&
+    !directDetailVisible &&
+    detailVisible &&
+    previewActive;
+  const automaticVideoActive =
+    automaticVideoInViewport &&
+    (staticDetail || directDetailVisible) &&
     (cardMode === "video" ||
-      (cardMode === "hover-video" && previewActive));
+      (staticDetail && cardMode === "hover-video" && previewActive));
   const videoActive = Boolean(
     preview &&
     cardMode !== "image" &&
     !reducedMotion &&
-    (interactionVideoActive || staticVideoActive)
+    (interactionVideoActive || automaticVideoActive)
   );
   const primaryClassName = `${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`;
   const cardContent = (
@@ -685,6 +693,8 @@ export default function UniversalGameCardBase({
         data-card-reveal-mode={revealMode}
         data-card-media-mode={cardMode}
         data-card-preview-delay-ms={PREVIEW_DELAY_MS}
+        data-card-direct-detail={directDetailVisible ? "true" : "false"}
+        data-card-video-active={videoActive ? "true" : "false"}
         data-detail-visible={detailPresented ? "true" : "false"}
         data-card-expanded={expandedGeometry ? "true" : "false"}
         data-card-expansion-scale={expandedGeometry?.scale.toFixed(3) ?? "1.000"}
