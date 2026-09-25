@@ -168,6 +168,21 @@ function positiveNumberInput(html, name) {
   return value;
 }
 
+function currentPublicationNumber(html) {
+  const match = html.match(
+    /<span>Publicación actual<\/span>\s*<strong>#([0-9]+)<\/strong>/i
+  );
+  const value = Number(match?.[1]);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      "El panel no expone un número de publicación actual verificable."
+    );
+  }
+
+  return value;
+}
+
 function redirectLocation(response, label) {
   if (response.status !== 303) {
     throw new Error(
@@ -376,9 +391,8 @@ if (publishRevision !== savedRevision) {
     `Publicación ve una revisión distinta del borrador (${publishRevision} != ${savedRevision}).`
   );
 }
-const publicationNumberBefore = positiveNumberInput(
-  publicationBefore.body,
-  "expectedPublicationNumber"
+const publicationNumberBefore = currentPublicationNumber(
+  publicationBefore.body
 );
 assertNoRestoreActions(publicationBefore.body);
 
@@ -416,9 +430,8 @@ if (publicationAfterPublish.status !== 200) {
     `El estado posterior a publicar no pudo releerse (${publicationAfterPublish.status}).`
   );
 }
-const publicationNumberAfterPublish = positiveNumberInput(
-  publicationAfterPublish.body,
-  "expectedPublicationNumber"
+const publicationNumberAfterPublish = currentPublicationNumber(
+  publicationAfterPublish.body
 );
 if (publicationNumberAfterPublish <= publicationNumberBefore) {
   throw new Error(
