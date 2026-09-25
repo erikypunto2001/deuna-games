@@ -26,10 +26,6 @@ import type {
   ResolvedGameUpdate,
 } from "@/types/update";
 
-type PublicationTableRow = {
-  publication_table: string | null;
-};
-
 type EditorialUpdateRow = {
   item_key: string;
   published_payload: unknown;
@@ -129,18 +125,6 @@ function resolveUpdates(
 }
 
 async function readEditorialUpdates() {
-  const workspace =
-    await adminQuery<PublicationTableRow>(
-      `SELECT
-         to_regclass(
-           'deuna_admin.editorial_publications'
-         )::text AS publication_table`
-    );
-
-  if (!workspace.rows[0]?.publication_table) {
-    return null;
-  }
-
   const result = await adminQuery<EditorialUpdateRow>(
     `SELECT
        item_key,
