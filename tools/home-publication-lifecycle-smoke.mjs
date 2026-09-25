@@ -170,9 +170,13 @@ function positiveNumberInput(html, name) {
 
 function currentPublicationNumber(html) {
   const match = html.match(
-    /<span>Publicación actual<\/span>\s*<strong>#([0-9]+)<\/strong>/i
+    /<span>Publicación actual<\/span>\s*<strong>([\s\S]*?)<\/strong>/i
   );
-  const value = Number(match?.[1]);
+  const visibleValue = decodeHtml(
+    (match?.[1] ?? "").replace(/<[^>]+>/g, "")
+  ).replace(/\s+/g, " ").trim();
+  const numberMatch = visibleValue.match(/^#([0-9]+)$/);
+  const value = Number(numberMatch?.[1]);
 
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(
