@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { sourceHomeConfig, resolveHomeConfig } from '../src/data/home-config.ts';
 import { applyHeroLayout, applyPreset } from '../src/lib/home/hero-presets.ts';
@@ -37,6 +37,7 @@ assert.deepEqual(original,sourceHomeConfig.heroPresentation);
 assert.equal(homeHeroPresentationEditorSchema.safeParse({...mobile,deviceOverrides:{mobile:{...original,deviceOverrides:{mobile:original}}}}).success,false);
 console.log('Hero device design: OK (isolated presets/layouts, effective cross-device slots, shared edits, persistence, V3 motion style, bounded validation).');
 
+
 let full = original;
 for (const device of ['desktop','tablet','mobile']) full = updateHeroDeviceDesign(full, device, p => applyPreset('Cinema', p));
 assert.ok(homeHeroEditorFormSchema.safeParse({expectedRevision:'1',heroJson:JSON.stringify({mode:'manual',slugs:sourceHomeConfig.heroSlugs,presentation:full})}).success);
@@ -49,6 +50,7 @@ assert.equal(editorialHomeConfigSchema.safeParse({
   heroPresentation: { ...full, deviceOverrides: { mobile: { ...original, deviceOverrides: { mobile: original } } } },
 }).success, false);
 console.log('Hero editorial persistence: OK (device designs survive Home validation and reload; nested overrides rejected).');
+
 
 // `motionStyle` is a revision-level runtime contract, not a device style. A
 // copied historical/device override must never choose another movement profile
@@ -85,6 +87,7 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
 }
 console.log('Hero motion style scope: OK (the single V3 movement profile remains global across device snapshots and device-scoped editor actions).');
 
+
 // Reproduce a subtle shared-edit case: an override can already have the requested
 // source-device value in its copied desktop slot while its own slot is divergent.
 // A later "all devices" edit must still propagate the source change to that slot.
@@ -113,6 +116,7 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
   assert.equal(resolveHeroDeviceDesign(divergent, device).navigation.responsive[device].y, 20);
 }
 console.log('Hero shared edits: OK (divergent device snapshots receive the same requested change).');
+
 
 // Historical/runtime compatibility still supports copying spacing between devices.
 // The simplified editor no longer exposes a link switch, but the device resolver
@@ -170,10 +174,12 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
 }
 console.log('Hero spacing compatibility: OK (effective cross-device baselines stay current for historical and programmatic edits).');
 
+
 const heroEditorSource = await readFile(
   new URL('../src/components/admin/HomeHeroEditor.tsx', import.meta.url),
   'utf8'
 );
+
 
 assert.doesNotMatch(
   heroEditorSource,
@@ -190,14 +196,14 @@ assert.match(
   /if \(key === "spaceBefore" \|\| key === "spaceAfter"\) \{[\s\S]*?settings\.spacingReference = "visual";/,
   'Simple Hero spacing must always use the stable visual reference.'
 );
-assert.match(
+assert.doesNotMatch(
   heroEditorSource,
-  /settings\.cardWidth = original\.cardWidth;[\s\S]*?settings\.cardHeight = original\.cardHeight;[\s\S]*?settings\.gap = original\.gap;[\s\S]*?settings\.spaceBefore = original\.spaceBefore;[\s\S]*?settings\.spaceAfter = original\.spaceAfter;[\s\S]*?settings\.spacingReference = "visual";/,
-  'Restoring the simple layout must restore all essential geometry and use visual spacing.'
+  /Undo2|Redo2|RotateCcw|historyReducer|restoreBasicLayout|Restablecer tamaño y espacio/,
+  'The current-only Hero editor must not reintroduce local undo, redo or restore-to-previous-layout controls.'
 );
 assert.doesNotMatch(
   heroEditorSource,
   /Mantener proporción al cambiar tamaño|Encuadre de la tarjeta|Perspectiva|Referencia del espaciado|Mismo espaciado en todos los dispositivos/,
   'Removed advanced sizing and spacing controls must not return.'
 );
-console.log('Hero simple device editor: OK (essential geometry only, visual spacing and no duplicate advanced sizing system).');
+console.log('Hero simple device editor: OK (essential geometry only, visual spacing, current-only editing and no duplicate advanced sizing system).');

@@ -155,10 +155,13 @@ expect(
     ) &&
     entries.browserManifest.includes("historical-update-edit") &&
     entries.browserManifest.includes("historical-update-publication") &&
-    entries.browserManifest.includes("historical-update-history") &&
+    !entries.browserManifest.includes("historical-update-history") &&
+    entries.legacyEditor.includes('"editar"') &&
+    entries.legacyEditor.includes('"publicacion"') &&
+    !entries.legacyEditor.includes('"historial"') &&
     !entries.sitewideSmoke.includes("src/data/update-records.ts") &&
     !entries.sitewideSmoke.includes("fixture.updateIds"),
-  "La compatibilidad histórica debe probarse con un borrador privado efímero real en editar/publicación/historial, sin depender de fixtures demo retirados."
+  "La compatibilidad con borradores antiguos debe probarse con un borrador privado efímero real en editar/publicación, sin reintroducir una sección de historial restaurable ni depender de fixtures demo retirados."
 );
 expect(
   entries.accountNotificationsRunner.includes(

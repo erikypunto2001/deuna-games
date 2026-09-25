@@ -140,30 +140,6 @@ function assertState(url, state, label) {
   }
 }
 
-function allInputValues(html, name) {
-  const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
-  const values = [];
-  for (const input of inputs) {
-    const nameMatch = input.match(/\bname="([^"]*)"/i);
-    if (nameMatch?.[1] !== name) continue;
-    const valueMatch = input.match(/\bvalue="([^"]*)"/i);
-    if (!valueMatch) continue;
-    const value = Number(valueMatch[1]);
-    if (!Number.isInteger(value) || value < 0) {
-      throw new Error(name + " no es un entero válido.");
-    }
-    values.push(value);
-  }
-  return values;
-}
-
-function lastInputValue(html, name) {
-  const values = allInputValues(html, name);
-  if (!values.length) throw new Error("No se encontró " + name + ".");
-  return values[values.length - 1];
-}
-
-
 function stringInputValue(html, name) {
   const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
   for (const input of inputs) {
@@ -463,110 +439,61 @@ await rm(backgroundDirectory, {
   force: true,
 }).catch(() => {});
 
-let homeRevisions = allInputValues(html, "expectedRevisions")[0];
-let homePublications = allInputValues(html, "expectedPublications")[0];
-if (
-  !Number.isInteger(homeRevisions) ||
-  !Number.isInteger(homePublications)
-) {
-  throw new Error("Mantenimiento no expuso conteos de Inicio.");
+const finalHtml = await maintenancePage(cookie);
+for (const forbidden of [
+  "history-reset",
+  "REINICIAR HISTORIAL",
+  "REINICIAR INICIO",
+  "expectedRevisions",
+  "expectedPublications",
+  "Historial restaurable",
+]) {
+  if (finalHtml.includes(forbidden)) {
+    throw new Error(
+      `Mantenimiento todavía expone el contrato retirado: ${forbidden}.`
+    );
+  }
 }
 
-const rejectedHome = await post(
-  "/api/admin/content/maintenance/history-reset/home",
-  cookie,
-  {
-    confirmation: "REINICIAR INICIO",
-    currentPassword: adminPassword + "-incorrecta",
-    expectedRevisions: String(homeRevisions),
-    expectedPublications: String(homePublications),
-  },
-  "Compactación de Inicio con contraseña incorrecta"
+const historyStorage = await adminQuery(
+  `SELECT
+     to_regclass('deuna_admin.editorial_revisions')::text AS revisions,
+     to_regclass('deuna_admin.editorial_publications')::text AS publications,
+     to_regprocedure(
+       'deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)'
+     )::text AS global_compactor,
+     to_regprocedure(
+       'deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)'
+     )::text AS item_compactor`
 );
-assertState(rejectedHome, "reauth", "Reautenticación de Inicio");
-
-html = await maintenancePage(cookie);
-homeRevisions = allInputValues(html, "expectedRevisions")[0];
-homePublications = allInputValues(html, "expectedPublications")[0];
-
-const compactHome = await post(
-  "/api/admin/content/maintenance/history-reset/home",
-  cookie,
-  {
-    confirmation: "REINICIAR INICIO",
-    currentPassword: adminPassword,
-    expectedRevisions: String(homeRevisions),
-    expectedPublications: String(homePublications),
-  },
-  "Compactación de Inicio"
-);
-assertState(
-  compactHome,
-  "inicio-historial-compactado",
-  "Compactación de Inicio"
-);
-
-html = await maintenancePage(cookie);
-const globalItems = lastInputValue(html, "expectedItems");
-const globalRevisions = lastInputValue(html, "expectedRevisions");
-const globalPublications = lastInputValue(html, "expectedPublications");
-
-const staleGlobal = await post(
-  "/api/admin/content/maintenance/history-reset",
-  cookie,
-  {
-    confirmation: "REINICIAR HISTORIAL",
-    currentPassword: adminPassword,
-    expectedItems: String(globalItems),
-    expectedRevisions: String(globalRevisions + 1),
-    expectedPublications: String(globalPublications),
-  },
-  "Compactación global con snapshot obsoleto"
-);
-assertState(
-  staleGlobal,
-  "mantenimiento-conflicto",
-  "Concurrencia de compactación global"
-);
-
-html = await maintenancePage(cookie);
-const currentItems = lastInputValue(html, "expectedItems");
-const currentRevisions = lastInputValue(html, "expectedRevisions");
-const currentPublications = lastInputValue(html, "expectedPublications");
-
-const compactGlobal = await post(
-  "/api/admin/content/maintenance/history-reset",
-  cookie,
-  {
-    confirmation: "REINICIAR HISTORIAL",
-    currentPassword: adminPassword,
-    expectedItems: String(currentItems),
-    expectedRevisions: String(currentRevisions),
-    expectedPublications: String(currentPublications),
-  },
-  "Compactación global"
-);
-assertState(
-  compactGlobal,
-  "historial-compactado",
-  "Compactación global"
-);
-
-const finalHtml = await maintenancePage(cookie);
-const finalItems = lastInputValue(finalHtml, "expectedItems");
-const finalRevisions = lastInputValue(finalHtml, "expectedRevisions");
-const finalPublications = lastInputValue(finalHtml, "expectedPublications");
-
+const historyRow = historyStorage.rows[0];
 if (
-  finalRevisions !== finalItems ||
-  finalPublications !== finalItems
+  historyRow?.revisions !== null ||
+  historyRow?.publications !== null ||
+  historyRow?.global_compactor !== null ||
+  historyRow?.item_compactor !== null
 ) {
   throw new Error(
-    "La compactación global no dejó un baseline por registro (" +
-      finalItems + "/" + finalRevisions + "/" + finalPublications + ")."
+    "PostgreSQL todavía conserva almacenamiento o compactadores de historial restaurable."
   );
 }
 
+for (const pathname of [
+  "/api/admin/content/maintenance/history-reset",
+  "/api/admin/content/maintenance/history-reset/home",
+]) {
+  const retiredRoute = await request(pathname, {
+    method: "POST",
+    headers: formHeaders("/admin/mantenimiento", cookie),
+    body: new URLSearchParams({ confirmation: "RETIRADO" }).toString(),
+  });
+  if (retiredRoute.status !== 404) {
+    throw new Error(
+      `${pathname} respondió ${retiredRoute.status}; la ruta retirada debe devolver 404.`
+    );
+  }
+}
+
 console.log(
-  "Editorial maintenance lifecycle: OK (limpieza general con reauth/conflicto/filesystem, revisión manual preservada, Inicio acotado y baseline global verificados por rutas HTTP reales)."
+  "Editorial maintenance lifecycle: OK (limpieza general con reauth/conflicto/filesystem y modelo current-only sin UI, rutas, tablas ni compactadores de historial)."
 );

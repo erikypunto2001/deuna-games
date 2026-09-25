@@ -1,19 +1,23 @@
-import {
+﻿import {
   readFile,
 } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
+
 const root = process.cwd();
 const failures = [];
+
 
 function assert(condition, message) {
   if (!condition) failures.push(message);
 }
 
+
 async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
+
 
 const [
   sourceIdentity,
@@ -79,11 +83,13 @@ const [
   source("src/lib/social-image.tsx"),
 ]);
 
+
 assert(
   sourceIdentity.includes('logoColorMode: "brand"') &&
     sourceIdentity.includes('logoCustomColor: "#ff0847"'),
   "La identidad fuente debe conservar un fallback explícito: logo original siguiendo el color de marca."
 );
+
 
 assert(
   validation.includes("siteBrandLogoAssetPattern") &&
@@ -93,6 +99,7 @@ assert(
     validation.includes('config.logoColorMode === "custom"'),
   "site_config debe validar asset, modo de color y color personalizado dentro del contrato editorial versionado."
 );
+
 
 assert(
   formSchema.includes("logoAsset: z.string().trim().max(400)") &&
@@ -105,6 +112,7 @@ assert(
   "El formulario debe transportar el contrato del logo, revalidar el asset y normalizar server-side modos incompatibles."
 );
 
+
 assert(
   configPage.includes("<SiteBrandLogoEditor") &&
     configPage.includes("initialAsset={config.logoAsset}") &&
@@ -115,8 +123,10 @@ assert(
   "Configuración → Identidad debe editar el logo dentro del mismo guardado editorial."
 );
 
+
 const canonicalLogoModeFields =
   logoEditor.match(/name="logoColorMode"/g) ?? [];
+
 
 assert(
   canonicalLogoModeFields.length === 3 &&
@@ -128,6 +138,7 @@ assert(
     !logoEditor.includes('name="logo-color-mode-ui"'),
   "El modo de color debe usar un único grupo canónico y bloquear recolor para raster."
 );
+
 
 assert(
   logoEditor.includes("const uploadLock = useRef(false)") &&
@@ -143,6 +154,7 @@ assert(
   "Logo debe serializar uploads y bloquear el submit padre desde un listener estable, sin depender del timing de estado React ni manipular botones por querySelector."
 );
 
+
 assert(
   logoEditor.includes("hidden") &&
     logoEditor.includes('aria-label="Archivo de imagen del logo"') &&
@@ -155,6 +167,7 @@ assert(
   "El selector multiformato debe seguir fuera del layout visible, ser accesible y explicar el saneamiento de privacidad."
 );
 
+
 assert(
   logoUploadRoute.includes("authorizeAdminMediaRequest") &&
     logoUploadRoute.includes("hasExactAdminMediaFormFields") &&
@@ -165,6 +178,7 @@ assert(
     !logoUploadRoute.includes("logo.name"),
   "La carga del logo debe exigir sesión Admin, formulario exacto y revisión optimista sin persistir ni devolver el nombre original."
 );
+
 
 assert(
   logoStorage.includes("sanitizePrivacySafeSiteBrandLogoSvg") &&
@@ -179,6 +193,7 @@ assert(
   "El logo debe guardarse saneado, content-addressed e inmutable tanto para SVG como para raster."
 );
 
+
 assert(
   privacySafeSvg.includes("sanitizeSiteBrandLogoEmbeddedRasters") &&
     privacySafeSvg.includes("sanitizeSiteBrandLogoRaster") &&
@@ -188,6 +203,7 @@ assert(
     privacySafeSvg.includes("normalizedRasters.equals(input)"),
   "Los raster embebidos dentro de SVG deben cruzar la misma frontera de privacidad, recanonizar el documento y permanecer estables al releerlo."
 );
+
 
 assert(
   safeRaster.includes('"png"') &&
@@ -205,6 +221,7 @@ assert(
   "El raster del logo debe aceptar sólo formatos explícitos y eliminar metadata/perfiles/comentarios."
 );
 
+
 assert(
   editorialMedia.includes("webm|png|jpg|gif") &&
     logoReader.includes("resolveEditorialMediaDiskPath") &&
@@ -215,6 +232,7 @@ assert(
     !logoReader.includes("rasterColorizedSvgDataUri"),
   "La lectura debe revalidar formato, seguridad y hash, y los raster no deben recolorearse server-side."
 );
+
 
 assert(
   publicMediaRoute.includes("const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG") &&
@@ -234,15 +252,22 @@ assert(
     publicMediaRoute.includes("sandbox") &&
     mediaServing.includes('"site_config"') &&
     mediaServing.includes("site.logoAsset") &&
-    mediaServing.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL") &&
-    mediaServing.includes("wasEverPublished"),
-  "El namespace del logo debe validar SVG/raster por contenido y usar la frontera multimedia compartida: draft privado, publicación histórica pública e inmutable."
+    mediaServing.includes("published_payload") &&
+    mediaServing.includes("public_visible") &&
+    mediaServing.includes("isCurrentlyPublished") &&
+    mediaServing.includes("safePublicationReferences(owner, item.published_payload)") &&
+    mediaServing.includes("refreshed.references.has(publicPath)") &&
+    !mediaServing.includes("editorial_publications") &&
+    !mediaServing.includes("editorial_revisions"),
+  "El namespace del logo debe validar SVG/raster por contenido y usar la frontera multimedia compartida: draft privado y sólo la publicación vigente pública e inmutable."
 );
+
 
 const globalSecurityHeadersIndex =
   nextConfig.indexOf('source: "/(.*)"');
 const editorialMediaHeadersIndex =
   nextConfig.indexOf('source: "/media/editorial/:path*"');
+
 
 assert(
   nextConfig.includes("editorialMediaContentSecurityPolicy") &&
@@ -253,6 +278,7 @@ assert(
     editorialMediaHeadersIndex > globalSecurityHeadersIndex,
   "La CSP aislada de multimedia editorial debe declararse después de la regla global."
 );
+
 
 assert(
   publicConfig.includes("logoColorMode: SiteLogoColorMode") &&
@@ -267,6 +293,7 @@ assert(
   "La web pública debe leer sólo el snapshot publicado, normalizar el modo efectivo y caer al símbolo fuente si el asset deja de ser válido."
 );
 
+
 assert(
   logoRenderer.includes("isSiteBrandLogoAsset") &&
     logoRenderer.includes("resolveSiteLogoColorMode") &&
@@ -279,6 +306,7 @@ assert(
   "SiteLogoMark debe ser la autoridad de render web y forzar original para raster aunque un consumidor pase otro modo."
 );
 
+
 assert(
   siteBrand.includes("<SiteLogoMark") &&
     headerClient.includes("<SiteBrand") &&
@@ -287,6 +315,7 @@ assert(
     adminShell.includes("<SiteLogoMark"),
   "Header, Footer, Mi DeUna autenticado y Admin protegido deben converger en SiteBrand/SiteLogoMark."
 );
+
 
 assert(
   identityPreview.includes("effectiveLogoColorMode") &&
@@ -299,11 +328,13 @@ assert(
   "Preview de Identidad y Apariencia deben reflejar el modo efectivo real del asset raster o SVG."
 );
 
+
 assert(
   appearanceWorkspace.includes("brandColor={brandColor}") &&
     !appearanceWorkspace.includes("brandColor={initialBrandColor}"),
   "Fondos debe previsualizar el color de marca actualmente editado, no el valor inicial guardado."
 );
+
 
 const socialImageBindsDataUri =
   socialImage.includes("logoDataUri") &&
@@ -311,6 +342,7 @@ const socialImageBindsDataUri =
     socialImage.includes("src={logoDataUri}") ||
     socialImage.includes("src: logoDataUri")
   );
+
 
 assert(
   siteLogoImage.includes("buildSiteBrandLogoDataUri") &&
@@ -323,12 +355,13 @@ assert(
   "Open Graph/Twitter deben reutilizar el resolver server-side del asset publicado y respetar raster original."
 );
 
+
 if (failures.length > 0) {
   console.error("\nLogo global de marca: REGRESIÓN\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
   console.log(
-    "Logo global de marca: OK (SVG/PNG/JPEG/WebP/GIF saneados, privacidad, publicación histórica, renderer único, app-icons y salida social coherentes)."
+    "Logo global de marca: OK (SVG/PNG/JPEG/WebP/GIF saneados, privacidad, publicación vigente current-only, renderer único, app-icons y salida social coherentes)."
   );
 }

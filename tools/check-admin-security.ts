@@ -1,4 +1,5 @@
 import {
+  access,
   readFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -356,29 +357,6 @@ const destructiveEditorialRoutes = await Promise.all([
     "admin",
     "content",
     "maintenance",
-    "history-reset",
-    "route.ts"
-  ),
-  path.join(
-    root,
-    "src",
-    "app",
-    "api",
-    "admin",
-    "content",
-    "maintenance",
-    "history-reset",
-    "home",
-    "route.ts"
-  ),
-  path.join(
-    root,
-    "src",
-    "app",
-    "api",
-    "admin",
-    "content",
-    "maintenance",
     "media-cleanup",
     "[slug]",
     "route.ts"
@@ -402,7 +380,7 @@ assert(
       source.includes("currentPassword") &&
       source.includes("reauthenticateAdmin(")
   ),
-  "Borrado y compactaciones editoriales deben reautenticar al Owner."
+  "El borrado definitivo y las limpiezas operativas deben reautenticar al Owner."
 );
 
 const editorialCleanupMigration = await readFile(
@@ -411,16 +389,6 @@ const editorialCleanupMigration = await readFile(
     "database",
     "migrations",
     "015_editorial_cleanup.sql"
-  ),
-  "utf8"
-);
-
-const gameHistoryCleanupMigration = await readFile(
-  path.join(
-    root,
-    "database",
-    "migrations",
-    "016_game_history_cleanup.sql"
   ),
   "utf8"
 );
@@ -445,15 +413,16 @@ const siteMaintenanceMigration = await readFile(
   "utf8"
 );
 
-const retireGameHistoryMigration = await readFile(
+const retireEditorialHistoryMigration = await readFile(
   path.join(
     root,
     "database",
     "migrations",
-    "019_retire_game_history.sql"
+    "020_retire_editorial_history.sql"
   ),
   "utf8"
 );
+
 
 assert(
   editorialCleanupMigration.includes(
@@ -461,49 +430,29 @@ assert(
   ) &&
     editorialCleanupMigration.includes(
       "'outcome', 'still_public'"
-    ) &&
-    editorialCleanupMigration.includes(
-      "action IN ('bootstrap', 'published', 'rollback', 'baseline')"
     ),
-  "El hard-delete debe exigir contenido oculto y la compactación debe registrar un baseline explícito."
+  "El hard-delete debe seguir exigiendo que el juego esté oculto antes de eliminarlo."
 );
 
 assert(
-  gameHistoryCleanupMigration.includes(
-    "compact_editorial_publication_history"
+  retireEditorialHistoryMigration.includes(
+    "DROP TABLE IF EXISTS deuna_admin.editorial_revisions"
   ) &&
-    gameHistoryCleanupMigration.includes(
-      "DELETE FROM deuna_admin.editorial_publications"
+    retireEditorialHistoryMigration.includes(
+      "DROP TABLE IF EXISTS deuna_admin.editorial_publications"
     ) &&
-    !gameHistoryCleanupMigration.includes(
-      "DELETE FROM deuna_admin.editorial_revisions"
+    retireEditorialHistoryMigration.includes(
+      "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_history"
     ) &&
-    gameHistoryCleanupMigration.includes(
-      "editorial_publication_history_compacted"
-    ),
-  "Limpiar snapshots por juego debe conservar revisiones, crear un único baseline publicado y dejar auditoría."
-);
-
-assert(
-  retireGameHistoryMigration.includes(
-    "DELETE FROM deuna_admin.editorial_revisions"
-  ) &&
-    retireGameHistoryMigration.includes(
-      "DELETE FROM deuna_admin.editorial_publications"
+    retireEditorialHistoryMigration.includes(
+      "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_item_history"
     ) &&
-    retireGameHistoryMigration.includes(
-      "editorial_revisions_reject_game_history"
-    ) &&
-    retireGameHistoryMigration.includes(
-      "editorial_publications_reject_game_history"
-    ) &&
-    retireGameHistoryMigration.includes(
+    retireEditorialHistoryMigration.includes(
       "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_publication_history"
     ) &&
-    retireGameHistoryMigration.includes(
-      "item_type <> 'game'"
-    ),
-  "La migración 019 debe purgar y bloquear el historial restaurable de juegos sin retirar el historial de las demás superficies."
+    !retireEditorialHistoryMigration.includes("CASCADE") &&
+    retireEditorialHistoryMigration.includes("home_reference"),
+  "La migración 020 debe retirar globalmente el almacenamiento/rollback histórico sin usar CASCADE y conservar sólo referencias vigentes de Home."
 );
 
 assert(
@@ -617,12 +566,6 @@ assert(
       "expectedFingerprint"
     ) &&
     siteMaintenanceMedia.includes(
-      "editorial_revisions"
-    ) &&
-    siteMaintenanceMedia.includes(
-      "editorial_publications"
-    ) &&
-    siteMaintenanceMedia.includes(
       "source_payload"
     ) &&
     siteMaintenanceMedia.includes(
@@ -640,7 +583,12 @@ assert(
     siteMaintenanceMedia.includes(
       "unexpectedEntries"
     ),
-  "Mantenimiento general debe proteger todos los payloads editoriales, usar gracia temporal y separar basura segura de revisión manual."
+  "Mantenimiento general debe proteger todos los payloads editoriales vigentes, usar gracia temporal y separar basura segura de revisión manual."
+);
+assert(
+  !siteMaintenanceMedia.includes("editorial_revisions") &&
+    !siteMaintenanceMedia.includes("editorial_publications"),
+  "La limpieza multimedia general no debe retener assets por snapshots históricos eliminados."
 );
 
 const migrator = await readFile(
@@ -851,10 +799,33 @@ const contentService = await readFile(
 
 assert(
   contentService.includes("FOR UPDATE") &&
-    contentService.includes("draft_restored") &&
-    contentService.includes("admin_audit_log"),
-  "La edición debe controlar concurrencia, permitir recuperación y auditar cambios."
+    contentService.includes("admin_audit_log") &&
+    !contentService.includes("draft_restored") &&
+    !contentService.includes("editorial_revisions") &&
+    !contentService.includes("restoreEditorialRevision"),
+  "La edición debe controlar concurrencia y auditar cambios sin almacenar ni restaurar snapshots anteriores."
 );
+
+const retiredRestoreRoutes = [
+  "src/app/api/admin/content/revisions/[revisionId]/restore/route.ts",
+  "src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/about-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/catalog-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/public-pages-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/update-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/maintenance/history-reset/route.ts",
+  "src/app/api/admin/content/maintenance/history-reset/home/route.ts",
+];
+for (const relativePath of retiredRestoreRoutes) {
+  let present = true;
+  try {
+    await access(path.join(root, relativePath));
+  } catch {
+    present = false;
+  }
+  assert(!present, `${relativePath} debe permanecer retirado.`);
+}
 
 const systemd = await readFile(
   path.join(

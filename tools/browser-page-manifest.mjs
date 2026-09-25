@@ -82,20 +82,17 @@ const gameEditorSections = [
   ["multimedia", "game-media"],
   ["descargas", "game-downloads"],
   ["valoracion", "game-valuation"],
-  ["historial", "game-history"],
 ];
 
 const historicalUpdateSections = [
   ["editar", "historical-update-edit"],
   ["publicacion", "historical-update-publication"],
-  ["historial", "historical-update-history"],
 ];
 
 const catalogSections = [
   ["clasificaciones", "catalog-classifications"],
   ["etiquetas", "catalog-tags"],
   ["publicacion", "catalog-publication"],
-  ["historial", "catalog-history"],
 ];
 
 const configurationStates = [
@@ -103,7 +100,6 @@ const configurationStates = [
   ["apariencia", "palette", "configuration-palette"],
   ["apariencia", "backgrounds", "configuration-backgrounds"],
   ["publicacion", null, "configuration-publication"],
-  ["historial", null, "configuration-history"],
 ];
 
 const presentationSections = [
@@ -111,7 +107,6 @@ const presentationSections = [
   ["actualizaciones", "pages-updates"],
   ["compatibilidad", "pages-finder"],
   ["publicacion", "pages-publication"],
-  ["historial", "pages-history"],
 ];
 
 const aboutSections = [
@@ -120,14 +115,12 @@ const aboutSections = [
   ["proposito", "about-purpose"],
   ["cierre", "about-closing"],
   ["publicacion", "about-publication"],
-  ["historial", "about-history"],
 ];
 
 const homeSections = [
   ["hero", "home-hero"],
   ["contenido", "home-content"],
   ["publicacion", "home-publication"],
-  ["historial", "home-history"],
 ];
 
 export const adminVisualPages = [
@@ -174,9 +167,7 @@ export const adminVisualPages = [
         ? "Identidad de marca"
         : section === "apariencia"
           ? "Apariencia del sitio"
-          : section === "publicacion"
-            ? "Publicación de marca y apariencia"
-            : "Historial de marca y apariencia",
+          : "Publicación de marca y apariencia",
   })),
   { id: "admin-pages-index", pathname: "/admin/paginas", expectedText: "Páginas públicas" },
   ...presentationSections.map(([section, id]) => ({

@@ -276,8 +276,6 @@ for (const requiredGuard of [
   "item.source_payload",
   "item.draft_payload",
   "item.published_payload",
-  "editorial_revisions",
-  "editorial_publications",
   "siteBrandLogoAssetPattern",
   "taxonomyIconAssetPattern",
   "siteBackgroundAssetPattern",
@@ -291,6 +289,12 @@ for (const requiredGuard of [
     `La purga multimedia debe conservar la guarda ${requiredGuard}.`
   );
 }
+assert(
+  !purgeMediaJunk.includes("editorial_revisions") &&
+    !purgeMediaJunk.includes("editorial_publications"),
+  "La purga multimedia debe proteger sólo source/draft/publicación vigentes y no depender de snapshots retirados."
+);
+
 assert(
   purgeMediaJunk.includes("unlink(candidate.filePath)") &&
     !purgeMediaJunk.includes("DELETE FROM"),
@@ -396,8 +400,6 @@ assert(
 
 for (const forbiddenDeleteTarget of [
   "editorial_items",
-  "editorial_revisions",
-  "editorial_publications",
   "admin_audit_log",
   "reward_events",
 ]) {

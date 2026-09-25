@@ -1,17 +1,21 @@
-import { access, readFile } from "node:fs/promises";
+﻿import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
+
 const root = process.cwd();
 const failures = [];
+
 
 function assert(condition, message) {
   if (!condition) failures.push(message);
 }
 
+
 async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
+
 
 async function exists(relativePath) {
   try {
@@ -21,6 +25,7 @@ async function exists(relativePath) {
     return false;
   }
 }
+
 
 const files = Object.fromEntries(
   await Promise.all(
@@ -76,6 +81,7 @@ const files = Object.fromEntries(
   )
 );
 
+
 const retiredGameMutationRoutes = [
   "src/app/api/admin/content/games/[slug]/route.ts",
   "src/app/api/admin/content/games/[slug]/advanced/route.ts",
@@ -86,7 +92,9 @@ const retiredGameMutationRoutePresence = await Promise.all(
   retiredGameMutationRoutes.map(exists)
 );
 
+
 const validation = `${files.contentValidation}\n${files.contentValidationCore}`;
+
 
 assert(
   retiredGameMutationRoutePresence.every((present) => !present),
@@ -98,6 +106,7 @@ assert(
     files.informationRoute.includes("item.payload.version"),
   "Información debe conservar la versión publicada y obligar a usar Nueva versión para cambiarla."
 );
+
 
 assert(
   files.creationService.includes("public_visible") &&
@@ -138,6 +147,7 @@ assert(
   "La revisión previa debe ser autenticada, de sólo lectura y limitada al borrador/snapshot actual del juego."
 );
 
+
 for (const section of [
   "Información e identidad",
   "Clasificación",
@@ -152,6 +162,7 @@ for (const section of [
     `La comparación previa debe contemplar ${section}.`
   );
 }
+
 
 for (const section of [
   'section: "ficha"',
@@ -175,6 +186,7 @@ assert(
   "Preparación debe cubrir rendimiento y plataformas explícitas."
 );
 
+
 assert(
   files.mediaIntegrity.includes("lstat") &&
     files.mediaIntegrity.includes("!stats.isSymbolicLink()") &&
@@ -182,6 +194,7 @@ assert(
     files.mediaIntegrity.includes("inspectLocalImageReferences"),
   "La integridad multimedia debe seguir bloqueando referencias inseguras."
 );
+
 
 for (const publicPath of [
   'revalidatePath("/")',
@@ -196,6 +209,7 @@ for (const publicPath of [
     `El refresco público debe incluir ${publicPath}.`
   );
 }
+
 
 assert(
   validation.includes("performanceCalibrationSchema") &&
@@ -245,6 +259,7 @@ for (const component of [files.performanceEstimate, files.compatibilityCard]) {
   );
 }
 
+
 assert(
   files.createRoute.includes("?seccion=datos&estado=creado"),
   "Después del alta se debe continuar por Clasificación."
@@ -268,6 +283,7 @@ assert(
     files.editorFlow.includes("requested === nextSection[current]"),
   "El destino de continuar debe aceptarse sólo desde la transición prevista."
 );
+
 
 for (const [name, route, current] of [
   ["Información", files.informationRoute, '"ficha"'],
@@ -294,6 +310,7 @@ assert(
   "Guardar y continuar debe expresar el destino sólo en la URL."
 );
 
+
 for (const [name, route] of [
   ["publicar", files.publishRoute],
   ["ocultar", files.hideRoute],
@@ -309,10 +326,14 @@ for (const [name, route] of [
 assert(
   files.publishRoute.includes("getGameDraftPublicationCandidate") &&
     files.publishRoute.includes("inspectGameMediaIntegrity") &&
-    files.publicationService.includes('if (type === "game")') &&
-    files.publicationService.includes('return { outcome: "not_found" };') &&
+    files.publishRoute.includes("revalidatePublicGameSurfaces") &&
+    !files.publicationService.includes("restoreEditorialPublication") &&
+    !files.publicationService.includes("RestorePublicationResult") &&
+    !files.publicationService.includes("editorial_publications") &&
+    !files.publicationService.includes("editorial_revisions") &&
+    !files.publicationService.includes("publication_restored") &&
     !files.publicationReview.includes("getHistoricalGamePublicationCandidate"),
-  "Publicar debe revalidar el snapshot actual y la restauración histórica de juegos debe permanecer retirada."
+  "Publicar debe revalidar el snapshot actual y el servicio editorial debe permanecer current-only, sin restore ni historial restaurable."
 );
 assert(
   files.gamesPage.includes('"unpublished"') &&
@@ -320,6 +341,7 @@ assert(
     files.gamesPage.includes("publication?.panelCreated"),
   "La lista debe distinguir un alta nunca publicada de un juego oculto."
 );
+
 
 for (const componentName of [
   "GameEditorHealthOverview",
@@ -354,6 +376,7 @@ assert(
     files.gameEditor.includes("Publicado · #"),
   "El editor debe mostrar el estado real de publicación."
 );
+
 
 assert(
   files.gameEditor.includes("evaluateGamePublicationReadiness") &&
@@ -397,6 +420,7 @@ assert(
     !files.contextBar.includes('directGameSection("historial"'),
   "El editor de juegos no debe reintroducir una superficie de historial restaurable."
 );
+
 
 assert(
   files.catalog.includes("/publicacion") &&
@@ -443,6 +467,7 @@ assert(
     files.newGameForm.includes("Crear no publica"),
   "El alta debe seguir siendo guiada y privada."
 );
+
 
 if (failures.length > 0) {
   console.error("\nFlujo editorial de juegos: REGRESIÓN\n");

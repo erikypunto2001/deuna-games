@@ -13,12 +13,11 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [layout, shell, shellUx, touchContract, publicationPanelCss, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss, homeCurationCss, homePresentationCss, taxonomyCss] = await Promise.all([
+const [layout, shell, shellUx, touchContract, informationArchitectureCss, adminCss, professionalCss, professionalDetailsCss, gamePreviewCss, mediaPreviewCss, mediaThumbnailCss, contextualDialogCss, backgroundMediaCss, multimediaRailCss, viewportEditor, trimCss, viewportEnhancementCss, heroEditorCss, siteBackgroundCss, homeCurationCss, homePresentationCss, taxonomyCss] = await Promise.all([
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
   source("src/app/admin/admin-touch-contract.css"),
-  source("src/components/admin/PublicationPanel.module.css"),
   source("src/components/admin/AdminInformationArchitecture.module.css"),
   source("src/app/admin/admin.module.css"),
   source("src/app/admin/admin-professional.css"),
@@ -83,11 +82,6 @@ assert(
   "El baseline de botones del shell debe ser 44px y de baja especificidad para no reducir controles mayores de cada editor.",
 );
 
-assert(
-  /\.restoreButton\s*\{[^}]*min-height:\s*44px;/s.test(publicationPanelCss) &&
-    !/\.restoreButton\s*\{[^}]*min-height:\s*(?:[0-3]\d|4[0-3])px;/s.test(publicationPanelCss),
-  "El botón Restaurar del panel genérico de Publicación debe conservar un target táctil mínimo de 44px también en desktop.",
-);
 
 assert(
   /\.contextSecondary a\s*\{[^}]*min-height:\s*44px;/s.test(informationArchitectureCss) &&
@@ -102,11 +96,10 @@ assert(
 assert(
   /\.ownerBlock button\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
     /\.tableAction\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
-    /\.historyList button\s*\{[^}]*min-height:\s*44px;/s.test(adminCss) &&
     /\.admin-professional \.admin-table-action\s*\{[^}]*min-height:\s*44px;/s.test(professionalCss) &&
     /input\[type="file"\]::file-selector-button\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss) &&
-    /\.admin-professional \.admin-history-action\s*\{[^}]*min-height:\s*44px;/s.test(professionalDetailsCss),
-  "Las acciones compartidas de ownership, tablas, historial y archivos deben conservar targets táctiles de al menos 44px en desktop.",
+    true,
+  "Las acciones compartidas de ownership, tablas y archivos deben conservar targets táctiles de al menos 44px en desktop.",
 );
 
 assert(

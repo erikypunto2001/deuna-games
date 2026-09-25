@@ -65,7 +65,6 @@ for (const required of [
   "published_payload",
   "published_checksum",
   "public_visible",
-  "editorial_publications",
   "parseEditorialPayload",
   "current_user",
 ]) {
@@ -74,6 +73,12 @@ for (const required of [
     `El preflight local debe conservar la comprobación ${required}.`
   );
 }
+
+assert(
+  !localPreflight.includes("editorial_revisions") &&
+    !localPreflight.includes("editorial_publications"),
+  "El preflight local no debe depender de tablas de historial restaurable retiradas."
+);
 
 assert(
   localPreflight.includes("counts.get(type) ?? 0") &&
@@ -118,6 +123,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Preflight administrativo: OK (actualización local segura, colecciones fuente vacías soportadas, local y producción separados; workspace editorial completo y chequeo local de sólo lectura protegidos)."
+    "Preflight administrativo: OK (actualización local segura, colecciones fuente vacías soportadas, local y producción separados; workspace editorial current-only completo y chequeo local de sólo lectura protegidos)."
   );
 }

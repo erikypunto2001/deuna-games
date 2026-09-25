@@ -99,15 +99,16 @@ expect(
 
 expect(
   files.contentService.includes("admin_audit_log") &&
-    files.contentService.includes('item.item_type !== "game"') &&
-    files.contentService.includes("writeRevision"),
+    files.contentService.includes("writeRevision") &&
+    !files.contentService.includes("editorial_revisions") &&
+    !files.contentService.includes("restoreEditorialRevision"),
   "Retirar el historial restaurable no debe retirar la auditoría administrativa de los cambios de juego."
 );
 expect(
   !files.gameEditor.includes("GameHistoryPanel") &&
     !files.editorSections.includes('id: "historial"') &&
     !files.contextBar.includes('directGameSection("historial"'),
-  "La auditoría debe permanecer en admin_audit_log sin exponer una UI de restore/historial para juegos."
+  "La auditoría debe permanecer en admin_audit_log sin exponer una UI de restore/historial en ninguna superficie."
 );
 
 if (failures.length > 0) {
@@ -117,5 +118,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Auditoría transversal del editor: OK (Compatibilidad coherente, Publicación visible, sugerencias servidor-autoritativas y auditoría persistente sin historial restaurable de juegos)."
+  "Auditoría transversal del editor: OK (Compatibilidad coherente, Publicación visible, sugerencias servidor-autoritativas y auditoría persistente sin historial restaurable)."
 );

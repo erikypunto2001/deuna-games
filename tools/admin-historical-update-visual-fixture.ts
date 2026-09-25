@@ -184,27 +184,7 @@ export async function createVisualUpdateDraft(
       ]
     );
 
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions
-         (item_id, revision, payload, action, actor_user_id)
-       VALUES ($1, 1, $2::jsonb, 'draft_saved', $3)`,
-      [itemId, serialized, ownerId]
-    );
 
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_publications
-         (
-           item_id,
-           publication_number,
-           payload,
-           checksum,
-           source_revision,
-           action,
-           actor_user_id
-         )
-       VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap', $4)`,
-      [itemId, serialized, digest, ownerId]
-    );
 
     await client.query(
       `INSERT INTO deuna_admin.admin_audit_log

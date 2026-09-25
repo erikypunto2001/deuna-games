@@ -1,20 +1,24 @@
-import {
+﻿import {
   readFile,
   stat,
 } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
+
 const root = process.cwd();
 const failures = [];
+
 
 function assert(condition, message) {
   if (!condition) failures.push(message);
 }
 
+
 async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
+
 
 const [
   accountDashboard,
@@ -50,17 +54,20 @@ const [
   source("src/lib/media/editorial-media-serving.ts"),
 ]);
 
+
 assert(
   accountDashboard.includes("<SiteBrand") &&
     accountDashboard.includes("siteName={siteName}"),
   "Mi DeUna autenticado debe conservar SiteBrand y la identidad publicada."
 );
 
+
 assert(
   adminLogin.includes('from "@/components/brand/SiteLogoMark"') &&
     adminLogin.includes("<SiteLogoMark size={30}"),
   "El login Admin debe mostrar el mismo logo publicado que el panel protegido."
 );
+
 
 assert(
   adminLoginStyles.includes(".brandIcon.brandIcon") &&
@@ -69,17 +76,20 @@ assert(
   "El logo del login Admin debe apoyarse sobre una superficie neutra para no perder contraste con el color de marca."
 );
 
+
 assert(
   adminShell.includes("<SiteLogoMark") &&
     adminShell.includes("siteName"),
   "El shell Admin protegido debe conservar el renderer canónico del logo."
 );
 
+
 assert(
   notFound.includes("<Header") &&
     notFound.includes("<Footer"),
   "La página 404 debe heredar la identidad publicada a través de Header y Footer."
 );
+
 
 assert(
   logoImageResolver.includes("buildSiteBrandLogoDataUri") &&
@@ -89,12 +99,14 @@ assert(
   "La resolución server-side del logo debe centralizar fallback, recolor SVG y raster original."
 );
 
+
 assert(
   socialImage.includes("resolveSiteLogoImage") &&
     socialImage.includes("logoDataUri") &&
     socialImage.includes("src: logoDataUri"),
   "Open Graph/Twitter deben consumir el resolver server-side compartido."
 );
+
 
 assert(
   appIconContract.includes("siteAppIconSizes") &&
@@ -108,6 +120,7 @@ assert(
   "El contrato puro de iconos debe fijar tamaños y versionar todas las señales visuales relevantes."
 );
 
+
 assert(
   appIconRenderer.includes("getPublicSiteConfig") &&
     appIconRenderer.includes("resolveSiteLogoImage") &&
@@ -116,6 +129,7 @@ assert(
     !appIconRenderer.includes("siteAppIconVersion"),
   "El renderer PNG debe leer sólo el snapshot publicado y mantenerse separado del contrato liviano de metadata."
 );
+
 
 assert(
   appIconRoute.includes('dynamic = "force-dynamic"') &&
@@ -126,6 +140,7 @@ assert(
   "El endpoint de iconos debe validar tamaños, usar runtime server y no prometer inmutabilidad sobre una identidad dinámica."
 );
 
+
 assert(
   faviconRoute.includes('dynamic = "force-dynamic"') &&
     faviconRoute.includes('runtime = "nodejs"') &&
@@ -135,6 +150,7 @@ assert(
     !faviconRoute.includes("immutable"),
   "El favicon de compatibilidad debe delegar dinámicamente al icono 32px de la identidad publicada, sin cache inmutable."
 );
+
 
 assert(
   rootLayout.includes('from "@/lib/site/app-icon"') &&
@@ -148,6 +164,7 @@ assert(
   "Metadata debe usar el contrato liviano y exponer favicon/Apple icon versionados por la identidad publicada."
 );
 
+
 assert(
   manifest.includes('from "@/lib/site/app-icon"') &&
     manifest.includes("siteAppIconVersion(config)") &&
@@ -160,6 +177,7 @@ assert(
   "El manifest PWA debe usar el tema público seguro y publicar iconos 192/512 derivados de la identidad activa."
 );
 
+
 assert(
   mediaRoute.includes("resolveEditorialMediaServingAccess") &&
     mediaRoute.includes('servingAccess === "admin"') &&
@@ -167,10 +185,16 @@ assert(
     mediaRoute.includes('"public, max-age=31536000, immutable"') &&
     mediaServing.includes('"site_config"') &&
     mediaServing.includes("site.logoAsset") &&
-    mediaServing.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL") &&
-    mediaServing.includes("wasEverPublished"),
-  "El logo debe usar la autoridad compartida de multimedia: borradores sólo para Admin y cualquier referencia de una publicación inmutable permanece pública para restauraciones históricas."
+    mediaServing.includes("published_payload") &&
+    mediaServing.includes("public_visible") &&
+    mediaServing.includes("isCurrentlyPublished") &&
+    mediaServing.includes("safePublicationReferences(owner, item.published_payload)") &&
+    mediaServing.includes("refreshed.references.has(publicPath)") &&
+    !mediaServing.includes("editorial_publications") &&
+    !mediaServing.includes("editorial_revisions"),
+  "El logo debe usar la autoridad compartida de multimedia: borradores sólo para Admin y únicamente referencias de la publicación vigente permanecen públicas."
 );
+
 
 let staticFaviconExists = false;
 try {
@@ -178,10 +202,12 @@ try {
   staticFaviconExists = faviconEntry.isFile();
 } catch {}
 
+
 assert(
   !staticFaviconExists,
   "No debe coexistir un favicon.ico estático que pueda contradecir el logo editorial publicado."
 );
+
 
 if (failures.length > 0) {
   console.error("\nSuperficies del logo global: REGRESIÓN\n");
@@ -189,6 +215,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Superficies del logo global: OK (web, Admin, Cuenta, metadata, PWA, favicon dinámico, social y serving histórico convergen en la identidad editorial)."
+    "Superficies del logo global: OK (web, Admin, Cuenta, metadata, PWA, favicon dinámico, social y serving current-only convergen en la identidad editorial)."
   );
 }

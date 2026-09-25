@@ -23,7 +23,6 @@ const [
   page,
   publicationService,
   publishRoute,
-  restoreRoute,
   navigation,
   contextBar,
   gamePublicationReview,
@@ -55,7 +54,6 @@ const [
   source("src/app/admin/(protected)/catalogos/page.tsx"),
   source("src/lib/admin/publication-service.ts"),
   source("src/app/api/admin/content/catalogs/publish/route.ts"),
-  source("src/app/api/admin/content/catalog-publications/[publicationId]/restore/route.ts"),
   source("src/components/admin/AdminNavigation.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/lib/admin/game-publication-review.ts"),
@@ -117,7 +115,7 @@ assert(
   service.includes("FOR UPDATE") &&
     service.includes("expectedRevision") &&
     service.includes("preservesUsedGameTerms") &&
-    service.includes("editorial_revisions") &&
+    !service.includes("editorial_revisions") &&
     service.includes("admin_audit_log") &&
     service.includes("resolveGameTaxonomySelection") &&
     service.includes("taxonomy.classifications") &&
@@ -125,7 +123,7 @@ assert(
     service.includes("currentGameKey") &&
     service.includes("term.active") &&
     !/\bDELETE\s+FROM\b/i.test(service),
-  "Catálogos debe usar una sola clasificación, concurrencia, historial, auditoría y protección de términos en uso."
+  "Catálogos debe usar una sola clasificación, concurrencia, auditoría y protección de términos en uso sin historial restaurable."
 );
 
 assert(
@@ -144,34 +142,25 @@ assert(
     page.includes("PublicationPanel") &&
     page.includes("getGameTaxonomyPublicationState") &&
     page.includes('"publicacion"') &&
-    page.includes("EditorialHistory"),
-  "Catálogos debe permanecer protegido y separar edición, publicación e historial de la única clasificación maestra."
+    !page.includes("EditorialHistory") &&
+    !page.includes('"historial"'),
+  "Catálogos debe permanecer protegido y separar edición de publicación sin exponer historial restaurable."
 );
 
 assert(
   publicationService.includes('| "game_taxonomy"') &&
     publicationService.includes('return getPublicationState("game_taxonomy", "games")') &&
     publicationService.includes('publishEditorialDraft(\n    "game_taxonomy",\n    "games"') &&
-    publicationService.includes('restoreEditorialPublication(\n    "game_taxonomy"'),
-  "Catálogos debe reutilizar el servicio genérico de snapshots para publicar y restaurar."
+    !publicationService.includes('restoreEditorialPublication'),
+  "Catálogos debe reutilizar el servicio genérico current-only para publicar sin restauración."
 );
 
-for (const [name, content, action] of [
-  ["publicación", publishRoute, "publishGameTaxonomyDraft"],
-  ["restauración", restoreRoute, "restoreGameTaxonomyPublication"],
-]) {
-  assert(
-    content.includes("authorizeAdminFormRequest") &&
-      content.includes(action) &&
-      content.includes('revalidatePath("/")') &&
-      content.includes('revalidatePath("/juegos")'),
-    `La ${name} de Catálogos debe exigir sesión/origen y refrescar Inicio y Juegos.`
-  );
-}
-
 assert(
-  restoreRoute.includes("expectedPublicationNumber"),
-  "Restaurar una publicación de Catálogos debe usar control de concurrencia por número de publicación."
+  publishRoute.includes("authorizeAdminFormRequest") &&
+    publishRoute.includes("publishGameTaxonomyDraft") &&
+    publishRoute.includes('revalidatePath("/")') &&
+    publishRoute.includes('revalidatePath("/juegos")'),
+  "La publicación de Catálogos debe exigir sesión/origen y refrescar Inicio y Juegos."
 );
 
 assert(
@@ -181,9 +170,9 @@ assert(
     contextBar.includes('id: "clasificaciones"') &&
     contextBar.includes('id: "etiquetas"') &&
     contextBar.includes('id: "publicacion"') &&
-    contextBar.includes('id: "historial"') &&
+    !contextBar.includes('id: "historial"') &&
     contextBar.includes('label="Secciones de Clasificaciones y etiquetas"'),
-  "Clasificaciones y etiquetas debe estar en la navegación principal y conservar sus secciones de edición, publicación e historial."
+  "Clasificaciones y etiquetas debe estar en la navegación principal con edición y publicación, sin Historial."
 );
 
 assert(
@@ -196,7 +185,7 @@ assert(
     !gamePublicationReview.includes("getHistoricalGamePublicationCandidate") &&
     gamePublicationWorkspace.includes("catalogos-sin-publicar") &&
     gamePublicationWorkspace.includes("/admin/catalogos?seccion=publicacion"),
-  "Publicar un juego debe bloquear referencias a clasificaciones/etiquetas ausentes del snapshot publicado de Catálogos, sin restore histórico de juegos."
+  "Publicar un juego debe bloquear referencias a clasificaciones/etiquetas ausentes de la publicación vigente de Catálogos."
 );
 
 assert(
