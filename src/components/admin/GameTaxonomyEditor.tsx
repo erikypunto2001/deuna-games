@@ -834,7 +834,7 @@ export default function GameTaxonomyEditor({
         <p>
           {hasVisuals
             ? "El orden de esta ventana es el mismo orden que se reutiliza públicamente. El contador considera cada juego una sola vez por clasificación. Los iconos propios conservan el mismo selector de color."
-            : "Las etiquetas usadas no se eliminan para proteger las fichas existentes; puedes desactivarlas y mantener el historial editorial."}
+            : "Las etiquetas usadas no se eliminan para proteger las fichas existentes; puedes desactivarlas sin eliminar referencias vigentes."}
         </p>
         <button
           type="submit"

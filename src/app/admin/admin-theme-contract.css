@@ -183,7 +183,7 @@ aside nav a[aria-current="page"] svg {
 /*
  * Guardado persistente de todo el workspace administrativo.
  * expectedRevision identifica formularios que editan un borrador/configuración.
- * Publicar, ocultar, restaurar y los subflujos de carga quedan fuera. Nuevo juego
+ * Publicar, ocultar y los subflujos de carga quedan fuera. Nuevo juego
  * es la única excepción porque crea la revisión inicial y todavía no tiene una.
  * Los dos formularios hijos de Resto de Inicio también quedan inline: su wrapper
  * intercepta ambos submits y persiste curaduría + presentación en una sola revisión.
@@ -194,7 +194,6 @@ aside nav a[aria-current="page"] svg {
     [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
-    [action*="/restore"],
     [action*="/media-upload"],
     [action*="/preview-upload"],
     [action*="/preview-import"],
@@ -215,7 +214,6 @@ aside nav a[aria-current="page"] svg {
     [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
-    [action*="/restore"],
     [action*="/media-upload"],
     [action*="/preview-upload"],
     [action*="/preview-import"],
@@ -258,7 +256,6 @@ aside nav a[aria-current="page"] svg {
     [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
-    [action*="/restore"],
     [action*="/media-upload"],
     [action*="/preview-upload"],
     [action*="/preview-import"],
@@ -286,7 +283,6 @@ aside nav a[aria-current="page"] svg {
     [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
-    [action*="/restore"],
     [action*="/media-upload"],
     [action*="/preview-upload"],
     [action*="/preview-import"],
@@ -310,8 +306,7 @@ aside nav a[aria-current="page"] svg {
       [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
-      [action*="/restore"],
-      [action*="/media-upload"],
+        [action*="/media-upload"],
       [action*="/preview-upload"],
       [action*="/preview-import"],
       [action*="/background-upload"],
@@ -331,8 +326,7 @@ aside nav a[aria-current="page"] svg {
       [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
-      [action*="/restore"],
-      [action*="/media-upload"],
+        [action*="/media-upload"],
       [action*="/preview-upload"],
       [action*="/preview-import"],
       [action*="/background-upload"],
@@ -352,8 +346,7 @@ aside nav a[aria-current="page"] svg {
       [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
-      [action*="/restore"],
-      [action*="/media-upload"],
+        [action*="/media-upload"],
       [action*="/preview-upload"],
       [action*="/preview-import"],
       [action*="/background-upload"],
@@ -376,8 +369,7 @@ aside nav a[aria-current="page"] svg {
       [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
-      [action*="/restore"],
-      [action*="/media-upload"],
+        [action*="/media-upload"],
       [action*="/preview-upload"],
       [action*="/preview-import"],
       [action*="/background-upload"],
@@ -405,8 +397,7 @@ aside nav a[aria-current="page"] svg {
       [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
-      [action*="/restore"],
-      [action*="/media-upload"],
+        [action*="/media-upload"],
       [action*="/preview-upload"],
       [action*="/preview-import"],
       [action*="/background-upload"],
@@ -448,9 +439,7 @@ aside nav a[aria-current="page"] svg {
 .admin-professional button[aria-label^="Quitar "],
 .admin-professional button[title="Subir"],
 .admin-professional button[title="Bajar"],
-.admin-professional button[title="Quitar"],
-.admin-professional button[title="Deshacer"],
-.admin-professional button[title="Rehacer"] {
+.admin-professional button[title="Quitar"] {
   min-width: 44px;
   min-height: 44px;
 }

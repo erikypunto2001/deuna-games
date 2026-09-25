@@ -148,7 +148,7 @@ export default function GameInformationEditor({
         </div>
 
         <GameEditorFormActions
-          note="Guardar crea una revisión recuperable y no publica cambios."
+          note="Guardar actualiza el borrador actual y no publica cambios."
           action={action}
           continueTo="datos"
           saveLabel="Guardar información"

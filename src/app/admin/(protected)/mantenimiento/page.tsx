@@ -1,10 +1,6 @@
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import EditorialMaintenancePanel from "@/components/admin/EditorialMaintenancePanel";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import SiteMaintenancePanel from "@/components/admin/SiteMaintenancePanel";
-import {
-  getEditorialHistoryMaintenanceOverview,
-} from "@/lib/admin/editorial-maintenance-service";
 import {
   inspectSiteMaintenance,
 } from "@/lib/admin/site-maintenance-service";
@@ -24,12 +20,7 @@ export default async function AdminMaintenancePage({
   searchParams,
 }: PageProps) {
   await verifyAdminOwnerSession();
-  const [
-    overview,
-    siteOverview,
-    parameters,
-  ] = await Promise.all([
-    getEditorialHistoryMaintenanceOverview(),
+  const [siteOverview, parameters] = await Promise.all([
     inspectSiteMaintenance(),
     searchParams,
   ]);
@@ -42,18 +33,12 @@ export default async function AdminMaintenancePage({
       <AdminPageHeader
         eyebrow={<>ADMINISTRACIÓN · PROPIETARIO</>}
         title="Mantenimiento"
-        description="Diagnóstico y limpieza segura de PostgreSQL, multimedia e historial editorial. Las operaciones destructivas son Owner-only, auditadas y nunca confunden contenido vigente con basura."
+        description="Diagnóstico y limpieza segura de PostgreSQL, multimedia y residuos operativos. El contenido editorial conserva únicamente su borrador y publicación vigentes."
       />
 
       <EditorStateNotice state={state} />
 
-      <SiteMaintenancePanel
-        overview={siteOverview}
-      />
-
-      <EditorialMaintenancePanel
-        overview={overview}
-      />
+      <SiteMaintenancePanel overview={siteOverview} />
     </>
   );
 }

@@ -4,7 +4,6 @@ import {
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
-import EditorialHistory from "@/components/admin/EditorialHistory";
 import GameTaxonomyEditor from "@/components/admin/GameTaxonomyEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
@@ -30,7 +29,6 @@ const catalogSections = [
   "clasificaciones",
   "etiquetas",
   "publicacion",
-  "historial",
 ] as const;
 
 type CatalogSection = (typeof catalogSections)[number];
@@ -166,11 +164,6 @@ export default async function AdminCatalogsPage({
             Ejecuta la actualización local para generar la definición inicial a partir de los juegos existentes.
           </p>
         </section>
-      ) : section === "historial" ? (
-        <EditorialHistory
-          revisions={item.revisions}
-          currentRevision={item.revision}
-        />
       ) : section === "publicacion" ? (
         <section className={styles.editorPanel}>
           {publicationState ? (
@@ -178,7 +171,6 @@ export default async function AdminCatalogsPage({
               state={publicationState}
               requestState={state}
               publishAction="/api/admin/content/catalogs/publish"
-              restoreActionBase="/api/admin/content/catalog-publications"
             />
           ) : (
             <p>

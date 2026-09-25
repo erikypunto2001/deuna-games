@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import SiteAppearanceWorkspace, {
@@ -23,7 +22,6 @@ const sections = [
   "identidad",
   "apariencia",
   "publicacion",
-  "historial",
 ] as const;
 
 const appearancePanels: AppearancePanel[] = [
@@ -78,12 +76,6 @@ function pageHeading(section: ConfigurationSection) {
         title: "Publicación de marca y apariencia",
         description:
           "Revisa el borrador completo de identidad y apariencia antes de convertirlo en la versión pública activa.",
-      };
-    case "historial":
-      return {
-        title: "Historial de marca y apariencia",
-        description:
-          "Consulta revisiones anteriores de identidad y apariencia y restaura una versión cuando sea necesario.",
       };
     default:
       return {
@@ -285,7 +277,6 @@ export default async function AdminConfigurationPage({
               state={publicationState}
               requestState={state}
               publishAction="/api/admin/content/configuration/publish"
-              restoreActionBase="/api/admin/content/configuration-publications"
             />
           ) : (
             <p>
@@ -293,13 +284,6 @@ export default async function AdminConfigurationPage({
             </p>
           )}
         </section>
-      )}
-
-      {section === "historial" && (
-        <EditorialHistory
-          revisions={item.revisions}
-          currentRevision={item.revision}
-        />
       )}
     </>
   );

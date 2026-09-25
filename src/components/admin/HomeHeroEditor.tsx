@@ -9,19 +9,14 @@ import {
   Laptop,
   Monitor,
   Plus,
-  Redo2,
-  RotateCcw,
   Save,
   Search,
   Smartphone,
   Trash2,
-  Undo2,
 } from "lucide-react";
 import {
   useEffect,
   useMemo,
-  useReducer,
-  useRef,
   useState,
 } from "react";
 import type React from "react";
@@ -60,20 +55,6 @@ type State = {
   presentation: HomeHeroPresentation;
   mode: HomeCurationMode;
 };
-
-type History = {
-  present: State;
-  past: State[];
-  future: State[];
-};
-
-type HistoryAction =
-  | {
-      type: "edit";
-      update: (value: State) => State;
-      coalesce: boolean;
-    }
-  | { type: "undo" | "redo" };
 
 const HERO_FRAME_MIN_WIDTH = 260;
 const HERO_FRAME_MAX_WIDTH = 1800;
@@ -293,45 +274,6 @@ function Switch({
   );
 }
 
-function historyReducer(
-  history: History,
-  action: HistoryAction
-): History {
-  if (action.type === "edit") {
-    const next = action.update(clone(history.present));
-    if (JSON.stringify(next) === JSON.stringify(history.present)) {
-      return history;
-    }
-    return {
-      present: next,
-      past: action.coalesce
-        ? history.past
-        : [...history.past.slice(-39), history.present],
-      future: [],
-    };
-  }
-
-  if (action.type === "undo") {
-    const previous = history.past.at(-1);
-    return previous
-      ? {
-          present: previous,
-          past: history.past.slice(0, -1),
-          future: [history.present, ...history.future],
-        }
-      : history;
-  }
-
-  const next = history.future[0];
-  return next
-    ? {
-        present: next,
-        past: [...history.past, history.present],
-        future: history.future.slice(1),
-      }
-    : history;
-}
-
 export default function HomeHeroEditor({
   config,
   games,
@@ -358,11 +300,7 @@ export default function HomeHeroEditor({
       mode: config.curation.hero.mode,
     })
   );
-  const [{ present: state, past, future }, dispatch] = useReducer(
-    historyReducer,
-    { present: baseline, past: [], future: [] }
-  );
-  const interaction = useRef<boolean | null>(null);
+  const [state, setState] = useState<State>(() => clone(baseline));
   const [device, setDevice] = useState<HomeHeroDevice>("desktop");
   const [panel, setPanel] = useState("size");
   const [query, setQuery] = useState("");
@@ -464,44 +402,37 @@ export default function HomeHeroEditor({
   const commit = (
     update: (state: State) => State,
     scope: HomeHeroDevice | "all" =
-      editScope === "all" ? "all" : device,
-    restoreAll = false
+      editScope === "all" ? "all" : device
   ) => {
-    dispatch({
-      type: "edit",
-      update: (current) => {
-        if (restoreAll) return update(clone(current));
-        const editingPresentation = resolveHeroDeviceDesign(
+    setState((current) => {
+      const editingPresentation = resolveHeroDeviceDesign(
+        current.presentation,
+        device
+      );
+      const next = update({
+        ...clone(current),
+        presentation: clone(editingPresentation),
+      });
+      if (
+        scope === "all" ||
+        JSON.stringify(next.presentation) !==
+          JSON.stringify(editingPresentation)
+      ) {
+        next.presentation = updateHeroDeviceDesign(
           current.presentation,
+          scope,
+          (presentation) =>
+            update({
+              ...clone(current),
+              presentation,
+            }).presentation,
           device
         );
-        const next = update({
-          ...clone(current),
-          presentation: clone(editingPresentation),
-        });
-        if (
-          scope === "all" ||
-          JSON.stringify(next.presentation) !==
-            JSON.stringify(editingPresentation)
-        ) {
-          next.presentation = updateHeroDeviceDesign(
-            current.presentation,
-            scope,
-            (presentation) =>
-              update({
-                ...clone(current),
-                presentation,
-              }).presentation,
-            device
-          );
-        } else {
-          next.presentation = current.presentation;
-        }
-        return next;
-      },
-      coalesce: interaction.current === true,
+      } else {
+        next.presentation = current.presentation;
+      }
+      return next;
     });
-    if (interaction.current !== null) interaction.current = true;
   };
 
   const applyLayout = (
@@ -556,34 +487,6 @@ export default function HomeHeroEditor({
       current.presentation.preset = "custom";
       return current;
     });
-
-  const restoreBasicLayout = () =>
-    commit(
-      (current) => {
-        const targets =
-          editScope === "all"
-            ? devices.map((entry) => entry.id)
-            : [device];
-        for (const targetDevice of targets) {
-          const original = resolveHeroDeviceDesign(
-            baseline.presentation,
-            targetDevice
-          ).responsive[targetDevice];
-          const settings =
-            current.presentation.responsive[targetDevice];
-          settings.cardWidthMode = original.cardWidthMode;
-          settings.cardWidth = original.cardWidth;
-          settings.cardHeight = original.cardHeight;
-          settings.gap = original.gap;
-          settings.spaceBefore = original.spaceBefore;
-          settings.spaceAfter = original.spaceAfter;
-          settings.spacingReference = "visual";
-        }
-        current.presentation.preset = "custom";
-        return current;
-      },
-      editScope === "all" ? "all" : device
-    );
 
   const setNavigationStyle = (value: HomeHeroNavigationStyle) =>
     commit((current) => {
@@ -670,37 +573,10 @@ export default function HomeHeroEditor({
       className={styles.app}
       data-preview={preview}
       data-workspace={workspace}
-      onPointerDownCapture={(event) => {
-        if ((event.target as HTMLInputElement).type === "range") {
-          interaction.current = false;
-        }
-      }}
-      onPointerUpCapture={() => {
-        interaction.current = null;
-      }}
-      onPointerCancelCapture={() => {
-        interaction.current = null;
-      }}
-      onKeyDownCapture={(event) => {
-        if (
-          (event.target as HTMLInputElement).type === "range" &&
-          !event.repeat
-        ) {
-          interaction.current = false;
-        }
-      }}
-      onKeyUpCapture={() => {
-        interaction.current = null;
-      }}
-      onBlurCapture={(event) => {
-        if ((event.target as HTMLInputElement).type === "range") {
-          interaction.current = null;
-        }
-      }}
     >
       <header
         className={styles.topbar}
-       
+
       >
         <div className={styles.title}>
           <i>H</i>
@@ -714,33 +590,7 @@ export default function HomeHeroEditor({
           </div>
         </div>
 
-        <div className={styles.history}>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "undo" })}
-            disabled={!past.length}
-            title="Deshacer"
-          >
-            <Undo2 size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "redo" })}
-            disabled={!future.length}
-            title="Rehacer"
-          >
-            <Redo2 size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              commit(() => clone(baseline), "all", true)
-            }
-            disabled={!dirty}
-          >
-            <RotateCcw size={16} /> Restaurar borrador
-          </button>
-        </div>
+
 
         <div className={styles.actions}>
           <button
@@ -783,7 +633,7 @@ export default function HomeHeroEditor({
       <nav
         className={styles.workspaceTabs}
         aria-label="Tareas del editor"
-       
+
       >
         {(
           [
@@ -814,7 +664,7 @@ export default function HomeHeroEditor({
 
       <div
         className={styles.grid}
-       
+
       >
         <div className={styles.main}>
           <section
@@ -1394,9 +1244,6 @@ export default function HomeHeroEditor({
                   unit="px"
                   change={(value) => setResponsive("spaceAfter", value)}
                 />
-                <button type="button" onClick={restoreBasicLayout}>
-                  <RotateCcw size={14} /> Restablecer tamaño y espacio
-                </button>
               </>
             )}
 

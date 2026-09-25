@@ -5,7 +5,6 @@ import {
   redirect,
 } from "next/navigation";
 
-import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import PublicationPanel from "@/components/admin/PublicationPanel";
@@ -26,7 +25,6 @@ export const dynamic = "force-dynamic";
 const updateSections = [
   "editar",
   "publicacion",
-  "historial",
 ] as const;
 
 type UpdateSection = (typeof updateSections)[number];
@@ -217,7 +215,6 @@ export default async function AdminUpdateEditorPage({
               state={publicationState}
               requestState={state}
               publishAction={`/api/admin/content/updates/${encodeURIComponent(id)}/publish`}
-              restoreActionBase="/api/admin/content/update-publications"
               hideAction={`/api/admin/content/updates/${encodeURIComponent(id)}/hide`}
             />
           ) : (
@@ -226,13 +223,6 @@ export default async function AdminUpdateEditorPage({
             </p>
           )}
         </section>
-      )}
-
-      {section === "historial" && (
-        <EditorialHistory
-          revisions={item.revisions}
-          currentRevision={item.revision}
-        />
       )}
     </>
   );

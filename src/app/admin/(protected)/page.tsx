@@ -18,7 +18,6 @@ import {
 import {
   getPublicationOverview,
   type PendingPublication,
-  type RecentPublication,
 } from "@/lib/admin/publication-overview";
 import {
   verifyAdminSession,
@@ -29,7 +28,7 @@ import styles from "../admin.module.css";
 export const dynamic = "force-dynamic";
 
 function publicationPath(
-  type: RecentPublication["type"],
+  type: PendingPublication["type"],
   key: string
 ) {
   if (type === "game") {
@@ -68,7 +67,7 @@ function attentionPath(item: PendingPublication) {
 }
 
 function publicationTypeLabel(
-  type: RecentPublication["type"]
+  type: PendingPublication["type"]
 ) {
   if (type === "game") return "Juego";
   if (type === "game_update") return "Versión de juego";
@@ -87,16 +86,6 @@ function pendingStatusLabel(
   return "Cambios pendientes";
 }
 
-function formatPublicationDate(value: Date) {
-  return new Intl.DateTimeFormat("es", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(value);
-}
 
 export default async function AdminDashboardPage() {
   await verifyAdminSession();
@@ -268,56 +257,6 @@ export default async function AdminDashboardPage() {
         </article>
       </section>
 
-      {publication.available && publication.recent.length > 0 && (
-        <section className={styles.tablePanel}>
-          <div className={styles.tableSummary}>
-            <strong>Actividad editorial reciente</strong>
-            <span>{publication.recent.length} movimientos</span>
-          </div>
-
-          <div className={styles.tableWrap}>
-            <table className="admin-data-table" aria-label="Actividad editorial reciente">
-              <thead>
-                <tr>
-                  <th scope="col">Contenido</th>
-                  <th scope="col">Publicación</th>
-                  <th scope="col">Acción</th>
-                  <th scope="col">Fecha UTC</th>
-                </tr>
-              </thead>
-              <tbody>
-                {publication.recent.map((entry) => (
-                  <tr key={entry.id}>
-                    <th scope="row">
-                      <Link
-                        href={publicationPath(entry.type, entry.key)}
-                      >
-                        <strong>{entry.key}</strong>
-                        <span>{publicationTypeLabel(entry.type)}</span>
-                      </Link>
-                    </th>
-                    <td>#{entry.publicationNumber}</td>
-                    <td>
-                      <span
-                        className={
-                          entry.action === "rollback"
-                            ? styles.statusPending
-                            : styles.statusOk
-                        }
-                      >
-                        {entry.action === "rollback"
-                          ? "Restauración"
-                          : "Publicación"}
-                      </span>
-                    </td>
-                    <td>{formatPublicationDate(entry.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
     </>
   );
 }

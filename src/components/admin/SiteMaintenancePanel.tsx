@@ -105,8 +105,7 @@ export default function SiteMaintenancePanel({
             multimedia completo. Sólo clasifica
             como basura automática aquello que
             puede eliminarse sin cambiar contenido
-            vigente, historiales restaurables,
-            cuentas válidas ni recompensas.
+            vigente, cuentas válidas ni recompensas.
           </p>
         </div>
         <div
@@ -292,10 +291,6 @@ export default function SiteMaintenancePanel({
               borradores y publicaciones actuales;
             </li>
             <li>
-              revisiones y snapshots que sigan
-              restaurables;
-            </li>
-            <li>
               archivos referenciados por cualquier
               payload editorial;
             </li>
@@ -317,9 +312,8 @@ export default function SiteMaintenancePanel({
               el log de auditoría administrativa;
             </li>
             <li>
-              historiales editoriales: se limpian
-              únicamente con las herramientas de
-              Historial de esta misma pantalla.
+              no existe almacenamiento de versiones editoriales anteriores;
+              sólo se protege el borrador y la publicación vigentes.
             </li>
           </ul>
           <div className={styles.referenceStat}>

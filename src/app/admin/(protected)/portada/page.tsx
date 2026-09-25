@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import HomeContentEditor from "@/components/admin/HomeContentEditor";
 import HomeHeroEditor from "@/components/admin/HomeHeroEditor";
@@ -145,7 +144,6 @@ export default async function AdminHomeEditorPage({
             state={publicationState}
             requestState={state}
             publishAction="/api/admin/content/home/publish"
-            restoreActionBase="/api/admin/content/home-publications"
           />
         ) : (
           <p>
@@ -153,15 +151,6 @@ export default async function AdminHomeEditorPage({
           </p>
         )}
       </section>
-    );
-  }
-
-  if (section === "historial") {
-    sectionContent = (
-      <EditorialHistory
-        revisions={item.revisions}
-        currentRevision={item.revision}
-      />
     );
   }
 
