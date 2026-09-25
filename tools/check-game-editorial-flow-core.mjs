@@ -117,10 +117,13 @@ assert(
   "El alta debe crear un borrador privado, auditable y no destructivo."
 );
 assert(
-  files.publicCatalog.includes("public_visible") &&
+  files.publicCatalog.includes("FROM deuna_admin.editorial_items") &&
+    files.publicCatalog.includes("public_visible") &&
     files.publicCatalog.includes("published_payload") &&
-    !files.publicCatalog.includes("draft_payload"),
-  "El catálogo público debe consumir sólo snapshots publicados y visibles."
+    !files.publicCatalog.includes("draft_payload") &&
+    !files.publicCatalog.includes("editorial_publications") &&
+    !files.publicCatalog.includes("editorial_revisions"),
+  "El catálogo público debe consumir directamente el estado publicado y visible de editorial_items, sin depender de tablas de historial retiradas."
 );
 assert(
   files.publicationService.includes("draft_payload") &&
