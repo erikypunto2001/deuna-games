@@ -305,27 +305,6 @@ async function importItem(
        )`,
       [id, item.type, item.key, payload, digest]
     );
-    if (item.type !== "game") {
-      await client.query(
-        `INSERT INTO deuna_admin.editorial_revisions
-           (item_id, revision, payload, action)
-         VALUES ($1, 1, $2::jsonb, 'imported')`,
-        [id, payload]
-      );
-      await client.query(
-        `INSERT INTO deuna_admin.editorial_publications
-           (
-             item_id,
-             publication_number,
-             payload,
-             checksum,
-             source_revision,
-             action
-           )
-         VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap')`,
-        [id, payload, digest]
-      );
-    }
 
     return "created" as const;
   }
@@ -372,14 +351,6 @@ async function importItem(
      WHERE id = $1`,
     [current.id, payload, digest, nextRevision]
   );
-  if (item.type !== "game") {
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions
-         (item_id, revision, payload, action)
-       VALUES ($1, $2, $3::jsonb, 'source_refreshed')`,
-      [current.id, nextRevision, payload]
-    );
-  }
 
   return "refreshed" as const;
 }
@@ -435,26 +406,6 @@ async function ensureGameTaxonomyItem(
         nextPublication,
       ]
     );
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_publications
-         (
-           item_id,
-           publication_number,
-           payload,
-           checksum,
-           source_revision,
-           action,
-           actor_user_id
-         )
-       VALUES ($1, $2, $3::jsonb, $4, $5, 'published', NULL)`,
-      [
-        current.id,
-        nextPublication,
-        payload,
-        digest,
-        current.revision,
-      ]
-    );
 
     return "refreshed" as const;
   }
@@ -508,25 +459,6 @@ async function ensureGameTaxonomyItem(
        1,
        true
      )`,
-    [id, payload, digest]
-  );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions
-       (item_id, revision, payload, action)
-     VALUES ($1, 1, $2::jsonb, 'imported')`,
-    [id, payload]
-  );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_publications
-       (
-         item_id,
-         publication_number,
-         payload,
-         checksum,
-         source_revision,
-         action
-       )
-     VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap')`,
     [id, payload, digest]
   );
 

@@ -64,8 +64,6 @@ type SequencePrivilegeRow = {
 
 const expectedRuntimeFunctions = [
   "deuna_admin.delete_panel_game(text,uuid,text,integer,integer)",
-  "deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)",
-  "deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)",
   "deuna_admin.is_game_media_cleanup_pending(text)",
   "deuna_admin.list_game_media_cleanup_queue(uuid,text)",
   "deuna_admin.begin_game_media_cleanup(text,uuid,text)",
@@ -158,22 +156,7 @@ allow("deuna_admin", "editorial_items", "UPDATE", [
   "published_at", "published_by", "public_visible", "updated_at", "updated_by",
 ]);
 
-allow("deuna_admin", "editorial_revisions", "SELECT", [
-  "id", "item_id", "revision", "payload", "action", "actor_user_id",
-  "created_at",
-]);
-allow("deuna_admin", "editorial_revisions", "INSERT", [
-  "item_id", "revision", "payload", "action", "actor_user_id",
-]);
 
-allow("deuna_admin", "editorial_publications", "SELECT", [
-  "id", "item_id", "publication_number", "payload", "checksum",
-  "source_revision", "action", "actor_user_id", "created_at",
-]);
-allow("deuna_admin", "editorial_publications", "INSERT", [
-  "item_id", "publication_number", "payload", "checksum", "source_revision",
-  "action", "actor_user_id",
-]);
 
 allow("deuna_admin", "admin_audit_log", "INSERT", [
   "user_id", "action", "entity_type", "entity_id", "details",
@@ -295,8 +278,6 @@ const expectedDeletes = new Set([
 
 const expectedSequences = new Set([
   "deuna_admin.admin_events_id_seq",
-  "deuna_admin.editorial_revisions_id_seq",
-  "deuna_admin.editorial_publications_id_seq",
   "deuna_admin.admin_audit_log_id_seq",
 ]);
 

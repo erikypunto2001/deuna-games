@@ -138,17 +138,7 @@ async function loadProtectedReferences(pool: Pool) {
      UNION ALL
      SELECT item.published_payload AS payload
        FROM managed_items AS item
-      WHERE item.published_payload IS NOT NULL
-     UNION ALL
-     SELECT revision.payload
-       FROM deuna_admin.editorial_revisions AS revision
-       INNER JOIN managed_items AS item
-         ON item.id = revision.item_id
-     UNION ALL
-     SELECT publication.payload
-       FROM deuna_admin.editorial_publications AS publication
-       INNER JOIN managed_items AS item
-         ON item.id = publication.item_id`
+      WHERE item.published_payload IS NOT NULL`
   );
 
   const references = new Set<string>();
@@ -415,7 +405,7 @@ async function runSelfTest() {
     }
 
     console.log(
-      "Higiene multimedia self-test: OK (historial protegido, gracia temporal, entradas inesperadas y segunda lectura antes de borrar)."
+      "Higiene multimedia self-test: OK (estado actual protegido, gracia temporal, entradas inesperadas y segunda lectura antes de borrar)."
     );
   } finally {
     await rm(root, {
