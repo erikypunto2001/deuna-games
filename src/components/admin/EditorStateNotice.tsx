@@ -177,6 +177,16 @@ const notices = {
     message:
       "El archivo no pudo validarse o decodificarse como video. Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB.",
   },
+  "relacion-publica": {
+    kind: "error",
+    message:
+      "La publicación fue bloqueada porque una plataforma, un juego o un programa relacionado todavía no existe en el estado público vigente. Publica primero esas dependencias y vuelve a intentarlo.",
+  },
+  "plataforma-publicada-en-uso": {
+    kind: "error",
+    message:
+      "La publicación del catálogo fue bloqueada porque quitaría una plataforma que todavía usa contenido público. Actualiza u oculta primero ese contenido antes de volver a publicar el catálogo.",
+  },
   conflicto: {
     kind: "warning",
     message:
