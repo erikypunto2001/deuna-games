@@ -185,6 +185,131 @@ assert(
   "Software debe poder declarar plataformas emuladas."
 );
 
+
+function assertEditorialRejects(
+  type: "game" | "software",
+  payload: unknown,
+  message: string
+) {
+  let rejected = false;
+
+  try {
+    parseEditorialPayload(
+      type,
+      payload
+    );
+  } catch {
+    rejected = true;
+  }
+
+  assert(
+    rejected,
+    message
+  );
+}
+
+assertEditorialRejects(
+  "game",
+  {
+    id: "duplicate-release-data",
+    slug: "duplicate-release-data",
+    title: "Duplicate release data",
+    description: "Fixture inválido.",
+    category: "Acción",
+    imageAlt: "Portada",
+    releases: [
+      {
+        id: "ps2",
+        platformId: "ps2",
+        recommendedSoftwareSlugs: [
+          "pcsx2",
+          "pcsx2",
+        ],
+        packages: [
+          {
+            id: "disc",
+            kind: "iso",
+            sources: [
+              {
+                id: "mirror",
+                name: "Mirror A",
+                href: "https://example.com/a",
+              },
+              {
+                id: "mirror",
+                name: "Mirror B",
+                href: "https://example.com/b",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  "Un release debe rechazar software recomendado o mirrors con IDs duplicados."
+);
+
+assertEditorialRejects(
+  "software",
+  {
+    id: "invalid-emulator",
+    slug: "invalid-emulator",
+    name: "Invalid emulator",
+    description: "Fixture inválido.",
+    kind: "emulator",
+    runsOnPlatformIds: [
+      "pc-windows",
+      "pc-windows",
+    ],
+    emulatesPlatformIds: [
+      "ps2",
+      "ps2",
+    ],
+  },
+  "Software debe rechazar plataformas de ejecución o emulación duplicadas."
+);
+
+assertEditorialRejects(
+  "software",
+  {
+    id: "invalid-packages",
+    slug: "invalid-packages",
+    name: "Invalid packages",
+    description: "Fixture inválido.",
+    kind: "utility",
+    runsOnPlatformIds: [
+      "pc-windows",
+    ],
+    packages: [
+      {
+        id: "main",
+        platformId: "pc-windows",
+        kind: "portable",
+        sources: [
+          {
+            id: "mirror",
+            name: "Mirror",
+            href: "https://example.com/main",
+          },
+        ],
+      },
+      {
+        id: "main",
+        platformId: "ps2",
+        kind: "archive",
+        sources: [
+          {
+            id: "mirror-2",
+            name: "Mirror 2",
+            href: "https://example.com/other",
+          },
+        ],
+      },
+    ],
+  },
+  "Software debe rechazar paquetes con IDs duplicados o plataformas fuera de runsOnPlatformIds."
+);
+
 const collection =
   parseEditorialPayload(
     "game_collection",
