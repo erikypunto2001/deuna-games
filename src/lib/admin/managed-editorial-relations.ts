@@ -86,6 +86,61 @@ export async function validatePlatformIds(
   };
 }
 
+export async function validateCollectionSlugNamespace(
+  slug: string
+) {
+  const catalog =
+    await draftPlatformCatalog();
+  const conflicts =
+    catalog?.platforms.some(
+      (platform) =>
+        platform.id === slug
+    ) ?? false;
+
+  return {
+    ok: !conflicts,
+  };
+}
+
+export async function validatePlatformCollectionNamespace(
+  next: PlatformCatalog
+) {
+  const result =
+    await adminQuery<{
+      item_key: string;
+    }>(
+      `SELECT item_key
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'game_collection'`
+    );
+  const collectionSlugs =
+    new Set(
+      result.rows.map(
+        (row) =>
+          row.item_key
+      )
+    );
+  const conflicts =
+    next.platforms
+      .map(
+        (platform) =>
+          platform.id
+      )
+      .filter(
+        (id) =>
+          collectionSlugs.has(
+            id
+          )
+      )
+      .sort();
+
+  return {
+    ok:
+      conflicts.length === 0,
+    conflicts,
+  };
+}
+
 export async function validateGameSlugs(
   slugs: readonly string[]
 ) {
@@ -514,6 +569,68 @@ export function validatePublishedSoftwareRelations(
       software
     )
   );
+}
+
+export async function validatePublishedCollectionSlugNamespace(
+  client: PoolClient,
+  slug: string
+) {
+  const catalog =
+    await publishedPlatformCatalog(
+      client
+    );
+  const conflicts =
+    catalog?.platforms.some(
+      (platform) =>
+        platform.id === slug &&
+        platform.active
+    ) ?? false;
+
+  return {
+    ok: !conflicts,
+  };
+}
+
+export async function validatePublishedPlatformCollectionNamespace(
+  client: PoolClient,
+  next: PlatformCatalog
+) {
+  const result =
+    await client.query<{
+      item_key: string;
+    }>(
+      `SELECT item_key
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'game_collection'
+         AND public_visible = true
+       FOR SHARE`
+    );
+  const collectionSlugs =
+    new Set(
+      result.rows.map(
+        (row) =>
+          row.item_key
+      )
+    );
+  const conflicts =
+    next.platforms
+      .map(
+        (platform) =>
+          platform.id
+      )
+      .filter(
+        (id) =>
+          collectionSlugs.has(
+            id
+          )
+      )
+      .sort();
+
+  return {
+    ok:
+      conflicts.length === 0,
+    conflicts,
+  };
 }
 
 export function validatePublishedGameCollectionRelations(
