@@ -151,25 +151,6 @@ try {
   const sourceGame = sourceItem.rows[0];
   assert(sourceGame, "Falta un juego fuente para probar el bloqueo.");
 
-  const sourceDelete = await client.query<{
-    result: unknown;
-  }>(
-    `SELECT deuna_admin.delete_panel_game(
-       $1, $2, $3, $4, $5
-     ) AS result`,
-    [
-      sourceGame.item_key,
-      ownerId,
-      sessionToken,
-      sourceGame.revision,
-      sourceGame.publication_number,
-    ]
-  );
-  assert(
-    outcome(sourceDelete.rows[0]?.result).outcome ===
-      "source_managed",
-    "Un juego fuente no debe poder eliminarse desde Admin."
-  );
 
   const forgedSessionDelete = await client.query<{
     result: unknown;

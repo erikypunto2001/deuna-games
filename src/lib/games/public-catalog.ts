@@ -28,9 +28,20 @@ function sourceFallback() {
   }));
 }
 
+function hasConfiguredEditorialDatabase() {
+  return Boolean(
+    process.env.DEUNA_DATABASE_HOST?.trim() &&
+    process.env.DEUNA_DATABASE_NAME?.trim() &&
+    process.env.DEUNA_DATABASE_USER?.trim() &&
+    process.env.DEUNA_DATABASE_PASSWORD?.trim()
+  );
+}
+
 function parsePublishedGame(
   row: EditorialGameRow
 ): Game | null {
+  if (!row.public_visible) return null;
+
   try {
     const game = parseEditorialPayload(
       "game",
@@ -43,52 +54,6 @@ function parsePublishedGame(
   } catch {
     return null;
   }
-}
-
-function mergeEditorialGames(
-  rows: EditorialGameRow[]
-) {
-  const editorialBySlug = new Map(
-    rows.map((row) => [row.item_key, row])
-  );
-  const sourceSlugs = new Set(
-    sourceGames.map((game) => game.slug)
-  );
-  const merged: Game[] = [];
-
-  for (const sourceGame of sourceGames) {
-    const editorial = editorialBySlug.get(
-      sourceGame.slug
-    );
-
-    if (!editorial) {
-      merged.push(sourceGame);
-      continue;
-    }
-
-    if (!editorial.public_visible) {
-      continue;
-    }
-
-    merged.push(
-      parsePublishedGame(editorial) ??
-        sourceGame
-    );
-  }
-
-  const additional = rows
-    .filter(
-      (row) =>
-        row.public_visible &&
-        !sourceSlugs.has(row.item_key)
-    )
-    .map(parsePublishedGame)
-    .filter((game): game is Game => game !== null)
-    .sort((a, b) =>
-      a.title.localeCompare(b.title, "es")
-    );
-
-  return [...merged, ...additional];
 }
 
 async function readEditorialGames() {
@@ -107,28 +72,28 @@ async function readEditorialGames() {
      ) ASC`
   );
 
-  return result.rows;
+  return result.rows
+    .map(parsePublishedGame)
+    .filter((game): game is Game => game !== null);
 }
 
 export const getPublicGames = cache(
   async (): Promise<Game[]> => {
     await connection();
 
+    if (!hasConfiguredEditorialDatabase()) {
+      return sourceFallback();
+    }
+
     try {
-      const editorial = await readEditorialGames();
-
-      if (!editorial || editorial.length === 0) {
-        return sourceFallback();
-      }
-
-      return mergeEditorialGames(editorial);
+      return await readEditorialGames();
     } catch {
       /*
-       * El catálogo fuente sigue siendo un fallback deliberado:
-       * una caída o una migración todavía no aplicada no debe dejar
-       * la web pública sin juegos.
+       * Con PostgreSQL configurado, el catálogo falla cerrado.
+       * Volver a src/data/games.ts podría resucitar un juego retirado
+       * de forma explícita desde Admin.
        */
-      return sourceFallback();
+      return [];
     }
   }
 );

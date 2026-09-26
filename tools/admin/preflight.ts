@@ -64,6 +64,7 @@ type SequencePrivilegeRow = {
 
 const expectedRuntimeFunctions = [
   "deuna_admin.delete_panel_game(text,uuid,text,integer,integer)",
+  "deuna_admin.list_source_game_retirements()",
   "deuna_admin.is_game_media_cleanup_pending(text)",
   "deuna_admin.list_game_media_cleanup_queue(uuid,text)",
   "deuna_admin.begin_game_media_cleanup(text,uuid,text)",
@@ -635,13 +636,30 @@ async function checkApplicationState(pool: Pool) {
   const importedCount = (itemType: string) =>
     counts.get(itemType) ?? 0;
 
+  const retired = await pool.query<{
+    game_slug: string;
+  }>(
+    `SELECT game_slug
+       FROM deuna_admin.list_source_game_retirements()`
+  );
+  const retiredGameSlugs = new Set(
+    retired.rows.map((row) => row.game_slug)
+  );
+  const expectedGames = games.filter(
+    (game) => !retiredGameSlugs.has(game.slug)
+  ).length;
+  const expectedUpdates = gameUpdates.filter(
+    (update) =>
+      !retiredGameSlugs.has(update.gameSlug)
+  ).length;
+
   assert(
-    importedCount("game") === games.length,
-    `La base debe contener ${games.length} juegos activos importados.`
+    importedCount("game") === expectedGames,
+    `La base debe contener ${expectedGames} juegos fuente activos tras respetar retiros.`
   );
   assert(
-    importedCount("game_update") === gameUpdates.length,
-    `La base debe contener ${gameUpdates.length} actualizaciones activas importadas.`
+    importedCount("game_update") === expectedUpdates,
+    `La base debe contener ${expectedUpdates} actualizaciones fuente activas tras respetar retiros.`
   );
   assert(
     importedCount("site_config") === 1,

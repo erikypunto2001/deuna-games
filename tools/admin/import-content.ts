@@ -255,6 +255,60 @@ function buildSourceItems(): SourceItem[] {
   return items;
 }
 
+function applySourceGameRetirements(
+  items: SourceItem[],
+  retiredGameSlugs: ReadonlySet<string>
+) {
+  if (retiredGameSlugs.size === 0) return items;
+
+  const filtered: SourceItem[] = [];
+
+  for (const item of items) {
+    if (
+      item.type === "game" &&
+      retiredGameSlugs.has(item.key)
+    ) {
+      continue;
+    }
+
+    if (
+      item.type === "game_update" &&
+      retiredGameSlugs.has(
+        typeof item.payload.gameSlug === "string"
+          ? item.payload.gameSlug
+          : ""
+      )
+    ) {
+      continue;
+    }
+
+    if (item.type === "home_config") {
+      const payload = { ...item.payload };
+      for (const key of [
+        "heroSlugs",
+        "popularSlugs",
+        "lowSpecSlugs",
+        "recommendedSlugs",
+      ] as const) {
+        const value = payload[key];
+        if (Array.isArray(value)) {
+          payload[key] = value.filter(
+            (slug) =>
+              typeof slug === "string" &&
+              !retiredGameSlugs.has(slug)
+          );
+        }
+      }
+      filtered.push({ ...item, payload });
+      continue;
+    }
+
+    filtered.push(item);
+  }
+
+  return filtered;
+}
+
 async function importItem(
   client: PoolClient,
   item: SourceItem
@@ -528,6 +582,7 @@ async function main() {
     refreshed: 0,
     conflict: 0,
     missing: 0,
+    retiredSourceGames: 0,
   };
 
   try {
@@ -537,7 +592,25 @@ async function main() {
       [importLockKey]
     );
 
-    for (const item of items) {
+    const retirementRows = await client.query<{
+      game_slug: string;
+    }>(
+      `SELECT game_slug
+         FROM deuna_admin.source_game_retirements
+        ORDER BY game_slug ASC`
+    );
+    const retiredGameSlugs = new Set(
+      retirementRows.rows.map((row) => row.game_slug)
+    );
+    const importableItems =
+      applySourceGameRetirements(
+        items,
+        retiredGameSlugs
+      );
+    counts.retiredSourceGames =
+      retiredGameSlugs.size;
+
+    for (const item of importableItems) {
       const result = await importItem(client, item);
       counts[result] += 1;
     }
@@ -548,7 +621,7 @@ async function main() {
 
     counts.missing = await markMissingSources(
       client,
-      items
+      importableItems
     );
     await client.query("COMMIT");
   } catch (error) {
@@ -560,7 +633,7 @@ async function main() {
   }
 
   console.log(
-    `Importación editorial completa: ${counts.created} creados, ${counts.refreshed} actualizados, ${counts.unchanged} sin cambios, ${counts.conflict} borradores preservados ante conflicto y ${counts.missing} fuentes ausentes conservadas.`
+    `Importación editorial completa: ${counts.created} creados, ${counts.refreshed} actualizados, ${counts.unchanged} sin cambios, ${counts.conflict} borradores preservados ante conflicto, ${counts.missing} fuentes ausentes conservadas y ${counts.retiredSourceGames} retiros fuente respetados.`
   );
 }
 
