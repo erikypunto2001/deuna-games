@@ -91,6 +91,7 @@ export default async function CollectionsPage() {
           }
         >
           <PublicBreadcrumb
+            className=""
             currentLabel="Colecciones"
           />
           <span
