@@ -28,7 +28,8 @@ export type Software = {
   runsOnPlatformIds: string[];
   emulatesPlatformIds?: string[];
   packages?: SoftwarePackage[];
+  /* Compatibilidad con payloads previos; la UI actual no publica portada propia. */
   coverImage?: string;
-  imageAlt: string;
+  imageAlt?: string;
   featured?: boolean;
 };
