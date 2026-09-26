@@ -16,6 +16,9 @@ import {
   getPublicPlatformCatalog,
 } from "@/lib/platforms/public-platform-catalog";
 import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
+import {
   getPublicSoftware,
 } from "@/lib/software/public-software";
 
@@ -24,14 +27,18 @@ import styles from "./page.module.css";
 export const dynamic =
   "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Programas",
-  description:
-    "Emuladores, utilidades y herramientas publicadas en DeUna Games.",
-  alternates: {
-    canonical: "/programas",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPublicSiteConfig();
+
+  return {
+    title: "Programas",
+    description:
+      `Emuladores, utilidades y herramientas publicadas en ${config.name}.`,
+    alternates: {
+      canonical: "/programas",
+    },
+  };
+}
 
 const kindLabels = {
   emulator: "Emulador",
