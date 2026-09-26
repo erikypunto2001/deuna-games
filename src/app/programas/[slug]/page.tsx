@@ -126,6 +126,7 @@ export default async function ProgramDetailPage({
           }
         >
           <PublicBreadcrumb
+            className=""
             currentLabel={
               software.name
             }
