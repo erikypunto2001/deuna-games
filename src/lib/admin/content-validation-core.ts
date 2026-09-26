@@ -933,7 +933,7 @@ export const editorialGameCollectionSchema: z.ZodType<GameCollection> = z
     description: z.string().trim().min(1).max(2_500),
     gameSlugs: uniqueIdentifiers(300),
     coverImage: localImageSchema.optional(),
-    imageAlt: z.string().trim().min(1).max(240),
+    imageAlt: z.string().trim().min(1).max(240).optional(),
     featured: z.boolean().optional(),
   })
   .strict()
