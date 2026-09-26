@@ -150,3 +150,11 @@ export const platformCatalogFormSchema =
     catalogJson:
       jsonField(40_000),
   });
+
+export const gameReleasesFormSchema =
+  z.object({
+    expectedRevision:
+      expectedRevisionSchema,
+    releasesJson:
+      jsonField(80_000),
+  });
