@@ -14,6 +14,9 @@ import {
   platformCatalogFormSchema,
 } from "@/lib/admin/managed-editorial-forms";
 import {
+  validatePlatformCatalogRemoval,
+} from "@/lib/admin/managed-editorial-relations";
+import {
   saveManagedEditorialDraft,
 } from "@/lib/admin/managed-editorial-service";
 import {
@@ -78,6 +81,19 @@ export async function POST(
         parsed.data
           .catalogJson
       );
+
+    const relations =
+      await validatePlatformCatalogRemoval(
+        payload
+      );
+
+    if (!relations.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=plataforma-en-uso"
+      );
+    }
 
     const result =
       await saveManagedEditorialDraft(
