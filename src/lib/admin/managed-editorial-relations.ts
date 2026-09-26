@@ -1,5 +1,13 @@
 import "server-only";
 
+import type {
+  PoolClient,
+} from "pg";
+
+import {
+  resolveGameReleases,
+} from "@/lib/games/releases";
+
 import {
   adminQuery,
 } from "./database";
@@ -7,6 +15,7 @@ import {
   parseEditorialPayload,
 } from "./content-validation";
 import type {
+  Game,
   GameRelease,
 } from "@/types/game";
 import type {
@@ -18,7 +27,10 @@ import type {
 
 type PayloadRow = {
   item_key: string;
+  item_type?: "game" | "software";
   draft_payload: unknown;
+  published_payload?: unknown;
+  public_visible?: boolean;
 };
 
 async function draftPlatformCatalog() {
@@ -212,45 +224,39 @@ export async function validateSoftwareRelations(
   );
 }
 
-export async function validatePlatformCatalogRemoval(
-  next: PlatformCatalog
+function referencedPlatformIds(
+  rows: readonly PayloadRow[],
+  payloadKey:
+    | "draft_payload"
+    | "published_payload"
 ) {
-  const nextIds = new Set(
-    next.platforms.map(
-      (platform) =>
-        platform.id
-    )
-  );
-
-  const result =
-    await adminQuery<PayloadRow>(
-      `SELECT
-         item_key,
-         draft_payload
-       FROM deuna_admin.editorial_items
-       WHERE item_type IN (
-         'game',
-         'software'
-       )`
-    );
-
   const referenced =
     new Set<string>();
 
-  for (const row of result.rows) {
+  for (const row of rows) {
+    const payload =
+      row[payloadKey];
+
+    if (!payload) {
+      continue;
+    }
+
     try {
       if (
-        "releases" in
-        (row.draft_payload as object)
+        row.item_type ===
+        "game"
       ) {
         const game =
           parseEditorialPayload(
             "game",
-            row.draft_payload
+            payload
           );
+
         for (
           const release of
-          game.releases ?? []
+          resolveGameReleases(
+            game
+          )
         ) {
           referenced.add(
             release.platformId
@@ -259,31 +265,296 @@ export async function validatePlatformCatalogRemoval(
         continue;
       }
 
-      const software =
-        parseEditorialPayload(
-          "software",
-          row.draft_payload
-        );
-      for (
-        const id of
-        softwarePlatformIds(
-          software
-        )
+      if (
+        row.item_type ===
+        "software"
       ) {
-        referenced.add(id);
+        const software =
+          parseEditorialPayload(
+            "software",
+            payload
+          );
+
+        for (
+          const id of
+          softwarePlatformIds(
+            software
+          )
+        ) {
+          referenced.add(id);
+        }
       }
     } catch {
       continue;
     }
   }
 
+  return referenced;
+}
+
+function missingPlatformIds(
+  next: PlatformCatalog,
+  referenced: ReadonlySet<string>
+) {
+  const nextIds = new Set(
+    next.platforms.map(
+      (platform) =>
+        platform.id
+    )
+  );
+
+  return [...referenced]
+    .filter(
+      (id) =>
+        !nextIds.has(id)
+    )
+    .sort();
+}
+
+export async function validatePlatformCatalogRemoval(
+  next: PlatformCatalog
+) {
+  const result =
+    await adminQuery<PayloadRow>(
+      `SELECT
+         item_key,
+         item_type,
+         draft_payload
+       FROM deuna_admin.editorial_items
+       WHERE item_type IN (
+         'game',
+         'software'
+       )`
+    );
+
   const missing =
-    [...referenced]
-      .filter(
-        (id) =>
-          !nextIds.has(id)
+    missingPlatformIds(
+      next,
+      referencedPlatformIds(
+        result.rows,
+        "draft_payload"
       )
-      .sort();
+    );
+
+  return {
+    ok:
+      missing.length === 0,
+    missing,
+  };
+}
+
+async function publishedPlatformCatalog(
+  client: PoolClient
+) {
+  const result =
+    await client.query<{
+      published_payload: unknown;
+    }>(
+      `SELECT
+         published_payload
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'platform_catalog'
+         AND item_key = 'platforms'
+         AND public_visible = true
+       LIMIT 1
+       FOR SHARE`
+    );
+  const row = result.rows[0];
+
+  return row
+    ? parseEditorialPayload(
+        "platform_catalog",
+        row.published_payload
+      )
+    : null;
+}
+
+async function validatePublishedPlatformIds(
+  client: PoolClient,
+  ids: readonly string[]
+) {
+  const catalog =
+    await publishedPlatformCatalog(
+      client
+    );
+  const unique =
+    [...new Set(ids)];
+
+  if (!catalog) {
+    return {
+      ok:
+        unique.length === 0,
+      missing: unique,
+    };
+  }
+
+  const known = new Set(
+    catalog.platforms.map(
+      (platform) =>
+        platform.id
+    )
+  );
+  const missing =
+    unique.filter(
+      (id) =>
+        !known.has(id)
+    );
+
+  return {
+    ok:
+      missing.length === 0,
+    missing,
+  };
+}
+
+async function validatePublishedKeys(
+  client: PoolClient,
+  type:
+    | "game"
+    | "software",
+  keys: readonly string[]
+) {
+  const unique =
+    [...new Set(keys)];
+
+  if (unique.length === 0) {
+    return {
+      ok: true as const,
+      missing:
+        [] as string[],
+    };
+  }
+
+  const result =
+    await client.query<{
+      item_key: string;
+    }>(
+      `SELECT item_key
+       FROM deuna_admin.editorial_items
+       WHERE item_type = $1
+         AND public_visible = true
+         AND item_key = ANY($2::text[])
+       FOR SHARE`,
+      [
+        type,
+        unique,
+      ]
+    );
+  const known = new Set(
+    result.rows.map(
+      (row) => row.item_key
+    )
+  );
+  const missing =
+    unique.filter(
+      (key) =>
+        !known.has(key)
+    );
+
+  return {
+    ok:
+      missing.length === 0,
+    missing,
+  };
+}
+
+export async function validatePublishedGameRelations(
+  client: PoolClient,
+  game: Game
+) {
+  const releases =
+    resolveGameReleases(
+      game
+    );
+  const platformIds =
+    releases.map(
+      (release) =>
+        release.platformId
+    );
+  const softwareSlugs =
+    releases.flatMap(
+      (release) =>
+        release
+          .recommendedSoftwareSlugs ??
+        []
+    );
+  const [
+    platforms,
+    software,
+  ] = await Promise.all([
+    validatePublishedPlatformIds(
+      client,
+      platformIds
+    ),
+    validatePublishedKeys(
+      client,
+      "software",
+      softwareSlugs
+    ),
+  ]);
+
+  return {
+    ok:
+      platforms.ok &&
+      software.ok,
+    missingPlatforms:
+      platforms.missing,
+    missingSoftware:
+      software.missing,
+  };
+}
+
+export function validatePublishedSoftwareRelations(
+  client: PoolClient,
+  software: Software
+) {
+  return validatePublishedPlatformIds(
+    client,
+    softwarePlatformIds(
+      software
+    )
+  );
+}
+
+export function validatePublishedGameCollectionRelations(
+  client: PoolClient,
+  gameSlugs: readonly string[]
+) {
+  return validatePublishedKeys(
+    client,
+    "game",
+    gameSlugs
+  );
+}
+
+export async function validatePublishedPlatformCatalogRemoval(
+  client: PoolClient,
+  next: PlatformCatalog
+) {
+  const result =
+    await client.query<PayloadRow>(
+      `SELECT
+         item_key,
+         item_type,
+         draft_payload,
+         published_payload,
+         public_visible
+       FROM deuna_admin.editorial_items
+       WHERE item_type IN (
+         'game',
+         'software'
+       )
+         AND public_visible = true
+       FOR SHARE`
+    );
+  const missing =
+    missingPlatformIds(
+      next,
+      referencedPlatformIds(
+        result.rows,
+        "published_payload"
+      )
+    );
 
   return {
     ok:
