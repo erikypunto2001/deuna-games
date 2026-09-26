@@ -42,7 +42,7 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
-  platformLabel,
+  platformLabel as resolvePlatformLabel,
 } from "@/lib/games/releases";
 import {
   getPublicPlatformCatalog,
@@ -184,7 +184,7 @@ export default async function GameDetailPage({
   const platformNames =
     platformIds.map(
       (platformId) =>
-        platformLabel(
+        resolvePlatformLabel(
           platformCatalog,
           platformId
         )
@@ -207,7 +207,7 @@ export default async function GameDetailPage({
       (release) => ({
         release,
         platform:
-          platformLabel(
+          resolvePlatformLabel(
             platformCatalog,
             release.platformId
           ),
