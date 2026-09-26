@@ -4,6 +4,10 @@ import {
   withAdminTransaction,
 } from "./database";
 import {
+  validatePublishedGameHide,
+  validatePublishedSoftwareHide,
+} from "./managed-editorial-relations";
+import {
   verifyAdminSession,
 } from "./session";
 
@@ -33,6 +37,11 @@ export type HideEditorialResult =
     }
   | {
       outcome: "conflict";
+      key: string;
+      publicationNumber: number;
+    }
+  | {
+      outcome: "in_use";
       key: string;
       publicationNumber: number;
     }
@@ -93,6 +102,30 @@ async function hideEditorialContent(
     if (!item.public_visible) {
       return {
         outcome: "already_hidden",
+        key: item.item_key,
+        publicationNumber:
+          item.publication_number,
+      };
+    }
+
+    const dependencyState =
+      type === "software"
+        ? await validatePublishedSoftwareHide(
+            client,
+            key
+          )
+        : type === "game"
+          ? await validatePublishedGameHide(
+              client,
+              key
+            )
+          : {
+              ok: true as const,
+            };
+
+    if (!dependencyState.ok) {
+      return {
+        outcome: "in_use",
         key: item.item_key,
         publicationNumber:
           item.publication_number,
