@@ -273,16 +273,6 @@ export default function SoftwareEditor({
           </label>
 
           <label>
-            <span>Texto alternativo</span>
-            <input
-              name="imageAlt"
-              defaultValue={software?.imageAlt ?? ""}
-              maxLength={240}
-              required
-            />
-          </label>
-
-          <label>
             <span>Destacado</span>
             <select
               name="featured"
