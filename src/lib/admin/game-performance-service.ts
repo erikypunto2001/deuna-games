@@ -131,10 +131,25 @@ export async function saveGamePerformanceDraft(
       "game",
       item.draft_payload
     );
+    const performanceMetadata =
+      calibration ? metadata : undefined;
+    const releases = current.releases?.map(
+      (release) =>
+        release.platformId === "pc-windows"
+          ? {
+              ...release,
+              performance: calibration,
+              performanceMetadata,
+            }
+          : release
+    );
     const next: Game = {
       ...current,
       performance: calibration,
-      performanceMetadata: calibration ? metadata : undefined,
+      performanceMetadata,
+      ...(current.releases
+        ? { releases }
+        : {}),
     };
     const revision = await writePerformanceRevision(
       client,
