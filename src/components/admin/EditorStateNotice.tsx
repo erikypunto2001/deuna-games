@@ -92,6 +92,11 @@ const notices = {
     message:
       "La clasificación no coincide con los Catálogos actuales. Selecciona categorías, géneros y etiquetas activas; los valores antiguos ya asignados se conservan hasta que decidas reemplazarlos.",
   },
+  "rendimiento-sin-pc": {
+    kind: "warning",
+    message:
+      "No se guardó la calibración porque este juego no tiene un release PC publicado en el borrador actual. Agrega primero PC en Plataformas y descargas; los FPS nunca se infieren para otras consolas.",
+  },
   "valoracion-sugerencia": {
     kind: "warning",
     message:
