@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   DistributionPackage,
@@ -126,8 +126,14 @@ export default function GameReleasesEditor({
   const [releases, setReleases] = useState<GameRelease[]>(
     () => structuredClone(initialReleases)
   );
-  const lockedIds = useRef(
-    new Set(initialReleases.map((release) => release.id))
+  const [lockedIds] = useState(
+    () =>
+      new Set(
+        initialReleases.map(
+          (release) =>
+            release.id
+        )
+      )
   );
   const serialized = useMemo(
     () => JSON.stringify(compact(releases)),
@@ -304,7 +310,7 @@ export default function GameReleasesEditor({
                       <span>ID permanente</span>
                       <input
                         value={release.id}
-                        disabled={lockedIds.current.has(release.id)}
+                        disabled={lockedIds.has(release.id)}
                         onChange={(event) =>
                           patchRelease(releaseIndex, {
                             id: normalizeId(event.target.value),
