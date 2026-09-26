@@ -554,6 +554,10 @@ async function grantRuntimePrivileges(
 
 
     GRANT EXECUTE
+      ON FUNCTION deuna_admin.list_source_game_retirements()
+      TO ${role};
+
+    GRANT EXECUTE
       ON FUNCTION deuna_admin.is_game_media_cleanup_pending(text)
       TO ${role};
 

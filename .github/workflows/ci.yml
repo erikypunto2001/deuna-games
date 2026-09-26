@@ -268,6 +268,9 @@ jobs:
           NODE_ENV: production
         run: npm run check:account-postgres
 
+      - name: Source game retirement integration
+        run: npm run check:source-game-retirement-postgres
+
   visual-smoke:
     needs: [quality, postgres-foundation]
     runs-on: ubuntu-24.04

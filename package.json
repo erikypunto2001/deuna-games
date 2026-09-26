@@ -48,6 +48,7 @@
     "check:account-avatar-favorites": "node ./tools/check-account-avatar-favorites.mjs && node ./tools/check-avatar-client-state.mjs",
     "check:account-postgres": "node --env-file-if-exists=.env.local ./tools/check-account-postgres-integration.ts && node --env-file-if-exists=.env.local --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-account-avatar-favorites-postgres.ts",
     "check:editorial-cleanup-postgres": "node --env-file-if-exists=.env.local --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-editorial-cleanup-postgres.ts",
+    "check:source-game-retirement-postgres": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.admin-migration.local --import ./tools/register-ts-paths.mjs ./tools/check-source-game-retirement-postgres.ts",
     "check:privacy": "node ./tools/check-public-privacy.mjs && npm run check:account-privacy && npm run check:account-launch-readiness && npm run check:account-avatar-favorites",
     "check:site-identity": "node ./tools/check-public-site-identity.mjs",
     "check:home-update-visual-contract": "node ./tools/check-home-carousel-update-covers.mjs",
