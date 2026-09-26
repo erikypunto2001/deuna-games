@@ -631,7 +631,7 @@ assert(
     cardBase,
     "resolveGameCardPresentation",
     "const DIRECT_DETAIL_MEDIA = \"(hover: none), (pointer: coarse)\"",
-    "const [directDetailVisible, setDirectDetailVisible] = useState(false)",
+    "const directDetailVisible = useMediaQuery(DIRECT_DETAIL_MEDIA)",
     "const detailPresented = detailVisible || directDetailVisible",
     'data-detail-visible={detailPresented ? "true" : "false"}',
     "aria-hidden={detailPresented ? \"true\" : undefined}",
