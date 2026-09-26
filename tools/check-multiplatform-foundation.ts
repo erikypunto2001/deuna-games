@@ -175,7 +175,6 @@ const software =
       emulatesPlatformIds: [
         "ps2",
       ],
-      imageAlt: "PCSX2",
     }
   );
 
@@ -201,8 +200,6 @@ const collection =
       gameSlugs: [
         "sample-multiplatform",
       ],
-      imageAlt:
-        "Colección Mortal Kombat",
     }
   );
 
