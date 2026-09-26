@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Boxes,
   CircleHelp,
   Gamepad2,
   House,
   RefreshCcw,
+  Wrench,
 } from "lucide-react";
 
 import styles from "./Header.module.css";
@@ -25,6 +27,16 @@ const navigation = [
     label: "Juegos",
     href: "/juegos",
     icon: Gamepad2,
+  },
+  {
+    label: "Colecciones",
+    href: "/colecciones",
+    icon: Boxes,
+  },
+  {
+    label: "Programas",
+    href: "/programas",
+    icon: Wrench,
   },
   {
     label: "Actualizaciones",
