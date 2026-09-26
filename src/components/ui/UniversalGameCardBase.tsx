@@ -348,7 +348,8 @@ export default function UniversalGameCardBase({
   }
 
   function schedulePreview() {
-    if (!preview || reducedMotion || cardMode === "image" || previewActive) {
+    const motionReduced = window.matchMedia(REDUCED_MOTION_MEDIA).matches;
+    if (!preview || motionReduced || cardMode === "image" || previewActive) {
       return;
     }
     setPreviewActive(true);
@@ -414,7 +415,9 @@ export default function UniversalGameCardBase({
   function activatePointerEffects(event: ReactPointerEvent<HTMLElement>) {
     const pointerSupportsEffects =
       event.pointerType === "mouse" || event.pointerType === "pen";
-    if (!pointerSupportsEffects || reducedMotion) {
+    const motionReduced = window.matchMedia(REDUCED_MOTION_MEDIA).matches;
+
+    if (!pointerSupportsEffects || motionReduced) {
       if (pointerEffectsEnabled.current) {
         cancelTiltFrame();
         cardRect.current = null;
