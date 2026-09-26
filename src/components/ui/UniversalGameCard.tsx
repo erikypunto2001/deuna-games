@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import type {
   HomeCardRevealMode,
 } from "@/lib/home/card-row-reveal";
@@ -13,7 +15,7 @@ import styles from "./FavoriteUniversalGameCard.module.css";
 
 export type { UniversalGameCardVariant } from "./UniversalGameCardBase";
 
-export default function UniversalGameCard({
+function UniversalGameCard({
   game,
   variant = "standard",
   revealMode = "interaction",
@@ -37,3 +39,5 @@ export default function UniversalGameCard({
     />
   );
 }
+
+export default memo(UniversalGameCard);

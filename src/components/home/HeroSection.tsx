@@ -36,6 +36,10 @@ import type {
   HomeHeroDevice,
   HomeHeroPresentation,
 } from "@/data/home-config";
+import {
+  useDocumentVisible,
+  useMediaQuery,
+} from "@/lib/browser/client-signals";
 import { formatGameReleaseDate } from "@/lib/games/game-date";
 import { resolveHeroDeviceDesign } from "@/lib/home/hero-device-design";
 import { homeHeroDeviceForWidth } from "@/lib/home/hero-devices";
@@ -216,16 +220,17 @@ function ResponsiveArtwork({ game, alt, active = false, style }: ResponsiveArtwo
   );
 }
 
-function HeroVideoLayer({ game, enabled }: { game: Game; enabled: boolean }) {
+function HeroVideoLayer({
+  game,
+  enabled,
+  documentVisible,
+}: {
+  game: Game;
+  enabled: boolean;
+  documentVisible: boolean;
+}) {
   const resolved = resolveGameHeroVideo(game);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const [documentVisible, setDocumentVisible] = useState(true);
-  useEffect(() => {
-    const syncVisibility = () => setDocumentVisible(!document.hidden);
-    syncVisibility();
-    document.addEventListener("visibilitychange", syncVisibility);
-    return () => document.removeEventListener("visibilitychange", syncVisibility);
-  }, []);
   if (!enabled || !resolved || failedSrc === resolved.src || !documentVisible) return null;
   return <FramedVideo key={resolved.src} src={resolved.src} viewport={resolved.viewport} autoPlay loop controls={false} preload="metadata" tabIndex={-1} frameStyle={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", background: "transparent" }} onError={() => setFailedSrc(resolved.src)} />;
 }
@@ -337,9 +342,9 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   const [activeIndex, setActiveIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [documentVisible, setDocumentVisible] = useState(true);
+  const documentVisible = useDocumentVisible();
   const [manualPaused, setManualPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -412,22 +417,6 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
   }, [games.length, presentation.loop, registerMotionDelta]);
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
-
-  useEffect(() => {
-    const media = (rootRef.current?.ownerDocument.defaultView ?? window).matchMedia("(prefers-reduced-motion: reduce)");
-    const updatePreference = () => setReducedMotion(media.matches);
-    updatePreference();
-    media.addEventListener("change", updatePreference);
-    return () => media.removeEventListener("change", updatePreference);
-  }, []);
-
-  useEffect(() => {
-    const doc = rootRef.current?.ownerDocument ?? document;
-    const update = () => setDocumentVisible(!doc.hidden);
-    update();
-    doc.addEventListener("visibilitychange", update);
-    return () => doc.removeEventListener("visibilitychange", update);
-  }, []);
 
   const atAutoplayEnd = !presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0);
   useEffect(() => {
@@ -764,7 +753,7 @@ export default function HeroSection({ games, presentation: sourcePresentation, i
                 <div className={motionStyles.motionFrame}><div className={styles.cardSurface}>
                   <div className={`${styles.media} ${motionStyles.motionArtwork}`} style={parallaxArtworkStyle}>
                     {game.heroImage || game.coverImage ? <ResponsiveArtwork game={game} alt={isMain ? game.mediaAccessibility?.hero ?? game.imageAlt : ""} active={isMain} style={artworkStyle} /> : <div className={styles.mediaFallback} aria-hidden="true" />}
-                    {isMain && <HeroVideoLayer game={game} enabled={videoShouldRender} />}
+                    {isMain && <HeroVideoLayer game={game} enabled={videoShouldRender} documentVisible={documentVisible} />}
                     {imageEffect && isMain && <div className={styles.tuningOverlay} style={{ opacity: tuningOverlayOpacity }} aria-hidden="true" />}
                     <div className={styles.editorOverlay} aria-hidden="true" />
                     {isMain && <div className={styles.readabilityOverlay} aria-hidden="true" />}
