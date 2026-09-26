@@ -1,9 +1,14 @@
 import type {
+  DistributionPackage,
   Game,
   GameDistributionChannel,
   GameDownloadSource,
   GameDownloadSourceStatus,
+  GameRelease,
 } from "@/types/game";
+import {
+  resolveGameReleases,
+} from "@/lib/games/releases";
 
 export type ResolvedDownloadSource = {
   id: string;
@@ -22,6 +27,10 @@ export type ResolvedDownload = {
   sizeGb?: number;
   fileCount?: number;
   platform?: string;
+  platformId?: string;
+  releaseId?: string;
+  packageId?: string;
+  packageKind?: DistributionPackage["kind"];
   channel?: GameDistributionChannel;
   checksumSha256?: string;
 };
@@ -143,9 +152,160 @@ function resolveSource(
   };
 }
 
+function resolvePackageDownload(
+  release: GameRelease,
+  item: DistributionPackage
+): ResolvedDownload | null {
+  if (item.enabled === false) {
+    return null;
+  }
+
+  const sources: ResolvedDownloadSource[] = [];
+  const seenHrefs = new Set<string>();
+
+  for (const source of item.sources ?? []) {
+    const resolved = resolveSource(source);
+
+    if (
+      !resolved ||
+      seenHrefs.has(resolved.href)
+    ) {
+      continue;
+    }
+
+    seenHrefs.add(resolved.href);
+    sources.push(resolved);
+  }
+
+  const primary =
+    sources.find(
+      (source) =>
+        source.status === "available"
+    ) ?? sources[0];
+
+  if (!primary) {
+    return null;
+  }
+
+  const checksumSha256 =
+    item.checksumSha256
+      ?.trim()
+      .toLowerCase();
+
+  return {
+    href: primary.href,
+    label:
+      item.label?.trim() ||
+      primary.label,
+    external: primary.external,
+    sources,
+    sizeGb:
+      typeof item.sizeGb === "number" &&
+      Number.isFinite(item.sizeGb) &&
+      item.sizeGb > 0
+        ? item.sizeGb
+        : undefined,
+    fileCount:
+      typeof item.fileCount === "number" &&
+      Number.isInteger(item.fileCount) &&
+      item.fileCount > 0
+        ? item.fileCount
+        : undefined,
+    platformId: release.platformId,
+    releaseId: release.id,
+    packageId: item.id,
+    packageKind: item.kind,
+    channel: item.channel,
+    checksumSha256:
+      checksumSha256 &&
+      /^[a-f0-9]{64}$/.test(checksumSha256)
+        ? checksumSha256
+        : undefined,
+  };
+}
+
+export function resolveGameReleaseDownloads(
+  game: Game,
+  releaseId: string
+) {
+  const release =
+    resolveGameReleases(game).find(
+      (item) =>
+        item.id === releaseId
+    );
+
+  if (!release) {
+    return [];
+  }
+
+  return (release.packages ?? [])
+    .map((item) =>
+      resolvePackageDownload(
+        release,
+        item
+      )
+    )
+    .filter(
+      (
+        item
+      ): item is ResolvedDownload =>
+        item !== null
+    );
+}
+
+export function resolveGameReleaseDownload(
+  game: Game,
+  releaseId: string,
+  packageId?: string
+): ResolvedDownload | null {
+  const downloads =
+    resolveGameReleaseDownloads(
+      game,
+      releaseId
+    );
+
+  if (packageId) {
+    return (
+      downloads.find(
+        (item) =>
+          item.packageId ===
+          packageId
+      ) ?? null
+    );
+  }
+
+  return (
+    downloads.find(
+      (item) =>
+        item.sources.some(
+          (source) =>
+            source.status ===
+            "available"
+        )
+    ) ??
+    downloads[0] ??
+    null
+  );
+}
+
 export function resolveGameDownload(
   game: Game
 ): ResolvedDownload | null {
+  const releases =
+    resolveGameReleases(game);
+
+  for (const release of releases) {
+    const resolved =
+      resolveGameReleaseDownload(
+        game,
+        release.id
+      );
+
+    if (resolved) {
+      return resolved;
+    }
+  }
+
   const config = game.download;
 
   if (!config) {
