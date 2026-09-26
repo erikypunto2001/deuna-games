@@ -22,6 +22,9 @@ import {
 import {
   getPublicPlatformCatalog,
 } from "@/lib/platforms/public-platform-catalog";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 
 import styles from "./page.module.css";
 
@@ -42,10 +45,12 @@ export default async function CollectionsPage() {
     games,
     collections,
     catalog,
+    config,
   ] = await Promise.all([
     getPublicGames(),
     getPublicGameCollections(),
     getPublicPlatformCatalog(),
+    getPublicSiteConfig(),
   ]);
 
   const counts = new Map<
@@ -105,7 +110,7 @@ export default async function CollectionsPage() {
             Colecciones
           </h1>
           <p>
-            Recorre DeUna Games por
+            Recorre {config.name} por
             sagas y franquicias, o
             entra directamente a los
             juegos disponibles para
