@@ -217,6 +217,7 @@ async function checkPublishedWorkspace(pool: Pool) {
     ["about_config", "about"],
     ["game_taxonomy", "games"],
     ["public_pages_config", "public-pages"],
+    ["platform_catalog", "platforms"],
   ] as const;
   const result = await pool.query<WorkspaceRow>(
     `SELECT item_type,
@@ -232,7 +233,8 @@ async function checkPublishedWorkspace(pool: Pool) {
         ('home_config', 'home'),
         ('about_config', 'about'),
         ('game_taxonomy', 'games'),
-        ('public_pages_config', 'public-pages')
+        ('public_pages_config', 'public-pages'),
+        ('platform_catalog', 'platforms')
       )`
   );
 
