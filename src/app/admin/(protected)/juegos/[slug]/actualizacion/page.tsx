@@ -241,6 +241,8 @@ export default async function AdminGameUpdatePage({
           className={
             styles.editorNotice
           }
+          role="status"
+          aria-live="polite"
         >
           <ShieldCheck
             size={18}
@@ -258,6 +260,8 @@ export default async function AdminGameUpdatePage({
           className={
             styles.editorNotice
           }
+          role="status"
+          aria-live="polite"
         >
           <ShieldCheck
             size={18}
