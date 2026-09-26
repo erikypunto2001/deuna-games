@@ -326,7 +326,22 @@ const downloadSchema = z
     fileCount: z.number().int().positive().max(10_000).optional(),
     platform: optionalShortText,
   })
-  .strict();
+  .strict()
+  .superRefine((download, context) => {
+    const sourceIds = new Set<string>();
+
+    download.sources?.forEach((source, index) => {
+      if (sourceIds.has(source.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index, "id"],
+          message:
+            "Las fuentes de descarga deben tener IDs únicos.",
+        });
+      }
+      sourceIds.add(source.id);
+    });
+  });
 
 const distributionChannelSchema = z.enum([
   "stable",
@@ -361,7 +376,22 @@ const distributionPackageSchema = z
       .max(12)
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((item, context) => {
+    const sourceIds = new Set<string>();
+
+    item.sources?.forEach((source, index) => {
+      if (sourceIds.has(source.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index, "id"],
+          message:
+            "Las fuentes de un paquete deben tener IDs únicos.",
+        });
+      }
+      sourceIds.add(source.id);
+    });
+  });
 
 const gameReleaseSchema = z
   .object({
@@ -428,6 +458,19 @@ const gameReleaseSchema = z
         });
       }
       packageIds.add(item.id);
+    });
+
+    const softwareSlugs = new Set<string>();
+    release.recommendedSoftwareSlugs?.forEach((slug, index) => {
+      if (softwareSlugs.has(slug)) {
+        context.addIssue({
+          code: "custom",
+          path: ["recommendedSoftwareSlugs", index],
+          message:
+            "El software recomendado no puede repetirse dentro del mismo release.",
+        });
+      }
+      softwareSlugs.add(slug);
     });
   });
 
@@ -923,6 +966,54 @@ export const editorialSoftwareSchema: z.ZodType<Software> = z
           "El ID y el slug del programa deben coincidir.",
       });
     }
+
+    const runsOnPlatformIds = new Set<string>();
+    software.runsOnPlatformIds.forEach((platformId, index) => {
+      if (runsOnPlatformIds.has(platformId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["runsOnPlatformIds", index],
+          message:
+            "Una plataforma de ejecución no puede repetirse.",
+        });
+      }
+      runsOnPlatformIds.add(platformId);
+    });
+
+    const emulatesPlatformIds = new Set<string>();
+    software.emulatesPlatformIds?.forEach((platformId, index) => {
+      if (emulatesPlatformIds.has(platformId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["emulatesPlatformIds", index],
+          message:
+            "Una plataforma emulada no puede repetirse.",
+        });
+      }
+      emulatesPlatformIds.add(platformId);
+    });
+
+    const packageIds = new Set<string>();
+    software.packages?.forEach((item, index) => {
+      if (packageIds.has(item.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["packages", index, "id"],
+          message:
+            "Los paquetes de un programa deben tener IDs únicos.",
+        });
+      }
+      packageIds.add(item.id);
+
+      if (!runsOnPlatformIds.has(item.platformId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["packages", index, "platformId"],
+          message:
+            "Cada paquete debe pertenecer a una plataforma donde se ejecuta el programa.",
+        });
+      }
+    });
   });
 
 export const editorialGameCollectionSchema: z.ZodType<GameCollection> = z
