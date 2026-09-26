@@ -19,6 +19,7 @@ const [
   assignmentsWorkspace,
   mediaViewportEditor,
   heroSection,
+  clientSignals,
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
@@ -28,6 +29,7 @@ const [
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/home/HeroSection.tsx"),
+  source("src/lib/browser/client-signals.ts"),
 ]);
 
 assert(
@@ -158,14 +160,23 @@ assert(
 assert(
   has(
     heroSection,
-    "const [documentVisible, setDocumentVisible] = useState(true)",
-    "const syncVisibility = () => setDocumentVisible(!document.hidden)",
-    "syncVisibility();",
-    'document.addEventListener("visibilitychange", syncVisibility)',
-    'document.removeEventListener("visibilitychange", syncVisibility)'
+    "const documentVisible = useDocumentVisible()",
+    'const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)")',
+    "documentVisible={documentVisible}"
   ) &&
-    !heroSection.includes('typeof document === "undefined" || !document.hidden'),
-  "La visibilidad del documento del video Hero debe partir de un estado SSR/cliente idéntico y sincronizar document.hidden sólo después de hidratar."
+    has(
+      clientSignals,
+      "useSyncExternalStore",
+      "function subscribeDocumentVisibility",
+      'document.addEventListener("visibilitychange", notifyVisibility)',
+      'document.removeEventListener("visibilitychange", notifyVisibility)',
+      "function getDocumentVisibleSnapshot()",
+      'return typeof document === "undefined" || !document.hidden',
+      "function getDocumentVisibleServerSnapshot()",
+      "return true",
+      "export function useDocumentVisible()"
+    ),
+  "La visibilidad del Hero debe compartir una señal única, partir visible en SSR/hidratación y sincronizar document.hidden sin listeners duplicados."
 );
 
 if (failures.length) {

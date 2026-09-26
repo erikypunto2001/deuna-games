@@ -3,10 +3,16 @@ import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-const hoverPreview = await readFile(
-  path.join(root, "src/components/ui/HoverPreviewMedia.tsx"),
-  "utf8"
-);
+const [hoverPreview, clientSignals] = await Promise.all([
+  readFile(
+    path.join(root, "src/components/ui/HoverPreviewMedia.tsx"),
+    "utf8"
+  ),
+  readFile(
+    path.join(root, "src/lib/browser/client-signals.ts"),
+    "utf8"
+  ),
+]);
 const failures = [];
 
 function assert(condition, message) {
@@ -17,16 +23,21 @@ assert(
   hoverPreview.includes(
     'const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"'
   ) &&
+    hoverPreview.includes("const documentVisible = useDocumentVisible()") &&
     hoverPreview.includes(
-      "const [playbackAllowed, setPlaybackAllowed] = useState(false)"
+      "const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY)"
     ) &&
-    hoverPreview.includes("window.matchMedia(REDUCED_MOTION_QUERY)") &&
-    hoverPreview.includes("!document.hidden && !motionQuery.matches") &&
-    hoverPreview.includes('"visibilitychange"') &&
-    hoverPreview.includes('motionQuery.addEventListener(\n      "change"') &&
-    hoverPreview.includes('motionQuery.removeEventListener(\n        "change"') &&
-    hoverPreview.includes("if (!playbackAllowed) return null;"),
-  "El video de Card debe permanecer desmontado hasta confirmar documento visible y ausencia de reduced-motion, y reaccionar a cambios de ambas señales."
+    hoverPreview.includes(
+      "const playbackAllowed = documentVisible && !reducedMotion"
+    ) &&
+    hoverPreview.includes("if (!playbackAllowed) return null;") &&
+    clientSignals.includes("useSyncExternalStore") &&
+    clientSignals.includes("function getMediaStore(query: string)") &&
+    clientSignals.includes('entry.media.addEventListener("change", entry.notify)') &&
+    clientSignals.includes('document.addEventListener("visibilitychange", notifyVisibility)') &&
+    clientSignals.includes("function getDocumentVisibleServerSnapshot()") &&
+    clientSignals.includes("return true"),
+  "El video de Card debe permanecer desmontado hasta confirmar documento visible y ausencia de reduced-motion mediante señales compartidas y reactivas."
 );
 
 assert(
