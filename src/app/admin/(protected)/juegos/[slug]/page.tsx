@@ -21,6 +21,7 @@ import {
 } from "@/lib/admin/game-publication-readiness";
 import {
   resolveGameReleases,
+  resolvePcRelease,
 } from "@/lib/games/releases";
 import {
   resolveGameEditorSection,
@@ -182,6 +183,10 @@ export default async function AdminGameEditorPage({
   const valuationAction = `${coreAction}/valuation`;
   const hasPublicVersion = publicationIdentity?.everPublished ?? false;
   const readiness = evaluateGamePublicationReadiness(game);
+  const pcRelease =
+    resolvePcRelease(
+      game
+    );
 
   return (
     <>
@@ -270,8 +275,12 @@ export default async function AdminGameEditorPage({
           slug={slug}
           revision={item.revision}
           action={performanceAction}
-          calibration={game.performance}
-          metadata={game.performanceMetadata}
+          calibration={
+            pcRelease?.performance
+          }
+          metadata={
+            pcRelease?.performanceMetadata
+          }
         />
       )}
 
