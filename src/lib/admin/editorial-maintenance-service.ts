@@ -30,7 +30,6 @@ export type GameDeletionPreview = {
   deletable: boolean;
   reason:
     | "ready"
-    | "source_managed"
     | "still_public"
     | "media_unverified"
     | "home_reference";
@@ -58,7 +57,6 @@ export type DeletePanelGameResult =
       mediaCleanupPending: boolean;
     }
   | { outcome: "not_found" }
-  | { outcome: "source_managed" }
   | { outcome: "still_public" }
   | { outcome: "media_unverified" }
   | {
@@ -185,19 +183,15 @@ export async function getGameDeletionPreview(
     mediaInventoryVerified = false;
   }
 
-  const sourcePayload = asRecord(row.source_payload);
-  const panelCreated = !row.source_present && Object.keys(sourcePayload).length === 0;
   const hasHomeReference =
     row.home_draft_references > 0 || row.home_published_references > 0;
-  const reason = !panelCreated
-    ? "source_managed"
-    : row.public_visible
-      ? "still_public"
-      : !mediaInventoryVerified
-        ? "media_unverified"
-        : hasHomeReference
-          ? "home_reference"
-          : "ready";
+  const reason = row.public_visible
+    ? "still_public"
+    : !mediaInventoryVerified
+      ? "media_unverified"
+      : hasHomeReference
+        ? "home_reference"
+        : "ready";
 
   return {
     deletable: reason === "ready",
@@ -272,9 +266,6 @@ export async function deletePanelGame(
 
   if (outcome === "not_found") {
     return { outcome: "not_found" };
-  }
-  if (outcome === "source_managed") {
-    return { outcome: "source_managed" };
   }
   if (outcome === "still_public") {
     return { outcome: "still_public" };

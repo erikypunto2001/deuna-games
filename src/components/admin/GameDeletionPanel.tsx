@@ -27,10 +27,11 @@ export default function GameDeletionPanel({
           Eliminar definitivamente este juego
         </h2>
         <p>
-          Esta acción sólo existe para juegos creados desde el panel. Elimina
-          su espacio editorial actual, actualizaciones asociadas,
-          preferencias, valoraciones e Índice DeUna. Las recompensas ya
-          concedidas a cuentas no se recalculan ni se eliminan.
+          Esta acción elimina definitivamente el juego del estado editorial
+          actual, junto con actualizaciones asociadas, preferencias,
+          valoraciones e Índice DeUna. Si proviene de la fuente inicial,
+          también registra su retiro para que el importador no lo recree.
+          Las recompensas ya concedidas a cuentas no se recalculan ni se eliminan.
         </p>
       </div>
 
@@ -90,13 +91,6 @@ export default function GameDeletionPanel({
           {preview.homePublishedReferences > 0 ? " en su snapshot publicado" : ""}.
           Retíralo desde Inicio y publica ese cambio cuando corresponda; esta
           operación nunca modifica ni publica Inicio automáticamente.
-        </div>
-      ) : preview.reason === "source_managed" ? (
-        <div className={styles.blocker}>
-          <AlertTriangle size={17} aria-hidden="true" />{" "}
-          Este juego está respaldado por archivos fuente. Se puede ocultar,
-          pero no eliminar definitivamente desde el panel porque el importador
-          o el fallback podrían recrearlo.
         </div>
       ) : (
         <form
