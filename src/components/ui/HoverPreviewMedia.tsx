@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -59,12 +58,6 @@ function PreviewVideo({
       });
     }, AUTOPLAY_RETRY_DELAY_MS);
   }
-
-  useEffect(() => {
-    if (!playbackAllowed) {
-      setPlaying(false);
-    }
-  }, [playbackAllowed]);
 
   if (!playbackAllowed) return null;
 
