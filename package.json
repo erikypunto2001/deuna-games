@@ -91,7 +91,8 @@
     "visual:editorial-maintenance": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/editorial-maintenance-lifecycle-smoke.mjs",
     "check:site-maintenance-postgres": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-site-maintenance-postgres.ts",
     "visual:home-row-interaction-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/home-row-static-detail-visual-fixture.ts --mode=interaction",
-    "check:multiplatform-postgres": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-multiplatform-editorial-postgres.ts"
+    "check:multiplatform-postgres": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/check-multiplatform-editorial-postgres.ts",
+    "visual:multiplatform-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/multiplatform-visual-fixture.ts"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true
