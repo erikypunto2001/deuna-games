@@ -5,6 +5,7 @@ const root = process.cwd();
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 const headerWrapper = read("src/components/layout/HeaderClient.tsx");
 const headerBase = read("src/components/layout/HeaderClientBase.tsx");
+const headerGuest = read("src/components/layout/HeaderGuestClient.tsx");
 const header = `${headerWrapper}\n${headerBase}`;
 const headerServer = read("src/components/layout/Header.tsx");
 const destinations = read("src/lib/accounts/dashboard-view.ts");
@@ -16,15 +17,25 @@ const requireMatch = (condition, message) => {
 };
 
 requireMatch(
-  /accountIdentity=/.test(headerServer) && /session\.username/.test(headerServer) && /session\.displayName/.test(headerServer),
-  "Header server debe entregar identidad de sesión sin una consulta adicional de perfil."
+  /if \(!session\)/.test(headerServer) &&
+    /HeaderGuestClient/.test(headerServer) &&
+    /accountIdentity=/.test(headerServer) &&
+    /session\.username/.test(headerServer) &&
+    /session\.displayName/.test(headerServer),
+  "Header server debe separar el bundle invitado y entregar identidad autenticada sin una consulta adicional de perfil."
+);
+requireMatch(
+  /href="\/cuenta\?modo=entrar"/.test(headerGuest) &&
+    /Iniciar sesión/.test(headerGuest) &&
+    !/BellRing|accountDashboardDestinations|\/api\/account\/logout|header-notifications/.test(headerGuest),
+  "El Header invitado debe conservar navegación/login sin cargar lógica de avisos, dashboard ni logout."
 );
 requireMatch(
   /accountIdentity \? \(/.test(header),
   "HeaderClient debe separar explícitamente la experiencia autenticada de la invitada."
 );
 requireMatch(
-  /href="\/cuenta\?modo=entrar"/.test(header) && /Iniciar sesión/.test(header),
+  /href="\/cuenta\?modo=entrar"/.test(headerGuest) && /Iniciar sesión/.test(headerGuest),
   "El Header invitado debe mostrar una acción explícita para iniciar sesión."
 );
 requireMatch(
