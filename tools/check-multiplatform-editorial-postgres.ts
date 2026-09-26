@@ -37,10 +37,16 @@ if (
   process.exit(0);
 }
 
-const pool = new Pool(
+const runtimePool = new Pool(
   getAdminDatabaseConfig("runtime")
 );
-const client = await pool.connect();
+const migrationPool = new Pool(
+  getAdminDatabaseConfig("migration")
+);
+const runtimeClient =
+  await runtimePool.connect();
+const migrationClient =
+  await migrationPool.connect();
 
 const suffix = randomUUID()
   .replaceAll("-", "")
@@ -51,10 +57,8 @@ const gameSlug =
   `ci-game-${suffix}`;
 
 try {
-  await client.query("BEGIN");
-
   const catalogResult =
-    await client.query<{
+    await runtimeClient.query<{
       published_payload: unknown;
     }>(
       `SELECT published_payload
@@ -103,7 +107,7 @@ try {
       }
     );
 
-  await client.query(
+  await migrationClient.query(
     `INSERT INTO deuna_admin.editorial_items (
        id,
        item_type,
@@ -167,7 +171,7 @@ try {
 
   const blockedGame =
     await validatePublishedGameRelations(
-      client,
+      runtimeClient,
       game
     );
   assert(
@@ -178,7 +182,7 @@ try {
     "Un juego no debe poder validar un programa relacionado que todavía está oculto."
   );
 
-  await client.query(
+  await migrationClient.query(
     `UPDATE deuna_admin.editorial_items
         SET public_visible = true
       WHERE item_type = 'software'
@@ -190,7 +194,7 @@ try {
 
   const visibleGame =
     await validatePublishedGameRelations(
-      client,
+      runtimeClient,
       game
     );
   assert(
@@ -200,7 +204,7 @@ try {
 
   const softwareRelations =
     await validatePublishedSoftwareRelations(
-      client,
+      runtimeClient,
       software
     );
   assert(
@@ -208,7 +212,7 @@ try {
     "Un programa con plataforma pública válida debe superar la validación."
   );
 
-  await client.query(
+  await migrationClient.query(
     `INSERT INTO deuna_admin.editorial_items (
        id,
        item_type,
@@ -247,7 +251,7 @@ try {
 
   const blockedCollection =
     await validatePublishedGameCollectionRelations(
-      client,
+      runtimeClient,
       [
         gameSlug,
       ]
@@ -260,7 +264,7 @@ try {
     "Una colección no debe aceptar un juego todavía oculto."
   );
 
-  await client.query(
+  await migrationClient.query(
     `UPDATE deuna_admin.editorial_items
         SET public_visible = true
       WHERE item_type = 'game'
@@ -272,7 +276,7 @@ try {
 
   const visibleCollection =
     await validatePublishedGameCollectionRelations(
-      client,
+      runtimeClient,
       [
         gameSlug,
       ]
@@ -294,7 +298,7 @@ try {
 
   const blockedCatalog =
     await validatePublishedPlatformCatalogRemoval(
-      client,
+      runtimeClient,
       nextCatalog
     );
   assert(
@@ -305,16 +309,28 @@ try {
     "No debe publicarse un catálogo que quite una plataforma todavía usada por contenido público."
   );
 
-  await client.query("ROLLBACK");
-
   console.log(
-    "Relaciones multiplataforma PostgreSQL: OK (dependencias públicas de juegos, programas, colecciones y catálogo protegidas)."
+    "Relaciones multiplataforma PostgreSQL: OK (runtime sólo valida; fixtures usan migrador; dependencias públicas protegidas)."
   );
-} catch (error) {
-  await client.query("ROLLBACK")
-    .catch(() => {});
-  throw error;
 } finally {
-  client.release();
-  await pool.end();
+  await migrationClient.query(
+    `DELETE FROM deuna_admin.editorial_items
+      WHERE (
+        item_type = 'software'
+        AND item_key = $1
+      )
+      OR (
+        item_type = 'game'
+        AND item_key = $2
+      )`,
+    [
+      softwareSlug,
+      gameSlug,
+    ]
+  ).catch(() => {});
+
+  runtimeClient.release();
+  migrationClient.release();
+  await runtimePool.end();
+  await migrationPool.end();
 }
