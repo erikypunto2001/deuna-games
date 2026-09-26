@@ -84,7 +84,7 @@ expect(
   "El catálogo de juegos debe ofrecer la acción Nueva versión por juego publicado."
 );
 expect(
-  entries.workspace.includes("Publicar nueva versión") &&
+  /Publicar\s+nueva\s+versión/.test(entries.workspace) &&
     entries.workspace.includes("GameDownloadEditor") &&
     entries.workspace.includes("expectedRevision") &&
     entries.workspace.includes("getPublicGameBySlug") &&
@@ -129,7 +129,10 @@ expect(
     entries.service.includes("normalizeVersionToken") &&
     entries.service.includes("versionAlreadyRegistered") &&
     entries.service.includes("buildDistributionMetadata") &&
-    entries.service.includes("distributionMetadata: nextDownload") &&
+    entries.service.includes("buildPackage") &&
+    entries.service.includes("nextPackage") &&
+    entries.service.includes("nextReleases") &&
+    entries.service.includes("releaseId:") &&
     entries.service.includes('"game_update"'),
   "La publicación integrada debe bloquear concurrencia, cambios pendientes, multimedia incompleta, versiones equivalentes/históricas y publicar juego + paquete íntegro + aviso en una transacción."
 );
