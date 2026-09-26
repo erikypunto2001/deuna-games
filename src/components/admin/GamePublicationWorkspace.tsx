@@ -91,6 +91,14 @@ function RequestNotice({
     );
   }
 
+  if (state === "relacion-publica") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        <strong>Publicación bloqueada por dependencias públicas.</strong>{" "}
+        Este juego referencia una plataforma o un programa recomendado que todavía no existe en el estado público vigente. Publica primero esas dependencias y vuelve a intentarlo.
+      </div>
+    );
+  }
   if (state === "catalogos-sin-publicar") {
     return (
       <div className={`${styles.notice} ${styles.noticeWarning}`}>
