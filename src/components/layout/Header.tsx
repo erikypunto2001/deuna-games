@@ -19,45 +19,39 @@ import {
 } from "@/lib/updates/public-updates";
 
 import HeaderClient from "./HeaderClient";
+import HeaderGuestClient from "./HeaderGuestClient";
 
 export default async function Header() {
   const [config, session] = await Promise.all([
     getPublicSiteConfig(),
     readAccountSession(),
   ]);
-  let notifications: AccountUpdateNotification[] | null = [];
-  let accountAvatarVersion: string | null = null;
-
-  if (session) {
-    const [resolvedNotifications, avatarMetadata] = await Promise.all([
-      Promise.all([
-        getAccountGamePreferences(session.userId),
-        getPublicResolvedUpdates(),
-      ])
-        .then(([preferences, updates]) =>
-          resolveAccountUpdateNotifications(preferences, updates)
-        )
-        .catch(() => null),
-      getAccountAvatarMetadata(session.userId).catch(() => null),
-    ]);
-
-    notifications = resolvedNotifications;
-    accountAvatarVersion = avatarMetadata
-      ? avatarMetadata.updatedAt.getTime().toString(36)
-      : null;
+  if (!session) {
+    return <HeaderGuestClient siteName={config.name} />;
   }
+
+  const [notifications, avatarMetadata] = await Promise.all([
+    Promise.all([
+      getAccountGamePreferences(session.userId),
+      getPublicResolvedUpdates(),
+    ])
+      .then(([preferences, updates]) =>
+        resolveAccountUpdateNotifications(preferences, updates)
+      )
+      .catch(() => null as AccountUpdateNotification[] | null),
+    getAccountAvatarMetadata(session.userId).catch(() => null),
+  ]);
+  const accountAvatarVersion = avatarMetadata
+    ? avatarMetadata.updatedAt.getTime().toString(36)
+    : null;
 
   return (
     <HeaderClient
       siteName={config.name}
-      accountIdentity={
-        session
-          ? {
-              username: session.username,
-              displayName: session.displayName,
-            }
-          : null
-      }
+      accountIdentity={{
+        username: session.username,
+        displayName: session.displayName,
+      }}
       accountNotifications={notifications}
       accountAvatarVersion={accountAvatarVersion}
     />
