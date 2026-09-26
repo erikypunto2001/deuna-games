@@ -562,3 +562,107 @@ export async function validatePublishedPlatformCatalogRemoval(
     missing,
   };
 }
+
+
+export async function validatePublishedSoftwareHide(
+  client: PoolClient,
+  softwareSlug: string
+) {
+  const result =
+    await client.query<{
+      item_key: string;
+      published_payload: unknown;
+    }>(
+      `SELECT
+         item_key,
+         published_payload
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'game'
+         AND public_visible = true
+       FOR SHARE`
+    );
+  const usedBy: string[] = [];
+
+  for (const row of result.rows) {
+    try {
+      const game =
+        parseEditorialPayload(
+          "game",
+          row.published_payload
+        );
+      const referenced =
+        resolveGameReleases(
+          game
+        ).some(
+          (release) =>
+            release
+              .recommendedSoftwareSlugs
+              ?.includes(
+                softwareSlug
+              ) ?? false
+        );
+
+      if (referenced) {
+        usedBy.push(
+          row.item_key
+        );
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    ok:
+      usedBy.length === 0,
+    usedBy,
+  };
+}
+
+export async function validatePublishedGameHide(
+  client: PoolClient,
+  gameSlug: string
+) {
+  const result =
+    await client.query<{
+      item_key: string;
+      published_payload: unknown;
+    }>(
+      `SELECT
+         item_key,
+         published_payload
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'game_collection'
+         AND public_visible = true
+       FOR SHARE`
+    );
+  const usedBy: string[] = [];
+
+  for (const row of result.rows) {
+    try {
+      const collection =
+        parseEditorialPayload(
+          "game_collection",
+          row.published_payload
+        );
+
+      if (
+        collection.gameSlugs.includes(
+          gameSlug
+        )
+      ) {
+        usedBy.push(
+          row.item_key
+        );
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    ok:
+      usedBy.length === 0,
+    usedBy,
+  };
+}
