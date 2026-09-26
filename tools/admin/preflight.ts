@@ -665,6 +665,10 @@ async function checkApplicationState(pool: Pool) {
     importedCount("site_config") === 1,
     "La base debe contener una configuración pública importada."
   );
+  assert(
+    importedCount("platform_catalog") === 1,
+    "La base debe contener exactamente un catálogo fuente de plataformas."
+  );
 }
 
 function safeDatabaseError(error: unknown) {
