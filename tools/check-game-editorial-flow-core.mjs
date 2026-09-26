@@ -243,7 +243,8 @@ assert(
 );
 assert(
   files.publicPerformanceRoute.includes("getPublicGameBySlug") &&
-    files.publicPerformanceRoute.includes("game.performance ?? null") &&
+    files.publicPerformanceRoute.includes("resolvePcRelease") &&
+    files.publicPerformanceRoute.includes("pcRelease?.performance") &&
     !files.publicPerformanceRoute.includes("draft_payload"),
   "Los FPS públicos deben usar sólo calibración publicada."
 );
