@@ -177,6 +177,16 @@ const notices = {
     message:
       "El archivo no pudo validarse o decodificarse como video. Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB.",
   },
+  "slug-plataforma": {
+    kind: "error",
+    message:
+      "Ese identificador está reservado por una plataforma y no puede usarse como slug de colección. Usa otro slug para evitar que una saga o franquicia tape la colección automática de esa consola.",
+  },
+  "coleccion-en-conflicto": {
+    kind: "error",
+    message:
+      "No se guardó el catálogo porque uno de los IDs de plataforma coincide con una colección editorial existente. Usa identificadores distintos para mantener URLs de Colecciones inequívocas.",
+  },
   "relacion-publica": {
     kind: "error",
     message:
