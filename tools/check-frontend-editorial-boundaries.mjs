@@ -211,9 +211,15 @@ assert(
   "robots.txt debe seguir siendo una regla estructural que excluya el panel y su API administrativa."
 );
 
+const sitemapReadsPublicGames =
+  sitemap.includes("await getPublicGames()") ||
+  /Promise\.all\(\s*\[[\s\S]*?getPublicGames\(\)/.test(
+    sitemap
+  );
+
 assert(
   sitemap.includes("getPublicGames") &&
-    sitemap.includes("await getPublicGames()") &&
+    sitemapReadsPublicGames &&
     !sitemap.includes('from "@/data/games"') &&
     sitemap.includes("game.slug"),
   "El sitemap debe generarse desde el catálogo público publicado para incluir altas del panel y excluir juegos ocultos."
