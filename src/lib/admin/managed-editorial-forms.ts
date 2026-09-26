@@ -73,6 +73,230 @@ function jsonField(
     );
 }
 
+const releaseSourceStatus = z.enum([
+  "available",
+  "down",
+  "maintenance",
+]);
+
+const releaseSource = z
+  .object({
+    id: identifier,
+    name:
+      requiredText(100),
+    href: z
+      .string()
+      .trim()
+      .max(2_048)
+      .refine(
+        (value) => {
+          if (
+            value.startsWith(
+              "/"
+            )
+          ) {
+            return (
+              !value.startsWith(
+                "//"
+              ) &&
+              !value.includes(
+                "\\"
+              )
+            );
+          }
+
+          try {
+            const url =
+              new URL(
+                value
+              );
+
+            return (
+              url.protocol ===
+                "https:" &&
+              !url.username &&
+              !url.password
+            );
+          } catch {
+            return false;
+          }
+        },
+        "La fuente debe usar HTTPS sin credenciales o una ruta interna segura."
+      ),
+    label:
+      optionalText(240),
+    enabled:
+      z.boolean().optional(),
+    status:
+      releaseSourceStatus.optional(),
+  })
+  .strict();
+
+const optionalPositiveNumber = z
+  .string()
+  .trim()
+  .refine(
+    (value) =>
+      value === "" ||
+      /^\d{1,6}(?:\.\d{1,2})?$/.test(
+        value
+      )
+  )
+  .transform(
+    (value) =>
+      value === ""
+        ? undefined
+        : Number(value)
+  )
+  .refine(
+    (value) =>
+      value === undefined ||
+      (
+        Number.isFinite(
+          value
+        ) &&
+        value > 0 &&
+        value <= 100_000
+      )
+  );
+
+const optionalPositiveInteger = z
+  .string()
+  .trim()
+  .refine(
+    (value) =>
+      value === "" ||
+      /^\d{1,5}$/.test(
+        value
+      )
+  )
+  .transform(
+    (value) =>
+      value === ""
+        ? undefined
+        : Number(value)
+  )
+  .refine(
+    (value) =>
+      value === undefined ||
+      (
+        Number.isInteger(
+          value
+        ) &&
+        value > 0 &&
+        value <= 10_000
+      )
+  );
+
+const releaseSourcesJson =
+  jsonField(5_500)
+    .pipe(
+      z
+        .array(
+          releaseSource
+        )
+        .max(6)
+        .superRefine(
+          (
+            sources,
+            context
+          ) => {
+            const ids =
+              new Set<string>();
+            const hrefs =
+              new Set<string>();
+
+            sources.forEach(
+              (
+                source,
+                index
+              ) => {
+                if (
+                  ids.has(
+                    source.id
+                  )
+                ) {
+                  context.addIssue({
+                    code:
+                      "custom",
+                    path: [
+                      index,
+                      "id",
+                    ],
+                    message:
+                      "Los identificadores de los mirrors deben ser únicos.",
+                  });
+                }
+                ids.add(
+                  source.id
+                );
+
+                if (
+                  hrefs.has(
+                    source.href
+                  )
+                ) {
+                  context.addIssue({
+                    code:
+                      "custom",
+                    path: [
+                      index,
+                      "href",
+                    ],
+                    message:
+                      "Una misma dirección no puede repetirse dentro del paquete.",
+                  });
+                }
+                hrefs.add(
+                  source.href
+                );
+              }
+            );
+          }
+        )
+    );
+
+export const integratedReleasePackageFormSchema =
+  z.object({
+    expectedRevision:
+      expectedRevisionSchema,
+    sizeGb:
+      optionalPositiveNumber,
+    fileCount:
+      optionalPositiveInteger,
+    channel: z
+      .enum([
+        "",
+        "stable",
+        "beta",
+        "testing",
+      ])
+      .transform(
+        (value) =>
+          value ||
+          undefined
+      ),
+    checksumSha256: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value === "" ||
+          /^[a-f0-9]{64}$/i.test(
+            value
+          ),
+        "El SHA-256 debe contener exactamente 64 caracteres hexadecimales."
+      )
+      .transform(
+        (value) =>
+          value
+            ? value.toLowerCase()
+            : undefined
+      ),
+    sourcesJson:
+      releaseSourcesJson,
+  });
+
 export const softwareCreateFormSchema =
   z.object({
     slug: identifier,
