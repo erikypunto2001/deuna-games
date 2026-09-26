@@ -14,6 +14,9 @@ import {
   softwareCreateFormSchema,
 } from "@/lib/admin/managed-editorial-forms";
 import {
+  validateSoftwareRelations,
+} from "@/lib/admin/managed-editorial-relations";
+import {
   createManagedEditorialDraft,
 } from "@/lib/admin/managed-editorial-service";
 import {
@@ -133,6 +136,19 @@ export async function POST(
             data.featured,
         }
       );
+
+    const relations =
+      await validateSoftwareRelations(
+        payload
+      );
+
+    if (!relations.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=plataforma"
+      );
+    }
 
     const result =
       await createManagedEditorialDraft(
