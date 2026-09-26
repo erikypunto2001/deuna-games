@@ -9,7 +9,9 @@ import {
 
 type HideableEditorialType =
   | "game"
-  | "game_update";
+  | "game_update"
+  | "software"
+  | "game_collection";
 
 type VisibilityItemRow = {
   id: string;
@@ -149,6 +151,32 @@ export function hideUpdatePublication(
 ) {
   return hideEditorialContent(
     "game_update",
+    key,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function hideSoftwarePublication(
+  key: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return hideEditorialContent(
+    "software",
+    key,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function hideGameCollectionPublication(
+  key: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return hideEditorialContent(
+    "game_collection",
     key,
     expectedPublicationNumber,
     actorUserId
