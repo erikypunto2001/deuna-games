@@ -334,6 +334,25 @@ try {
     );
   }
 
+  for (const [label, pathname] of [
+    ["Colecciones", "/colecciones"],
+    ["Programas", "/programas"],
+  ]) {
+    const response = await assertStatus(pathname, 200);
+    const html = await response.text();
+
+    assertPublicHtmlPrivacy(label, html);
+
+    if (
+      !sameUrl(
+        canonicalFrom(html),
+        expectedAbsolute(pathname)
+      )
+    ) {
+      fail(`${label}: canonical incorrecto.`);
+    }
+  }
+
   const filtered = await assertStatus(
     "/juegos?q=elden",
     200
@@ -441,8 +460,20 @@ try {
     fail("sitemap.xml: falta una ficha de juego esperada.");
   }
 
+  for (const pathname of ["/colecciones", "/programas"]) {
+    if (
+      !sitemapText.includes(
+        expectedAbsolute(pathname)
+      )
+    ) {
+      fail(
+        `sitemap.xml: falta la ruta pública ${pathname}.`
+      );
+    }
+  }
+
   console.log(
-    "Smoke: OK (runtime, privacidad pública, metadata social, admin cerrado, canonicals, noindex, descarga fallback, 404, sitemap y headers verificados)."
+    "Smoke: OK (runtime, privacidad pública, metadata social, admin cerrado, Colecciones/Programas, canonicals, noindex, descarga fallback, 404, sitemap y headers verificados)."
   );
 } catch (error) {
   if (serverOutput.trim()) {
