@@ -1,3 +1,7 @@
+import {
+  resolveGameReleases,
+  resolvePcRelease,
+} from "@/lib/games/releases";
 import { resolveGameCoverArtworkSource } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
@@ -23,6 +27,74 @@ function serialized(value: unknown) {
 
 function changed(current: unknown, published: unknown) {
   return serialized(current) !== serialized(published);
+}
+
+function compatibilityState(
+  game: Game
+) {
+  const pcRelease =
+    resolvePcRelease(
+      game
+    );
+
+  return {
+    platforms:
+      resolveGameReleases(
+        game
+      ).map(
+        (release) => ({
+          id: release.id,
+          platformId:
+            release.platformId,
+          label:
+            release.label,
+          region:
+            release.region,
+          releaseDate:
+            release.releaseDate,
+        })
+      ),
+    requirements:
+      pcRelease?.requirements,
+    metadata:
+      game.compatibilityMetadata,
+  };
+}
+
+function performanceState(
+  game: Game
+) {
+  const pcRelease =
+    resolvePcRelease(
+      game
+    );
+
+  return {
+    calibration:
+      pcRelease?.performance,
+    metadata:
+      pcRelease?.performanceMetadata,
+  };
+}
+
+function distributionState(
+  game: Game
+) {
+  return resolveGameReleases(
+    game
+  ).map(
+    (release) => ({
+      id: release.id,
+      platformId:
+        release.platformId,
+      version:
+        release.version,
+      packages:
+        release.packages,
+      recommendedSoftwareSlugs:
+        release.recommendedSoftwareSlugs,
+    })
+  );
 }
 
 function multimediaState(game: Game) {
@@ -125,16 +197,12 @@ export function evaluateGamePublicationChanges(
 
   if (
     changed(
-      {
-        platforms: draft.platforms,
-        requirements: draft.requirements,
-        metadata: draft.compatibilityMetadata,
-      },
-      {
-        platforms: published.platforms,
-        requirements: published.requirements,
-        metadata: published.compatibilityMetadata,
-      }
+      compatibilityState(
+        draft
+      ),
+      compatibilityState(
+        published
+      )
     )
   ) {
     changes.push({
@@ -148,14 +216,12 @@ export function evaluateGamePublicationChanges(
 
   if (
     changed(
-      {
-        calibration: draft.performance,
-        metadata: draft.performanceMetadata,
-      },
-      {
-        calibration: published.performance,
-        metadata: published.performanceMetadata,
-      }
+      performanceState(
+        draft
+      ),
+      performanceState(
+        published
+      )
     )
   ) {
     changes.push({
@@ -179,14 +245,12 @@ export function evaluateGamePublicationChanges(
 
   if (
     changed(
-      {
-        download: draft.download,
-        metadata: draft.distributionMetadata,
-      },
-      {
-        download: published.download,
-        metadata: published.distributionMetadata,
-      }
+      distributionState(
+        draft
+      ),
+      distributionState(
+        published
+      )
     )
   ) {
     changes.push({
