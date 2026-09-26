@@ -91,8 +91,10 @@ assert(
 
 assert(
   downloadPage.includes("resolveGameReleaseDownload") &&
-    downloadPage.includes("requestedRelease") &&
-    !/requestedRelease[\s\S]{0,400}["']PC["']/.test(downloadPage),
+    downloadPage.includes("releaseId") &&
+    downloadPage.includes("packageId") &&
+    /releaseId[\s\S]{0,260}resolveGameReleaseDownload/.test(downloadPage) &&
+    !/releaseId[\s\S]{0,500}["']PC["']/.test(downloadPage),
   "La descarga por release debe respetar la plataforma solicitada y no caer silenciosamente a PC."
 );
 
