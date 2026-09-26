@@ -26,9 +26,11 @@ import {
   listGameImageReferences,
 } from "./game-media-integrity";
 import {
+  validatePublishedCollectionSlugNamespace,
   validatePublishedGameCollectionRelations,
   validatePublishedGameRelations,
   validatePublishedPlatformCatalogRemoval,
+  validatePublishedPlatformCollectionNamespace,
   validatePublishedSoftwareRelations,
 } from "./managed-editorial-relations";
 import {
@@ -169,21 +171,52 @@ async function validatePublicationRelations(
         "game_collection",
         payload
       );
+    const [
+      namespace,
+      games,
+    ] = await Promise.all([
+      validatePublishedCollectionSlugNamespace(
+        client,
+        collection.slug
+      ),
+      validatePublishedGameCollectionRelations(
+        client,
+        collection.gameSlugs
+      ),
+    ]);
 
-    return validatePublishedGameCollectionRelations(
-      client,
-      collection.gameSlugs
-    );
+    return {
+      ok:
+        namespace.ok &&
+        games.ok,
+    };
   }
 
   if (type === "platform_catalog") {
-    return validatePublishedPlatformCatalogRemoval(
-      client,
+    const catalog =
       parseEditorialPayload(
         "platform_catalog",
         payload
-      )
-    );
+      );
+    const [
+      namespace,
+      references,
+    ] = await Promise.all([
+      validatePublishedPlatformCollectionNamespace(
+        client,
+        catalog
+      ),
+      validatePublishedPlatformCatalogRemoval(
+        client,
+        catalog
+      ),
+    ]);
+
+    return {
+      ok:
+        namespace.ok &&
+        references.ok,
+    };
   }
 
   return {
