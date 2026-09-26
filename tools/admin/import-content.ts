@@ -20,6 +20,10 @@ import {
   sourcePublicPagesConfig,
 } from "../../src/data/public-pages-config.ts";
 import {
+  PLATFORM_CATALOG_EDITORIAL_KEY,
+  sourcePlatformCatalog,
+} from "../../src/data/platform-catalog.ts";
+import {
   gameUpdates,
 } from "../../src/data/update-records.ts";
 import {
@@ -179,6 +183,12 @@ function buildSourceItems(): SourceItem[] {
       sourcePublicPagesConfig
     )
   );
+  const platformCatalog = normalizeEditorialPayload(
+    parseEditorialPayload(
+      "platform_catalog",
+      sourcePlatformCatalog
+    )
+  );
 
   for (const slug of new Set([
     ...homeConfig.heroSlugs,
@@ -236,6 +246,12 @@ function buildSourceItems(): SourceItem[] {
       key: "public-pages",
       payload:
         publicPagesConfig as unknown as Record<string, unknown>,
+    },
+    {
+      type: "platform_catalog",
+      key: PLATFORM_CATALOG_EDITORIAL_KEY,
+      payload:
+        platformCatalog as unknown as Record<string, unknown>,
     },
   ];
   const identities = new Set<string>();
@@ -532,6 +548,7 @@ async function markMissingSources(
     "home_config",
     "about_config",
     "public_pages_config",
+    "platform_catalog",
   ] satisfies EditorialItemType[]) {
     const keys = items
       .filter((item) => item.type === type)
@@ -562,12 +579,17 @@ async function main() {
     "public_pages_config",
     sourcePublicPagesConfig
   );
+  const sourcePlatforms = parseEditorialPayload(
+    "platform_catalog",
+    sourcePlatformCatalog
+  );
 
   if (validateOnly) {
     void sourceTaxonomy;
     void sourcePublicPages;
+    void sourcePlatforms;
     console.log(
-      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada, 1 página institucional, 1 configuración de superficies públicas y taxonomía de juegos válida.`
+      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada, 1 página institucional, 1 configuración de superficies públicas, 1 catálogo de plataformas y taxonomía de juegos válida.`
     );
     return;
   }
