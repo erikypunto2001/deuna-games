@@ -703,25 +703,26 @@ export default async function AdminGameUpdatePage({
                     name="checksumSha256"
                     minLength={64}
                     maxLength={64}
-                    defaultValue={
-                      selectedPackage
-                        ?.checksumSha256 ??
-                      ""
-                    }
+                    defaultValue=""
                     spellCheck={
                       false
                     }
+                    placeholder="Nuevo SHA-256 opcional"
                   />
                   <small>
-                    {
-                      selectedPackage
-                        ?.channel
-                        ? channelLabels[
-                            selectedPackage
-                              .channel
-                          ]
-                        : "Sin canal"
-                    }
+                    El checksum anterior nunca se hereda en una versión nueva.
+                    {selectedPackage
+                      ?.checksumSha256
+                      ? " El paquete actual sí tiene un SHA-256 publicado."
+                      : ""}
+                    {" "}
+                    {selectedPackage
+                      ?.channel
+                      ? channelLabels[
+                          selectedPackage
+                            .channel
+                        ]
+                      : "Sin canal"}
                   </small>
                 </label>
 
