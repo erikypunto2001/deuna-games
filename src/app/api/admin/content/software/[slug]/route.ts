@@ -37,7 +37,6 @@ const fields = [
   "version",
   "developer",
   "website",
-  "imageAlt",
   "featured",
   "runsOnJson",
   "emulatesJson",
@@ -138,8 +137,6 @@ export async function POST(
             data.emulatesJson,
           packages:
             data.packagesJson,
-          imageAlt:
-            data.imageAlt,
           featured:
             data.featured,
         }
