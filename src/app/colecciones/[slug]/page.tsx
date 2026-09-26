@@ -166,6 +166,7 @@ export default async function CollectionDetailPage({
           }
         >
           <PublicBreadcrumb
+            className=""
             currentLabel={
               collection.title
             }
