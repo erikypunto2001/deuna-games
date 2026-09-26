@@ -153,6 +153,25 @@ assert(
 );
 
 assert(
+  nextRunner.includes("prepareStandaloneRuntime") &&
+    nextRunner.includes('".next"') &&
+    nextRunner.includes('"standalone"') &&
+    nextRunner.includes('"server.js"') &&
+    nextRunner.includes("cpSync(") &&
+    nextRunner.includes('"static"') &&
+    nextRunner.includes('"public"') &&
+    nextRunner.includes("standaloneStartConfig") &&
+    nextRunner.includes('NODE_ENV:') &&
+    nextRunner.includes('"production"'),
+  "npm run start debe usar el runtime standalone soportado y preparar assets estáticos antes de arrancar."
+);
+assert(
+  !nextRunner.includes('[nextCli, ...argumentsForNext]') ||
+    nextRunner.includes("standaloneServer"),
+  "El modo start no debe depender de next start cuando output=standalone."
+);
+
+assert(
   nextRunner.includes("startAutomaticDevelopmentWorker") &&
     nextRunner.includes("reserveLoopbackPort") &&
     nextRunner.includes('randomBytes(32).toString("hex")') &&
