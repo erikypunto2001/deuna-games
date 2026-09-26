@@ -36,7 +36,10 @@ type PublishableEditorialType =
   | "home_config"
   | "about_config"
   | "game_taxonomy"
-  | "public_pages_config";
+  | "public_pages_config"
+  | "platform_catalog"
+  | "software"
+  | "game_collection";
 
 type PublicationItemRow = {
   id: string;
@@ -75,6 +78,9 @@ export type HomeConfigPublicationState = EditorialPublicationState;
 export type AboutConfigPublicationState = EditorialPublicationState;
 export type GameTaxonomyPublicationState = EditorialPublicationState;
 export type PublicPagesConfigPublicationState = EditorialPublicationState;
+export type PlatformCatalogPublicationState = EditorialPublicationState;
+export type SoftwarePublicationState = EditorialPublicationState;
+export type GameCollectionPublicationState = EditorialPublicationState;
 
 export type PublishEditorialResult =
   | {
@@ -98,6 +104,9 @@ export type PublishHomeConfigResult = PublishEditorialResult;
 export type PublishAboutConfigResult = PublishEditorialResult;
 export type PublishGameTaxonomyResult = PublishEditorialResult;
 export type PublishPublicPagesConfigResult = PublishEditorialResult;
+export type PublishPlatformCatalogResult = PublishEditorialResult;
+export type PublishSoftwareResult = PublishEditorialResult;
+export type PublishGameCollectionResult = PublishEditorialResult;
 
 function normalizePublishablePayload(
   type: PublishableEditorialType,
@@ -366,6 +375,31 @@ export function getPublicPagesConfigPublicationState() {
   );
 }
 
+export function getPlatformCatalogPublicationState() {
+  return getPublicationState(
+    "platform_catalog",
+    "platforms"
+  );
+}
+
+export function getSoftwarePublicationState(
+  key: string
+) {
+  return getPublicationState(
+    "software",
+    key
+  );
+}
+
+export function getGameCollectionPublicationState(
+  key: string
+) {
+  return getPublicationState(
+    "game_collection",
+    key
+  );
+}
+
 export async function publishGameDraft(
   key: string,
   expectedRevision: number,
@@ -456,6 +490,44 @@ export function publishPublicPagesConfigDraft(
   return publishEditorialDraft(
     "public_pages_config",
     PUBLIC_PAGES_EDITORIAL_KEY,
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishPlatformCatalogDraft(
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "platform_catalog",
+    "platforms",
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishSoftwareDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "software",
+    key,
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishGameCollectionDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "game_collection",
+    key,
     expectedRevision,
     actorUserId
   );
