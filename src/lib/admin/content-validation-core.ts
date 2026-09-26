@@ -910,7 +910,7 @@ export const editorialSoftwareSchema: z.ZodType<Software> = z
       .max(20)
       .optional(),
     coverImage: localImageSchema.optional(),
-    imageAlt: z.string().trim().min(1).max(240),
+    imageAlt: z.string().trim().min(1).max(240).optional(),
     featured: z.boolean().optional(),
   })
   .strict()
