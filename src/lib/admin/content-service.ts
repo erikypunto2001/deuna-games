@@ -27,7 +27,6 @@ import {
 
 import type {
   Game,
-  GameDistributionMetadata,
 } from "@/types/game";
 import type { GameUpdate } from "@/types/update";
 
@@ -79,16 +78,6 @@ export type EditorialMutationResult =
   | { outcome: "conflict"; revision: number }
   | { outcome: "not_found" };
 
-export type GameDownloadDraftInput = Pick<
-  NonNullable<Game["download"]>,
-  | "sizeGb"
-  | "fileCount"
-  | "platform"
-  | "sources"
-> & {
-  distributionMetadata?: GameDistributionMetadata;
-};
-
 export type GameMediaDraftInput = Pick<
   Game,
   | "coverArtworkSource"
@@ -131,24 +120,6 @@ export type AboutManifestoDraftInput = Pick<
   EditorialAboutConfig,
   "manifesto" | "ctaTitle"
 >;
-
-function compactDistributionMetadata(
-  input: GameDistributionMetadata | undefined
-) {
-  if (!input) return undefined;
-
-  const checksumSha256 = input.checksumSha256
-    ?.trim()
-    .toLowerCase();
-  const compact: GameDistributionMetadata = {
-    ...(input.channel ? { channel: input.channel } : {}),
-    ...(checksumSha256 ? { checksumSha256 } : {}),
-  };
-
-  return Object.keys(compact).length > 0
-    ? compact
-    : undefined;
-}
 
 function mapListRow<Type extends EditorialItemType>(
   type: Type,
@@ -376,55 +347,6 @@ async function updateEditorialDraft<
 
     return { outcome: "saved", revision };
   });
-}
-
-export function saveGameDownloadDraft(
-  key: string,
-  expectedRevision: number,
-  actorUserId: string,
-  input: GameDownloadDraftInput
-) {
-  return updateEditorialDraft(
-    "game",
-    key,
-    expectedRevision,
-    actorUserId,
-    (current) => {
-      const previous = current.download;
-      const nextDownload = {
-        ...(previous?.href
-          ? { href: previous.href }
-          : {}),
-        ...(previous?.label
-          ? { label: previous.label }
-          : {}),
-        ...(input.sources?.length
-          ? { sources: input.sources }
-          : {}),
-        ...(input.sizeGb !== undefined
-          ? { sizeGb: input.sizeGb }
-          : {}),
-        ...(input.fileCount !== undefined
-          ? { fileCount: input.fileCount }
-          : {}),
-        ...(input.platform
-          ? { platform: input.platform }
-          : {}),
-      };
-      const hasDownload = Object.keys(nextDownload).length > 0;
-      const distributionMetadata = hasDownload
-        ? compactDistributionMetadata(input.distributionMetadata)
-        : undefined;
-
-      return {
-        ...current,
-        download: hasDownload
-          ? nextDownload
-          : undefined,
-        distributionMetadata,
-      };
-    }
-  );
 }
 
 export function saveGameMediaDraft(

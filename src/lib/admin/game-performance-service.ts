@@ -2,6 +2,9 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
+import {
+  resolvePcRelease,
+} from "@/lib/games/releases";
 import type {
   Game,
   GamePerformanceCalibration,
@@ -33,6 +36,7 @@ type GamePerformanceRow = {
 export type GamePerformanceMutationResult =
   | { outcome: "saved"; revision: number }
   | { outcome: "conflict"; revision: number }
+  | { outcome: "unsupported_platform" }
   | { outcome: "not_found" };
 
 async function writePerformanceRevision(
@@ -131,10 +135,43 @@ export async function saveGamePerformanceDraft(
       "game",
       item.draft_payload
     );
+    const pcRelease =
+      resolvePcRelease(
+        current
+      );
+
+    if (
+      !pcRelease &&
+      (
+        calibration ||
+        metadata
+      )
+    ) {
+      return {
+        outcome:
+          "unsupported_platform",
+      };
+    }
+
+    const performanceMetadata =
+      calibration ? metadata : undefined;
+    const releases = current.releases?.map(
+      (release) =>
+        release.platformId === "pc-windows"
+          ? {
+              ...release,
+              performance: calibration,
+              performanceMetadata,
+            }
+          : release
+    );
     const next: Game = {
       ...current,
       performance: calibration,
-      performanceMetadata: calibration ? metadata : undefined,
+      performanceMetadata,
+      ...(current.releases
+        ? { releases }
+        : {}),
     };
     const revision = await writePerformanceRevision(
       client,

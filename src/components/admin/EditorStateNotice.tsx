@@ -92,6 +92,11 @@ const notices = {
     message:
       "La clasificación no coincide con los Catálogos actuales. Selecciona categorías, géneros y etiquetas activas; los valores antiguos ya asignados se conservan hasta que decidas reemplazarlos.",
   },
+  "rendimiento-sin-pc": {
+    kind: "warning",
+    message:
+      "No se guardó la calibración porque este juego no tiene un release PC publicado en el borrador actual. Agrega primero PC en Plataformas y descargas; los FPS nunca se infieren para otras consolas.",
+  },
   "valoracion-sugerencia": {
     kind: "warning",
     message:
@@ -176,6 +181,31 @@ const notices = {
     kind: "error",
     message:
       "El archivo no pudo validarse o decodificarse como video. Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB.",
+  },
+  "slug-plataforma": {
+    kind: "error",
+    message:
+      "Ese identificador está reservado por una plataforma y no puede usarse como slug de colección. Usa otro slug para evitar que una saga o franquicia tape la colección automática de esa consola.",
+  },
+  "coleccion-en-conflicto": {
+    kind: "error",
+    message:
+      "No se guardó el catálogo porque uno de los IDs de plataforma coincide con una colección editorial existente. Usa identificadores distintos para mantener URLs de Colecciones inequívocas.",
+  },
+  "relacion-publica": {
+    kind: "error",
+    message:
+      "La publicación fue bloqueada porque una plataforma, un juego o un programa relacionado todavía no existe en el estado público vigente. Publica primero esas dependencias y vuelve a intentarlo.",
+  },
+  "relacion-publica-en-uso": {
+    kind: "warning",
+    message:
+      "No se ocultó el contenido porque todavía está referenciado por otra publicación visible. Retíralo primero de los juegos o colecciones que lo usan y publica esos cambios antes de volver a intentarlo.",
+  },
+  "plataforma-publicada-en-uso": {
+    kind: "error",
+    message:
+      "La publicación del catálogo fue bloqueada porque quitaría una plataforma que todavía usa contenido público. Actualiza u oculta primero ese contenido antes de volver a publicar el catálogo.",
   },
   conflicto: {
     kind: "warning",

@@ -56,7 +56,7 @@ const files = Object.fromEntries(
       classificationRoute: "src/app/api/admin/content/games/[slug]/classification/route.ts",
       compatibilityRoute: "src/app/api/admin/content/games/[slug]/compatibility/route.ts",
       performanceRoute: "src/app/api/admin/content/games/[slug]/performance/route.ts",
-      downloadRoute: "src/app/api/admin/content/games/[slug]/download/route.ts",
+      releasesRoute: "src/app/api/admin/content/games/[slug]/releases/route.ts",
       valuationRoute: "src/app/api/admin/content/games/[slug]/valuation/route.ts",
       publishRoute: "src/app/api/admin/content/games/[slug]/publish/route.ts",
       hideRoute: "src/app/api/admin/content/games/[slug]/hide/route.ts",
@@ -70,7 +70,7 @@ const files = Object.fromEntries(
       classificationEditor: "src/components/admin/GameClassificationEditor.tsx",
       compatibilityEditor: "src/components/admin/GameCompatibilityEditor.tsx",
       performanceEditor: "src/components/admin/GamePerformanceEditor.tsx",
-      distributionEditor: "src/components/admin/GameDistributionEditor.tsx",
+      releasesEditor: "src/components/admin/GameReleasesEditor.tsx",
       valuationEditor: "src/components/admin/GameValuationEditor.tsx",
       publicationPage: "src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx",
       publicationWorkspace: "src/components/admin/GamePublicationWorkspace.tsx",
@@ -87,6 +87,7 @@ const retiredGameMutationRoutes = [
   "src/app/api/admin/content/games/[slug]/advanced/route.ts",
   "src/app/api/admin/content/games/[slug]/requirements/route.ts",
   "src/app/api/admin/content/games/[slug]/media/route.ts",
+  "src/app/api/admin/content/games/[slug]/download/route.ts",
 ];
 const retiredGameMutationRoutePresence = await Promise.all(
   retiredGameMutationRoutes.map(exists)
@@ -98,7 +99,7 @@ const validation = `${files.contentValidation}\n${files.contentValidationCore}`;
 
 assert(
   retiredGameMutationRoutePresence.every((present) => !present),
-  "Las mutaciones legacy core/advanced/requirements/media no deben reaparecer: Información, Clasificación, Compatibilidad y el workspace multimedia dividido son las superficies canónicas."
+  "Las mutaciones legacy core/advanced/requirements/media/download no deben reaparecer: Información, Clasificación, Compatibilidad, releases y el workspace multimedia dividido son las superficies canónicas."
 );
 assert(
   files.informationRoute.includes("getGamePublicationIdentity") &&
@@ -242,7 +243,8 @@ assert(
 );
 assert(
   files.publicPerformanceRoute.includes("getPublicGameBySlug") &&
-    files.publicPerformanceRoute.includes("game.performance ?? null") &&
+    files.publicPerformanceRoute.includes("resolvePcRelease") &&
+    files.publicPerformanceRoute.includes("pcRelease?.performance") &&
     !files.publicPerformanceRoute.includes("draft_payload"),
   "Los FPS públicos deben usar sólo calibración publicada."
 );
@@ -293,7 +295,6 @@ for (const [name, route, current] of [
   ["Clasificación", files.classificationRoute, '"datos"'],
   ["Compatibilidad", files.compatibilityRoute, '"requisitos"'],
   ["Rendimiento", files.performanceRoute, '"rendimiento"'],
-  ["Distribución", files.downloadRoute, '"descargas"'],
   ["Valoración", files.valuationRoute, '"valoracion"'],
 ]) {
   assert(
@@ -306,6 +307,18 @@ for (const [name, route, current] of [
     `Guardar ${name} debe validar campos exactos, revisión y avance seguro.`
   );
 }
+assert(
+  files.releasesRoute.includes("authorizeAdminFormRequest") &&
+    files.releasesRoute.includes("hasExactAdminFormFields") &&
+    files.releasesRoute.includes('"expectedRevision"') &&
+    files.releasesRoute.includes('"releasesJson"') &&
+    files.releasesRoute.includes("validateGameReleaseRelations") &&
+    files.releasesRoute.includes("saveGameReleasesSection") &&
+    files.releasesRoute.includes('result.outcome ===') &&
+    files.releasesRoute.includes('"conflict"'),
+  "Guardar Plataformas y descargas debe validar campos exactos, revisión y relaciones antes de persistir releases."
+);
+
 assert(
   files.formActions.includes("formAction") &&
     files.formActions.includes("?continuar=") &&
@@ -353,7 +366,7 @@ for (const componentName of [
   "GameCompatibilityEditor",
   "GamePerformanceEditor",
   "GameMultimediaEditor",
-  "GameDistributionEditor",
+  "GameReleasesEditor",
   "GameValuationEditor",
 ]) {
   assert(
@@ -402,12 +415,17 @@ assert(
   "Compatibilidad debe ser dueña de plataformas y requisitos."
 );
 assert(
-  files.distributionEditor.includes("Compatibilidad") &&
-    files.distributionEditor.includes('source.status === "maintenance"') &&
-    files.distributionEditor.includes("platformMismatch") &&
-    files.distributionEditor.includes("Publicar nueva versión") &&
-    files.distributionEditor.includes("SSRF"),
-  "Distribución debe diagnosticar coherencia, estados de fuentes y proteger la verificación externa."
+  files.releasesEditor.includes("PLATAFORMAS Y DESCARGAS") &&
+    files.releasesEditor.includes("Programas relacionados") &&
+    files.releasesEditor.includes('{ value: "iso", label: "ISO" }') &&
+    files.releasesEditor.includes('<option value="maintenance">') &&
+    files.releasesEditor.includes("/releases") &&
+    files.releasesEditor.includes("Guardar plataformas y descargas") &&
+    validation.includes("downloadHrefSchema") &&
+    validation.includes('url.protocol === "https:"') &&
+    validation.includes("!url.username") &&
+    validation.includes("!url.password"),
+  "Plataformas y descargas debe usar releases, formatos de consola, mirrors con estado y URLs seguras sin credenciales."
 );
 assert(
   files.valuationEditor.includes("Índice DeUna") &&

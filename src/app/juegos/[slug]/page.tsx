@@ -16,6 +16,7 @@ import {
   RefreshCcw,
   ShieldCheck,
   Star,
+  Wrench,
 } from "lucide-react";
 
 import GameDetailGalleryGrid from "@/components/games/GameDetailGalleryGrid";
@@ -34,9 +35,21 @@ import {
   resolveGameDetailPresentation,
 } from "@/lib/games/game-detail-presentation";
 import {
+  resolveGameReleaseDownloads,
+} from "@/lib/games/download";
+import {
   getPublicGameBySlug,
   getPublicGames,
 } from "@/lib/games/public-catalog";
+import {
+  platformLabel as resolvePlatformLabel,
+} from "@/lib/games/releases";
+import {
+  getPublicPlatformCatalog,
+} from "@/lib/platforms/public-platform-catalog";
+import {
+  getPublicSoftware,
+} from "@/lib/software/public-software";
 import {
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
@@ -128,12 +141,16 @@ export default async function GameDetailPage({
     gameUpdates,
     publicSiteConfig,
     accountSession,
+    platformCatalog,
+    publicSoftware,
   ] = await Promise.all([
     getPublicGameBySlug(slug),
     getPublicGames(),
     getPublicUpdatesForGame(slug),
     getPublicSiteConfig(),
     readAccountSession(),
+    getPublicPlatformCatalog(),
+    getPublicSoftware(),
   ]);
 
   if (!game) {
@@ -152,7 +169,10 @@ export default async function GameDetailPage({
     recommended,
     requirementRows,
     platforms,
-    platformLabel,
+    platformIds,
+    releases,
+    pcRelease,
+    platformLabel: legacyPlatformLabel,
     genres,
     genreSummaryLabel,
     ageRatingLabel,
@@ -161,6 +181,67 @@ export default async function GameDetailPage({
     versionLabel,
   } = resolveGameDetailPresentation(game);
   const recentGameUpdates = gameUpdates.slice(0, 3);
+  const platformNames =
+    platformIds.map(
+      (platformId) =>
+        resolvePlatformLabel(
+          platformCatalog,
+          platformId
+        )
+    );
+  const platformLabel =
+    platformNames.length
+      ? platformNames.join(", ")
+      : legacyPlatformLabel;
+  const softwareBySlug =
+    new Map(
+      publicSoftware.map(
+        (item) => [
+          item.slug,
+          item,
+        ]
+      )
+    );
+  const releaseCards =
+    releases.map(
+      (release) => ({
+        release,
+        platform:
+          resolvePlatformLabel(
+            platformCatalog,
+            release.platformId
+          ),
+        downloads:
+          resolveGameReleaseDownloads(
+            game,
+            release.id
+          ),
+        software:
+          (
+            release.recommendedSoftwareSlugs ??
+            []
+          )
+            .map(
+              (softwareSlug) =>
+                softwareBySlug.get(
+                  softwareSlug
+                )
+            )
+            .filter(
+              (
+                item
+              ): item is NonNullable<
+                typeof item
+              > =>
+                Boolean(item)
+            ),
+      })
+    );
+  const downloadableReleases =
+    releaseCards.filter(
+      (item) =>
+        item.downloads.length > 0
+    );
 
   const relatedGames = games
     .filter(
@@ -208,7 +289,12 @@ export default async function GameDetailPage({
       ? absoluteUrl(game.coverImage)
       : undefined,
     genre: genres,
-    gamePlatform: platforms.length ? platforms : undefined,
+    gamePlatform:
+      platformNames.length
+        ? platformNames
+        : platforms.length
+          ? platforms
+          : undefined,
     contentRating: ageRatingLabel ?? undefined,
     operatingSystem:
       minimum?.system ??
@@ -261,7 +347,7 @@ export default async function GameDetailPage({
                 <span className={styles.category}>
                   {game.category}
                 </span>
-                {platforms.map((platform) => (
+                {platformNames.map((platform) => (
                   <span
                     key={platform}
                     className={styles.platformBadge}
@@ -302,7 +388,7 @@ export default async function GameDetailPage({
                 </div>
               )}
 
-              {platforms.includes("PC") && (
+              {pcRelease && (
                 <GamePerformanceEstimate slug={game.slug} />
               )}
 
@@ -319,14 +405,14 @@ export default async function GameDetailPage({
               />
 
               <div className={styles.actions}>
-                {download ? (
+                {downloadableReleases.length > 0 ? (
                   <>
                     <Link
-                      href={`/juegos/${game.slug}/descargar`}
+                      href="#releases"
                       className={styles.primaryAction}
                     >
                       <Download size={18} aria-hidden="true" />
-                      Descargar
+                      Ver descargas
                     </Link>
                     <Link
                       href="#compatibility"
@@ -469,7 +555,7 @@ export default async function GameDetailPage({
           >
             <GameCompatibilityCard
               slug={game.slug}
-              supportsPc={platforms.includes("PC")}
+              supportsPc={Boolean(pcRelease)}
             />
           </div>
         </section>
@@ -536,7 +622,129 @@ export default async function GameDetailPage({
           </section>
         )}
 
-        {download && (
+        {releaseCards.length > 0 && (
+          <section
+            id="releases"
+            className={styles.sectionPanel}
+            aria-labelledby="releases-title"
+          >
+            <div className={styles.sectionHeading}>
+              <span>VERSIONES Y PLATAFORMAS</span>
+              <h2 id="releases-title">
+                Elige cómo quieres jugar
+              </h2>
+              <p className={styles.sectionDescription}>
+                Cada plataforma conserva su propia versión, paquete y herramientas relacionadas. Los requisitos y FPS se muestran sólo para PC.
+              </p>
+            </div>
+
+            <div className={styles.releaseGrid}>
+              {releaseCards.map((item) => {
+                const primaryDownload =
+                  item.downloads.find(
+                    (candidate) =>
+                      candidate.sources.some(
+                        (source) =>
+                          source.status ===
+                          "available"
+                      )
+                  ) ??
+                  item.downloads[0];
+                const format =
+                  primaryDownload?.packageKind
+                    ?.toUpperCase();
+                const downloadLabel =
+                  primaryDownload?.packageKind ===
+                  "iso"
+                    ? "Descargar ISO"
+                    : item.release.platformId ===
+                        "pc-windows"
+                      ? "Descargar PC"
+                      : "Descargar " +
+                        item.platform;
+
+                return (
+                  <article
+                    key={item.release.id}
+                    className={styles.releaseCard}
+                  >
+                    <div className={styles.releaseCardHeader}>
+                      <div>
+                        <span>{item.platform}</span>
+                        <strong>
+                          {item.release.label ??
+                            item.platform}
+                        </strong>
+                      </div>
+                      {format && (
+                        <span className={styles.releaseFormat}>
+                          {format}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className={styles.releaseMeta}>
+                      <span>
+                        Versión{" "}
+                        {item.release.version ??
+                          "a confirmar"}
+                      </span>
+                      {item.release.region && (
+                        <span>
+                          Región{" "}
+                          {item.release.region}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className={styles.releaseActions}>
+                      {primaryDownload && (
+                        <Link
+                          href={
+                            `/juegos/${game.slug}/descargar?release=${encodeURIComponent(
+                              item.release.id
+                            )}&package=${encodeURIComponent(
+                              primaryDownload.packageId ??
+                                ""
+                            )}`
+                          }
+                          className={styles.primaryAction}
+                        >
+                          <Download
+                            size={17}
+                            aria-hidden="true"
+                          />
+                          {downloadLabel}
+                        </Link>
+                      )}
+
+                      {item.software.map(
+                        (software) => (
+                          <Link
+                            key={software.slug}
+                            href={
+                              "/programas/" +
+                              software.slug
+                            }
+                            className={styles.secondaryAction}
+                          >
+                            <Wrench
+                              size={17}
+                              aria-hidden="true"
+                            />
+                            {software.name}
+                          </Link>
+                        )
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {downloadableReleases.length > 0 && (
           <section
             id="installation"
             className={styles.installationPanel}
@@ -553,7 +761,7 @@ export default async function GameDetailPage({
               </p>
             </div>
             <Link
-              href={`/juegos/${game.slug}/descargar`}
+              href="#releases"
               className={styles.installationAction}
             >
               Ver opciones de descarga

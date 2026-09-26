@@ -84,7 +84,10 @@ assert(
   adminRoute.includes("saveGamePerformanceDraft") &&
     adminRoute.includes("metadata") &&
     service.includes("GamePerformanceMetadata") &&
-    service.includes("performanceMetadata: calibration ? metadata : undefined") &&
+    service.includes("resolvePcRelease") &&
+    service.includes("const performanceMetadata =") &&
+    service.includes("calibration ? metadata : undefined") &&
+    service.includes('release.platformId === "pc-windows"') &&
     service.includes("FOR UPDATE") &&
     service.includes("admin_audit_log"),
   "Guardar procedencia debe reutilizar la revisión transaccional y eliminar metadata cuando desaparece la calibración."
@@ -96,13 +99,16 @@ assert(
     editor.includes('name="benchmarkMeasuredAt"') &&
     editor.includes('name="benchmarkConfidence"') &&
     editor.includes("no ejecuta ni consulta URLs externas") &&
-    adminPage.includes("metadata={game.performanceMetadata}"),
+    adminPage.includes("resolvePcRelease") &&
+    adminPage.includes("pcRelease?.performance") &&
+    adminPage.includes("pcRelease?.performanceMetadata"),
   "Rendimiento debe editar y recargar la procedencia sin ejecutar fuentes externas."
 );
 
 assert(
-  publicRoute.includes("game.performance ?? null") &&
-    publicRoute.includes("game.performanceMetadata ?? null") &&
+  publicRoute.includes("resolvePcRelease") &&
+    publicRoute.includes("pcRelease?.performance") &&
+    publicRoute.includes("pcRelease?.performanceMetadata") &&
     !publicRoute.includes("draft_payload") &&
     hook.includes("parsePublishedMetadata") &&
     hook.includes("allowedSources") &&
@@ -119,18 +125,21 @@ assert(
     estimate.includes("benchmarkConfidenceLabel") &&
     estimate.includes("publishedMetadata") &&
     estimate.includes("El resultado real puede variar") &&
-    preview.includes("metadata={game.performanceMetadata ?? null}"),
+    preview.includes("resolvePcRelease") &&
+    preview.includes("pcRelease?.performance") &&
+    preview.includes("pcRelease?.performanceMetadata"),
   "La ficha y la vista previa deben explicar la fuente sin mezclarla con la confianza del algoritmo."
 );
 
 assert(
-  changes.includes("metadata: draft.performanceMetadata") &&
-    changes.includes("metadata: published.performanceMetadata") &&
+  changes.includes("performanceState(") &&
+    changes.includes("resolvePcRelease") &&
     changes.includes("procedencia, fecha y confianza") &&
     readiness.includes('id: "performance-provenance"') &&
-    readiness.includes("game.performanceMetadata?.source") &&
-    readiness.includes("game.performanceMetadata?.measuredAt") &&
-    readiness.includes("game.performanceMetadata?.confidence") &&
+    readiness.includes("resolvePcRelease") &&
+    readiness.includes("performanceMetadata?.source") &&
+    readiness.includes("performanceMetadata?.measuredAt") &&
+    readiness.includes("performanceMetadata?.confidence") &&
     readiness.includes('priority: "recommended"'),
   "Publicación debe visibilizar cambios de procedencia y recomendar completarla sin bloquear legado."
 );

@@ -4,7 +4,7 @@ export const gameEditorSections = [
   { id: "requisitos", label: "Requisitos" },
   { id: "rendimiento", label: "Rendimiento" },
   { id: "multimedia", label: "Multimedia" },
-  { id: "descargas", label: "Distribución" },
+  { id: "descargas", label: "Plataformas y descargas" },
   { id: "valoracion", label: "Valoración" },
 ] as const;
 

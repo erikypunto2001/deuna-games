@@ -9,7 +9,9 @@ import {
   coveredPageRoutePatterns,
   publicVisualPages,
   redirectChecks,
+  representativeCollectionSlug,
   representativeGameSlug,
+  representativeSoftwareSlug,
   representativeUpdateId,
 } from "./browser-page-manifest.mjs";
 
@@ -51,6 +53,14 @@ function scenarioPattern(pathname) {
   return route
     .replace(
       `/${representativeGameSlug}`,
+      "/[slug]"
+    )
+    .replace(
+      `/${representativeSoftwareSlug}`,
+      "/[slug]"
+    )
+    .replace(
+      `/${representativeCollectionSlug}`,
       "/[slug]"
     )
     .replace(

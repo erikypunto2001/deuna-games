@@ -127,8 +127,9 @@ assert(
 );
 
 assert(
-  changes.includes("metadata: draft.compatibilityMetadata") &&
-    changes.includes("metadata: published.compatibilityMetadata") &&
+  changes.includes("compatibilityState(") &&
+    changes.includes("metadata:") &&
+    changes.includes("game.compatibilityMetadata") &&
     changes.includes("estado, origen y fecha de verificación") &&
     readiness.includes('id: "compatibility-verification"') &&
     readiness.includes("game.compatibilityMetadata?.status") &&

@@ -6,7 +6,7 @@ import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import GameClassificationEditor from "@/components/admin/GameClassificationEditor";
 import GameCompatibilityEditor from "@/components/admin/GameCompatibilityEditor";
-import GameDistributionEditor from "@/components/admin/GameDistributionEditor";
+import GameReleasesEditor from "@/components/admin/GameReleasesEditor";
 import GameEditorHealthOverview from "@/components/admin/GameEditorHealthOverview";
 import GameInformationEditor from "@/components/admin/GameInformationEditor";
 import GameMultimediaEditor from "@/components/admin/GameMultimediaEditor";
@@ -14,10 +14,15 @@ import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
 import GameValuationEditor from "@/components/admin/GameValuationEditor";
 import {
   getEditorialItem,
+  listEditorialItems,
 } from "@/lib/admin/content-service";
 import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
+import {
+  resolveGameReleases,
+  resolvePcRelease,
+} from "@/lib/games/releases";
 import {
   resolveGameEditorSection,
 } from "@/lib/admin/game-editor-sections";
@@ -125,10 +130,18 @@ export default async function AdminGameEditorPage({
     params,
     searchParams,
   ]);
-  const [item, publicationIdentity, taxonomyItem] = await Promise.all([
+  const [
+    item,
+    publicationIdentity,
+    taxonomyItem,
+    platformItem,
+    softwareItems,
+  ] = await Promise.all([
     getEditorialItem("game", slug),
     getGamePublicationIdentity(slug),
     getEditorialItem("game_taxonomy", "games"),
+    getEditorialItem("platform_catalog", "platforms"),
+    listEditorialItems("software"),
   ]);
 
   if (!item) notFound();
@@ -167,10 +180,13 @@ export default async function AdminGameEditorPage({
   const classificationAction = `${coreAction}/classification`;
   const compatibilityAction = `${coreAction}/compatibility`;
   const performanceAction = `${coreAction}/performance`;
-  const downloadAction = `${coreAction}/download`;
   const valuationAction = `${coreAction}/valuation`;
   const hasPublicVersion = publicationIdentity?.everPublished ?? false;
   const readiness = evaluateGamePublicationReadiness(game);
+  const pcRelease =
+    resolvePcRelease(
+      game
+    );
 
   return (
     <>
@@ -259,8 +275,12 @@ export default async function AdminGameEditorPage({
           slug={slug}
           revision={item.revision}
           action={performanceAction}
-          calibration={game.performance}
-          metadata={game.performanceMetadata}
+          calibration={
+            pcRelease?.performance
+          }
+          metadata={
+            pcRelease?.performanceMetadata
+          }
         />
       )}
 
@@ -272,11 +292,26 @@ export default async function AdminGameEditorPage({
       )}
 
       {section === "descargas" && (
-        <GameDistributionEditor
-          game={game}
-          revision={item.revision}
-          action={downloadAction}
-        />
+        platformItem ? (
+          <GameReleasesEditor
+            slug={slug}
+            revision={item.revision}
+            initialReleases={resolveGameReleases(game)}
+            platforms={platformItem.payload.platforms}
+            software={softwareItems.map((software) => ({
+              slug: software.payload.slug,
+              name: software.payload.name,
+            }))}
+          />
+        ) : (
+          <section className={styles.editorPanel}>
+            <h2>Plataformas pendientes</h2>
+            <p>
+              Ejecuta la actualización local para importar el catálogo
+              maestro de plataformas antes de editar releases.
+            </p>
+          </section>
+        )
       )}
 
       {section === "valoracion" && (

@@ -1441,9 +1441,11 @@ const updateRedirect = await postAdminForm(
     type: "update",
     summary: updateSummary,
     featured: "false",
+    releaseId: "pc-windows",
+    packageId: "main",
+    packageKind: "installer",
     sizeGb: "",
     fileCount: "",
-    platform: "PC",
     channel: "",
     checksumSha256: "",
     sourcesJson: JSON.stringify([

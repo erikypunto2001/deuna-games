@@ -21,14 +21,18 @@ import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
 import {
-  verifyAdminSession,
-} from "@/lib/admin/session";
+  resolveGameReleases,
+  platformLabel,
+} from "@/lib/games/releases";
 import {
   getPublicGameBySlug,
 } from "@/lib/games/public-catalog";
-import type {
-  GameDownloadSource,
-} from "@/types/game";
+import {
+  getPublicPlatformCatalog,
+} from "@/lib/platforms/public-platform-catalog";
+import {
+  verifyAdminSession,
+} from "@/lib/admin/session";
 
 import styles from "../../../../admin.module.css";
 
@@ -38,6 +42,8 @@ type PageProps = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{
     estado?: string | string[];
+    release?: string | string[];
+    package?: string | string[];
   }>;
 };
 
@@ -47,18 +53,12 @@ const channelLabels = {
   testing: "Pruebas",
 } as const;
 
-function legacySource(
-  href: string,
-  label: string | undefined
-): GameDownloadSource {
-  return {
-    id: "primary",
-    name: "Descarga principal",
-    href,
-    label: label?.trim() || "Descargar versión actual",
-    enabled: true,
-    status: "available",
-  };
+function single(
+  value: string | string[] | undefined
+) {
+  return Array.isArray(value)
+    ? value[0]
+    : value;
 }
 
 export default async function AdminGameUpdatePage({
@@ -66,375 +66,820 @@ export default async function AdminGameUpdatePage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [{ slug }, parameters] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+
+  const [{ slug }, query] =
+    await Promise.all([
+      params,
+      searchParams,
+    ]);
+
   const [
     item,
     publicationIdentity,
     publicGame,
     allUpdates,
+    platformCatalog,
   ] = await Promise.all([
     getEditorialItem("game", slug),
     getGamePublicationIdentity(slug),
     getPublicGameBySlug(slug),
     listEditorialItems("game_update"),
+    getPublicPlatformCatalog(),
   ]);
 
   if (!item) notFound();
 
-  const state = Array.isArray(parameters.estado)
-    ? parameters.estado[0]
-    : parameters.estado;
+  const state = single(
+    query.estado
+  );
   const game = item.payload;
-  const publicBaseline = publicGame ?? game;
-  const download = publicBaseline.download;
-  const currentDistribution = publicBaseline.distributionMetadata;
-  const initialSources = download?.sources?.length
-    ? download.sources
-    : download?.href
-      ? [legacySource(download.href, download.label)]
-      : [];
-  const relatedUpdates = allUpdates
-    .filter((update) => update.payload.gameSlug === slug)
-    .sort(
-      (a, b) =>
-        Date.parse(b.payload.publishedAt) -
-        Date.parse(a.payload.publishedAt)
-    )
-    .slice(0, 8);
+  const publicBaseline =
+    publicGame ?? game;
+  const releases =
+    resolveGameReleases(
+      publicBaseline
+    );
+
+  const requestedRelease =
+    single(query.release);
+  const selectedRelease =
+    releases.find(
+      (release) =>
+        release.id ===
+        requestedRelease
+    ) ??
+    releases[0] ??
+    null;
+
+  const requestedPackage =
+    single(query.package);
+  const selectedPackage =
+    selectedRelease?.packages?.find(
+      (item) =>
+        item.id ===
+        requestedPackage
+    ) ??
+    selectedRelease?.packages?.[0] ??
+    null;
+
+  const releasePlatform =
+    selectedRelease
+      ? platformLabel(
+          platformCatalog,
+          selectedRelease.platformId
+        )
+      : "Sin release";
+
+  const initialSources =
+    selectedPackage?.sources ??
+    [];
+
+  const relatedUpdates =
+    allUpdates
+      .filter(
+        (update) =>
+          update.payload.gameSlug ===
+            slug &&
+          (
+            !selectedRelease ||
+            (
+              update.payload.releaseId ??
+              "pc-windows"
+            ) ===
+              selectedRelease.id
+          )
+      )
+      .sort(
+        (a, b) =>
+          Date.parse(
+            b.payload.publishedAt
+          ) -
+          Date.parse(
+            a.payload.publishedAt
+          )
+      )
+      .slice(0, 10);
+
   const readiness =
-    evaluateGamePublicationReadiness(game);
+    evaluateGamePublicationReadiness(
+      game
+    );
+
   const canPublish = Boolean(
-    publicationIdentity?.publicVisible &&
-      !publicationIdentity.hasUnpublishedChanges &&
+    selectedRelease &&
+      publicationIdentity?.publicVisible &&
+      !publicationIdentity
+        .hasUnpublishedChanges &&
       readiness.essentialsReady
   );
+
   const updateAction =
-    `/api/admin/content/games/${encodeURIComponent(slug)}/publish-update`;
+    "/api/admin/content/games/" +
+    encodeURIComponent(slug) +
+    "/publish-update";
 
   return (
     <>
       <Link
-        href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`}
-        className={styles.backLink}
+        href={
+          "/admin/juegos/" +
+          encodeURIComponent(slug) +
+          "?seccion=descargas"
+        }
+        className={
+          styles.backLink
+        }
       >
-        <ArrowLeft size={15} aria-hidden="true" />
-        Volver a Distribución
+        <ArrowLeft
+          size={15}
+          aria-hidden="true"
+        />
+        Volver a Plataformas y
+        descargas
       </Link>
 
       <AdminPageHeader
-        eyebrow={<>DISTRIBUCIÓN · NUEVA VERSIÓN · REVISIÓN {item.revision}</>}
+        eyebrow={
+          <>
+            NUEVA VERSIÓN ·
+            REVISIÓN{" "}
+            {item.revision}
+          </>
+        }
         title={game.title}
-        description="Publica una nueva versión sin cambiar la URL del juego. La operación reemplaza descargas e integridad del paquete y crea el aviso público en un solo paso."
+        description="Publica una nueva versión de un release concreto sin reemplazar las descargas de las demás plataformas."
         action={
           <Link
-            href={`/juegos/${encodeURIComponent(slug)}`}
-            className={styles.tableAction}
+            href={
+              "/juegos/" +
+              encodeURIComponent(
+                slug
+              )
+            }
+            className={
+              styles.tableAction
+            }
             target="_blank"
             rel="noreferrer"
           >
-            <ExternalLink size={14} aria-hidden="true" />
+            <ExternalLink
+              size={14}
+              aria-hidden="true"
+            />
             Ver juego público
           </Link>
         }
       />
 
-      <EditorStateNotice state={state} />
+      <EditorStateNotice
+        state={state}
+      />
 
-      {!publicationIdentity?.publicVisible && (
+      {!publicationIdentity
+        ?.publicVisible && (
         <div
-          className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}
+          className={
+            styles.editorNotice
+          }
           role="status"
+          aria-live="polite"
         >
-          <ShieldCheck size={18} aria-hidden="true" />
-          <span>
-            Este juego todavía no está visible públicamente. Completa su primera publicación antes de publicar una nueva versión.
-          </span>
+          <ShieldCheck
+            size={18}
+            aria-hidden="true"
+          />
+          Publica primero el juego
+          antes de registrar una
+          nueva versión.
         </div>
       )}
 
-      {publicationIdentity?.publicVisible &&
-        publicationIdentity.hasUnpublishedChanges && (
-          <div
-            className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}
-            role="status"
-          >
-            <ShieldCheck size={18} aria-hidden="true" />
-            <span>
-              Hay otros cambios pendientes en el borrador de este juego. Por seguridad, DeUna no los publicará accidentalmente junto con una nueva versión. Publica o restaura esos cambios antes de continuar. Los datos mostrados abajo corresponden a la versión realmente visible en la web.
-            </span>
-          </div>
-        )}
-
-      {publicationIdentity?.publicVisible &&
-        !publicationIdentity.hasUnpublishedChanges &&
-        !readiness.essentialsReady && (
-          <div
-            className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}
-            role="status"
-          >
-            <ShieldCheck size={18} aria-hidden="true" />
-            <span>
-              La publicación actual es anterior a los controles multimedia obligatorios. Confirma Portada, Hero, Card y Galería desde Multimedia antes de publicar una nueva versión.
-            </span>
-          </div>
-        )}
-
-      <section className={styles.editorPanel}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <span>ESTADO ACTUAL</span>
-            <h2>Versión pública y descargas</h2>
-          </div>
-          <p>
-            La dirección pública permanece siempre en /juegos/{slug}. Cada versión conserva su paquete, canal y checksum dentro del snapshot publicado.
-          </p>
-        </div>
-
-        <div className={styles.tableSummary}>
-          <strong>Versión pública actual</strong>
-          <span>
-            {publicBaseline.version?.trim() || "Sin versión registrada"}
-          </span>
-        </div>
-        <div className={styles.tableSummary}>
-          <strong>Fuentes públicas configuradas</strong>
-          <span>{initialSources.length}</span>
-        </div>
-        <div className={styles.tableSummary}>
-          <strong>Canal actual</strong>
-          <span>
-            {currentDistribution?.channel
-              ? channelLabels[currentDistribution.channel]
-              : "Sin definir"}
-          </span>
-        </div>
-        <div className={styles.tableSummary}>
-          <strong>SHA-256 actual</strong>
-          <span>
-            {currentDistribution?.checksumSha256
-              ? `${currentDistribution.checksumSha256.slice(0, 12)}…${currentDistribution.checksumSha256.slice(-12)}`
-              : "Sin checksum"}
-          </span>
-        </div>
-        <div className={styles.tableSummary}>
-          <strong>URL estable</strong>
-          <span>/juegos/{slug}</span>
-        </div>
-      </section>
-
-      <section className={styles.editorPanel}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <span>NUEVA VERSIÓN</span>
-            <h2>Publicar nueva versión</h2>
-          </div>
-          <p>
-            La confirmación publica inmediatamente el juego actualizado y su aviso. El checksum anterior nunca se hereda: cada paquete nuevo debe declararlo otra vez o dejarlo explícitamente sin definir.
-          </p>
-        </div>
-
-        <form
-          className={styles.editorForm}
-          method="post"
-          action={updateAction}
+      {publicationIdentity
+        ?.hasUnpublishedChanges && (
+        <div
+          className={
+            styles.editorNotice
+          }
+          role="status"
+          aria-live="polite"
         >
-          <input
-            type="hidden"
-            name="expectedRevision"
-            value={item.revision}
+          <ShieldCheck
+            size={18}
+            aria-hidden="true"
           />
+          Hay cambios de borrador
+          pendientes. Publícalos
+          antes de crear una
+          actualización integrada.
+        </div>
+      )}
 
-          <fieldset
-            disabled={!canPublish}
-            className={styles.fieldWide}
+      <section
+        className={
+          styles.editorPanel
+        }
+      >
+        <div
+          className={
+            styles.sectionHeading
+          }
+        >
+          <div>
+            <span>
+              RELEASE
+            </span>
+            <h2>
+              Elige la plataforma
+            </h2>
+          </div>
+          <p>
+            Una actualización de
+            PC, PS2 o cualquier
+            otra plataforma sólo
+            modifica ese release.
+          </p>
+        </div>
+
+        {releases.length ? (
+          <div
             style={{
-              border: 0,
-              padding: 0,
-              margin: 0,
-              display: "contents",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
             }}
           >
-            <label>
-              <span>Nueva versión</span>
-              <input
-                name="version"
-                maxLength={80}
-                placeholder="Ej. v1.11.0"
-                autoComplete="off"
-                required
-              />
-              <small>
-                Debe ser distinta de la versión actualmente publicada.
-              </small>
-            </label>
-
-            <label>
-              <span>Tipo de aviso</span>
-              <select name="type" defaultValue="update" required>
-                <option value="update">Actualización</option>
-                <option value="content">Nuevo contenido</option>
-                <option value="fix">Corrección</option>
-                <option value="improvement">Mejora</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Destacar en Actualizaciones</span>
-              <select name="featured" defaultValue="false" required>
-                <option value="false">No</option>
-                <option value="true">Sí</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Plataforma / paquete</span>
-              <input
-                name="platform"
-                defaultValue={download?.platform ?? game.platforms?.[0] ?? ""}
-                maxLength={80}
-                placeholder="A confirmar"
-              />
-            </label>
-
-            <label>
-              <span>Tamaño total (GB)</span>
-              <input
-                name="sizeGb"
-                type="number"
-                min="0.01"
-                max="100000"
-                step="0.01"
-                defaultValue={download?.sizeGb ?? ""}
-              />
-            </label>
-
-            <label>
-              <span>Cantidad de archivos</span>
-              <input
-                name="fileCount"
-                type="number"
-                min="1"
-                max="10000"
-                step="1"
-                defaultValue={download?.fileCount ?? ""}
-              />
-            </label>
-
-            <label>
-              <span>Canal de la nueva versión</span>
-              <select name="channel" defaultValue="">
-                <option value="">Sin definir</option>
-                <option value="stable">Estable</option>
-                <option value="beta">Beta</option>
-                <option value="testing">Pruebas</option>
-              </select>
-              <small>
-                Se decide para esta versión; no se copia automáticamente del paquete anterior.
-              </small>
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>SHA-256 del nuevo paquete</span>
-              <input
-                name="checksumSha256"
-                minLength={64}
-                maxLength={64}
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="64 caracteres hexadecimales"
-              />
-              <small>
-                Calcula el SHA-256 del paquete final. Todas las fuentes de esta versión deben entregar esos mismos bytes.
-              </small>
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Resumen público</span>
-              <textarea
-                name="summary"
-                maxLength={1500}
-                rows={5}
-                placeholder="Describe brevemente qué cambió en esta versión."
-                required
-              />
-              <small>
-                Este texto aparece en /actualizaciones y en el historial de versiones de la ficha del juego.
-              </small>
-            </label>
-
-            <div className={styles.fieldWide}>
-              <GameDownloadEditor
-                initialSources={initialSources}
-              />
-            </div>
-
-            <div className={styles.formActions}>
-              <p>
-                Se requiere al menos una fuente disponible. Al confirmar, DeUna actualiza versión + descargas + integridad del paquete + publicación del juego + aviso público dentro de la misma transacción editorial.
-              </p>
-              <button type="submit">
-                <RefreshCcw size={15} aria-hidden="true" />
-                Publicar nueva versión
-              </button>
-            </div>
-          </fieldset>
-        </form>
-      </section>
-
-      <section className={styles.editorPanel}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <span>HISTORIAL</span>
-            <h2>Versiones registradas para este juego</h2>
-          </div>
-          <p>
-            El historial se conserva aunque las fuentes de descarga sigan cambiando con versiones posteriores.
-          </p>
-        </div>
-
-        {relatedUpdates.length > 0 ? (
-          <div className={styles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Versión</th>
-                  <th>Tipo</th>
-                  <th>Fecha</th>
-                  <th>Estado editorial</th>
-                </tr>
-              </thead>
-              <tbody>
-                {relatedUpdates.map((update) => (
-                  <tr key={update.key}>
-                    <th scope="row">
-                      <strong>{update.payload.version}</strong>
-                      <span>{update.key}</span>
-                    </th>
-                    <td>{update.payload.type}</td>
-                    <td>
-                      {new Date(
-                        update.payload.publishedAt
-                      ).toLocaleDateString("es")}
-                    </td>
-                    <td>
-                      {update.status === "synced"
-                        ? "Sin cambios"
-                        : "Registrada"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {releases.map(
+              (release) => (
+                <Link
+                  key={
+                    release.id
+                  }
+                  href={
+                    "/admin/juegos/" +
+                    encodeURIComponent(
+                      slug
+                    ) +
+                    "/actualizacion?release=" +
+                    encodeURIComponent(
+                      release.id
+                    )
+                  }
+                  className={
+                    styles.tableAction
+                  }
+                  aria-current={
+                    selectedRelease
+                      ?.id ===
+                    release.id
+                      ? "page"
+                      : undefined
+                  }
+                >
+                  {platformLabel(
+                    platformCatalog,
+                    release.platformId
+                  )}
+                  {release.version
+                    ? " · " +
+                      release.version
+                    : ""}
+                </Link>
+              )
+            )}
           </div>
         ) : (
-          <p className={styles.emptyState}>
-            Todavía no hay versiones registradas para este juego.
+          <p
+            className={
+              styles.emptyState
+            }
+          >
+            Configura al menos un
+            release desde
+            Plataformas y
+            descargas.
           </p>
         )}
       </section>
+
+      {selectedRelease && (
+        <>
+          <section
+            className={
+              styles.editorPanel
+            }
+          >
+            <div
+              className={
+                styles.sectionHeading
+              }
+            >
+              <div>
+                <span>
+                  ESTADO ACTUAL
+                </span>
+                <h2>
+                  {releasePlatform}
+                </h2>
+              </div>
+              <p>
+                Elige el paquete
+                que va a recibir la
+                nueva versión.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+              }}
+            >
+              {(selectedRelease
+                .packages ??
+                []).map(
+                (item) => (
+                  <Link
+                    key={
+                      item.id
+                    }
+                    href={
+                      "/admin/juegos/" +
+                      encodeURIComponent(
+                        slug
+                      ) +
+                      "/actualizacion?release=" +
+                      encodeURIComponent(
+                        selectedRelease.id
+                      ) +
+                      "&package=" +
+                      encodeURIComponent(
+                        item.id
+                      )
+                    }
+                    className={
+                      styles.tableAction
+                    }
+                    aria-current={
+                      selectedPackage
+                        ?.id ===
+                      item.id
+                        ? "page"
+                        : undefined
+                    }
+                  >
+                    {item.label ??
+                      item.id}
+                    {" · "}
+                    {item.kind.toUpperCase()}
+                  </Link>
+                )
+              )}
+            </div>
+          </section>
+
+          <section
+            className={
+              styles.editorPanel
+            }
+          >
+            <div
+              className={
+                styles.sectionHeading
+              }
+            >
+              <div>
+                <span>
+                  NUEVA VERSIÓN
+                </span>
+                <h2>
+                  Publicar para{" "}
+                  {releasePlatform}
+                </h2>
+              </div>
+              <p>
+                Se actualiza la
+                versión y el
+                paquete seleccionado
+                dentro de una sola
+                transacción
+                editorial.
+              </p>
+            </div>
+
+            <form
+              className={
+                styles.editorForm
+              }
+              method="post"
+              action={updateAction}
+            >
+              <input
+                type="hidden"
+                name="expectedRevision"
+                value={
+                  item.revision
+                }
+              />
+              <input
+                type="hidden"
+                name="releaseId"
+                value={
+                  selectedRelease.id
+                }
+              />
+
+              <fieldset
+                disabled={
+                  !canPublish
+                }
+                className={
+                  styles.fieldWide
+                }
+                style={{
+                  border: 0,
+                  padding: 0,
+                  margin: 0,
+                  display:
+                    "contents",
+                }}
+              >
+                <label>
+                  <span>
+                    Nueva versión
+                  </span>
+                  <input
+                    name="version"
+                    maxLength={80}
+                    placeholder="Ej. 1.1.0"
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Tipo de aviso
+                  </span>
+                  <select
+                    name="type"
+                    defaultValue="update"
+                  >
+                    <option value="update">
+                      Actualización
+                    </option>
+                    <option value="content">
+                      Nuevo contenido
+                    </option>
+                    <option value="fix">
+                      Corrección
+                    </option>
+                    <option value="improvement">
+                      Mejora
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    Destacar
+                  </span>
+                  <select
+                    name="featured"
+                    defaultValue="false"
+                  >
+                    <option value="false">
+                      No
+                    </option>
+                    <option value="true">
+                      Sí
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    ID del paquete
+                  </span>
+                  <input
+                    name="packageId"
+                    defaultValue={
+                      selectedPackage
+                        ?.id ??
+                      "principal"
+                    }
+                    pattern="[a-z0-9][a-z0-9._-]*"
+                    maxLength={160}
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Formato
+                  </span>
+                  <select
+                    name="packageKind"
+                    defaultValue={
+                      selectedPackage
+                        ?.kind ??
+                      (
+                        selectedRelease
+                          .platformId ===
+                        "pc-windows"
+                          ? "installer"
+                          : "archive"
+                      )
+                    }
+                  >
+                    <option value="installer">
+                      Instalador
+                    </option>
+                    <option value="archive">
+                      Archivo
+                    </option>
+                    <option value="portable">
+                      Portable
+                    </option>
+                    <option value="iso">
+                      ISO
+                    </option>
+                    <option value="chd">
+                      CHD
+                    </option>
+                    <option value="cso">
+                      CSO
+                    </option>
+                    <option value="rvz">
+                      RVZ
+                    </option>
+                    <option value="gdi">
+                      GDI
+                    </option>
+                    <option value="pkg">
+                      PKG
+                    </option>
+                    <option value="patch">
+                      Parche
+                    </option>
+                    <option value="other">
+                      Otro
+                    </option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    Tamaño (GB)
+                  </span>
+                  <input
+                    name="sizeGb"
+                    type="number"
+                    min="0.01"
+                    max="100000"
+                    step="0.01"
+                    defaultValue={
+                      selectedPackage
+                        ?.sizeGb ??
+                      ""
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Cantidad de
+                    archivos
+                  </span>
+                  <input
+                    name="fileCount"
+                    type="number"
+                    min="1"
+                    max="10000"
+                    step="1"
+                    defaultValue={
+                      selectedPackage
+                        ?.fileCount ??
+                      ""
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Canal
+                  </span>
+                  <select
+                    name="channel"
+                    defaultValue={
+                      selectedPackage
+                        ?.channel ??
+                      ""
+                    }
+                  >
+                    <option value="">
+                      Sin definir
+                    </option>
+                    <option value="stable">
+                      Estable
+                    </option>
+                    <option value="beta">
+                      Beta
+                    </option>
+                    <option value="testing">
+                      Pruebas
+                    </option>
+                  </select>
+                </label>
+
+                <label
+                  className={
+                    styles.fieldWide
+                  }
+                >
+                  <span>
+                    SHA-256
+                  </span>
+                  <input
+                    name="checksumSha256"
+                    minLength={64}
+                    maxLength={64}
+                    defaultValue=""
+                    spellCheck={
+                      false
+                    }
+                    placeholder="Nuevo SHA-256 opcional"
+                  />
+                  <small>
+                    El checksum anterior nunca se hereda en una versión nueva.
+                    {selectedPackage
+                      ?.checksumSha256
+                      ? " El paquete actual sí tiene un SHA-256 publicado."
+                      : ""}
+                    {" "}
+                    {selectedPackage
+                      ?.channel
+                      ? channelLabels[
+                          selectedPackage
+                            .channel
+                        ]
+                      : "Sin canal"}
+                  </small>
+                </label>
+
+                <label
+                  className={
+                    styles.fieldWide
+                  }
+                >
+                  <span>
+                    Resumen público
+                  </span>
+                  <textarea
+                    name="summary"
+                    maxLength={1500}
+                    rows={5}
+                    required
+                  />
+                </label>
+
+                <div
+                  className={
+                    styles.fieldWide
+                  }
+                >
+                  <GameDownloadEditor
+                    initialSources={
+                      initialSources
+                    }
+                  />
+                </div>
+
+                <div
+                  className={
+                    styles.formActions
+                  }
+                >
+                  <p>
+                    Al confirmar sólo
+                    cambia{" "}
+                    {releasePlatform}.
+                    Los demás releases
+                    permanecen
+                    intactos.
+                  </p>
+                  <button type="submit">
+                    <RefreshCcw
+                      size={15}
+                      aria-hidden="true"
+                    />
+                    Publicar nueva
+                    versión
+                  </button>
+                </div>
+              </fieldset>
+            </form>
+          </section>
+
+          <section
+            className={
+              styles.editorPanel
+            }
+          >
+            <div
+              className={
+                styles.sectionHeading
+              }
+            >
+              <div>
+                <span>
+                  VERSIONES
+                </span>
+                <h2>
+                  Historial público de{" "}
+                  {releasePlatform}
+                </h2>
+              </div>
+              <p>
+                Esta cronología es
+                contenido público
+                legítimo; no es un
+                sistema de
+                restauración
+                editorial.
+              </p>
+            </div>
+
+            {relatedUpdates.length ? (
+              <div
+                className={
+                  styles.tableWrap
+                }
+              >
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        Versión
+                      </th>
+                      <th>
+                        Tipo
+                      </th>
+                      <th>
+                        Fecha
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {relatedUpdates.map(
+                      (update) => (
+                        <tr
+                          key={
+                            update.key
+                          }
+                        >
+                          <th scope="row">
+                            {
+                              update
+                                .payload
+                                .version
+                            }
+                          </th>
+                          <td>
+                            {
+                              update
+                                .payload
+                                .type
+                            }
+                          </td>
+                          <td>
+                            {new Date(
+                              update
+                                .payload
+                                .publishedAt
+                            ).toLocaleDateString(
+                              "es"
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p
+                className={
+                  styles.emptyState
+                }
+              >
+                Todavía no hay
+                versiones registradas
+                para este release.
+              </p>
+            )}
+          </section>
+        </>
+      )}
     </>
   );
 }

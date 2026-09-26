@@ -88,7 +88,7 @@ export async function generateMetadata({
     );
   const page = publicPages.games;
   const title =
-    `${page.title} para PC`;
+    page.title;
   const description =
     page.description;
 
@@ -159,7 +159,7 @@ export default async function GamesPage({
     "@type":
       "CollectionPage",
     name:
-      `${page.title} para PC`,
+      page.title,
     url:
       absoluteUrl(
         "/juegos"

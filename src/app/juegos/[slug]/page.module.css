@@ -747,6 +747,76 @@
   background: color-mix(in srgb, var(--success) 6%, transparent);
 }
 
+.releaseGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.releaseCard {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.releaseCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.releaseCardHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
+.releaseCardHeader span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.releaseCardHeader strong {
+  font-size: 1.04rem;
+}
+
+.releaseFormat {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--brand) !important;
+  font-weight: 800;
+}
+
+.releaseMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.releaseMeta span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.releaseActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.releaseActions .primaryAction,
+.releaseActions .secondaryAction {
+  min-height: 44px;
+}
+
 .installationPanel p {
   max-width: 760px;
   margin-top: 7px;
@@ -897,6 +967,11 @@
 }
 
 @media (max-width: 700px) {
+  .releaseGrid {
+    grid-template-columns: 1fr;
+  }
+
+
   .main {
     width: min(calc(100% - 20px), var(--content-width));
     padding-top: 18px;

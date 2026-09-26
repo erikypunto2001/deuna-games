@@ -271,6 +271,9 @@ jobs:
       - name: Source game retirement integration
         run: npm run check:source-game-retirement-postgres
 
+      - name: Multiplatform editorial relations
+        run: npm run check:multiplatform-postgres
+
   visual-smoke:
     needs: [quality, postgres-foundation]
     runs-on: ubuntu-24.04
@@ -401,6 +404,11 @@ jobs:
         env:
           DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE: "1"
         run: npm run visual:admin-historical-update-fixture
+
+      - name: Create multiplatform visual fixtures
+        env:
+          DEUNA_MULTIPLATFORM_VISUAL_FIXTURE: "1"
+        run: npm run visual:multiplatform-fixture
 
       - name: Build visual runtime
         env:

@@ -7,8 +7,8 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
-  editorialGameDownloadFormSchema,
-} from "@/lib/admin/content-forms";
+  integratedReleasePackageFormSchema,
+} from "@/lib/admin/managed-editorial-forms";
 import {
   inspectGameMediaIntegrity,
 } from "@/lib/admin/game-media-integrity";
@@ -33,13 +33,15 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
+  "releaseId",
+  "packageId",
+  "packageKind",
   "version",
   "type",
   "summary",
   "featured",
   "sizeGb",
   "fileCount",
-  "platform",
   "channel",
   "checksumSha256",
   "sourcesJson",
@@ -47,6 +49,29 @@ const fields = [
 
 const updateMetadataSchema = z
   .object({
+    releaseId: z
+      .string()
+      .min(1)
+      .max(160)
+      .regex(/^[a-z0-9][a-z0-9._-]*$/),
+    packageId: z
+      .string()
+      .min(1)
+      .max(160)
+      .regex(/^[a-z0-9][a-z0-9._-]*$/),
+    packageKind: z.enum([
+      "installer",
+      "archive",
+      "portable",
+      "iso",
+      "chd",
+      "cso",
+      "rvz",
+      "gdi",
+      "pkg",
+      "patch",
+      "other",
+    ]),
     version: z.string().trim().min(1).max(80),
     type: z.enum([
       "update",
@@ -94,22 +119,28 @@ export async function POST(
 
   const raw = Object.fromEntries(authorized.form);
   const metadata = updateMetadataSchema.safeParse({
+    releaseId:
+      raw.releaseId,
+    packageId:
+      raw.packageId,
+    packageKind:
+      raw.packageKind,
     version: raw.version,
     type: raw.type,
     summary: raw.summary,
     featured: raw.featured,
   });
-  const download = editorialGameDownloadFormSchema.safeParse({
+  const packageForm = integratedReleasePackageFormSchema.safeParse({
     expectedRevision: raw.expectedRevision,
     sizeGb: raw.sizeGb,
     fileCount: raw.fileCount,
-    platform: raw.platform,
+    platform: "",
     channel: raw.channel,
     checksumSha256: raw.checksumSha256,
     sourcesJson: raw.sourcesJson,
   });
 
-  if (!metadata.success || !download.success) {
+  if (!metadata.success || !packageForm.success) {
     return adminRedirect(
       authorized.adminOrigin,
       targetFor(slug, "datos")
@@ -129,7 +160,7 @@ export async function POST(
 
     if (
       candidate.revision !==
-      download.data.expectedRevision
+      packageForm.data.expectedRevision
     ) {
       return adminRedirect(
         authorized.adminOrigin,
@@ -165,26 +196,33 @@ export async function POST(
       slug,
       authorized.session.userId,
       {
-        expectedRevision: download.data.expectedRevision,
+        expectedRevision: packageForm.data.expectedRevision,
+        releaseId:
+          metadata.data.releaseId,
         version: metadata.data.version,
         type: metadata.data.type,
         summary: metadata.data.summary,
         featured: metadata.data.featured,
         distributionMetadata: {
-          ...(download.data.channel
-            ? { channel: download.data.channel }
+          ...(packageForm.data.channel
+            ? { channel: packageForm.data.channel }
             : {}),
-          ...(download.data.checksumSha256
-            ? { checksumSha256: download.data.checksumSha256 }
+          ...(packageForm.data.checksumSha256
+            ? { checksumSha256: packageForm.data.checksumSha256 }
             : {}),
         },
-        download: {
-          sizeGb: download.data.sizeGb,
-          fileCount: download.data.fileCount,
-          platform: download.data.platform,
+        package: {
+          id:
+            metadata.data.packageId,
+          kind:
+            metadata.data.packageKind,
+          sizeGb:
+            packageForm.data.sizeGb,
+          fileCount:
+            packageForm.data.fileCount,
           sources:
-            download.data.sourcesJson.length > 0
-              ? download.data.sourcesJson
+            packageForm.data.sourcesJson.length > 0
+              ? packageForm.data.sourcesJson
               : undefined,
         },
       }

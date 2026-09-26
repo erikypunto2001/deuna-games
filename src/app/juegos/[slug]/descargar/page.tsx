@@ -23,7 +23,14 @@ import Header from "@/components/layout/Header";
 import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import {
   resolveGameDownload,
+  resolveGameReleaseDownload,
 } from "@/lib/games/download";
+import {
+  platformLabel,
+} from "@/lib/games/releases";
+import {
+  getPublicPlatformCatalog,
+} from "@/lib/platforms/public-platform-catalog";
 import {
   getPublicGameBySlug,
 } from "@/lib/games/public-catalog";
@@ -39,6 +46,10 @@ import styles from "./page.module.css";
 type DownloadPageProps = {
   params: Promise<{
     slug: string;
+  }>;
+  searchParams: Promise<{
+    release?: string | string[];
+    package?: string | string[];
   }>;
 };
 
@@ -121,18 +132,44 @@ export async function generateMetadata({
 
 export default async function DownloadPage({
   params,
+  searchParams,
 }: DownloadPageProps) {
-  const { slug } = await params;
-  const [game, publicSiteConfig] = await Promise.all([
+  const [
+    { slug },
+    query,
+  ] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const [
+    game,
+    publicSiteConfig,
+    platformCatalog,
+  ] = await Promise.all([
     getPublicGameBySlug(slug),
     getPublicSiteConfig(),
+    getPublicPlatformCatalog(),
   ]);
 
   if (!game) {
     notFound();
   }
 
-  const download = resolveGameDownload(game);
+  const releaseId =
+    Array.isArray(query.release)
+      ? query.release[0]
+      : query.release;
+  const packageId =
+    Array.isArray(query.package)
+      ? query.package[0]
+      : query.package;
+  const download = releaseId
+    ? resolveGameReleaseDownload(
+        game,
+        releaseId,
+        packageId || undefined
+      )
+    : resolveGameDownload(game);
 
   if (!download) {
     redirect(`/juegos/${game.slug}`);
@@ -143,18 +180,21 @@ export default async function DownloadPage({
       ? game.genres
       : [game.category];
   const platform =
-    download.platform ??
-    game.platforms?.[0] ??
-    "A confirmar";
+    download.platformId
+      ? platformLabel(
+          platformCatalog,
+          download.platformId
+        )
+      : download.platform ??
+        game.platforms?.[0] ??
+        "A confirmar";
   const channel = download.channel
     ? distributionChannelLabels[download.channel]
     : "A confirmar";
   const storage =
     download.sizeGb
       ? `${download.sizeGb} GB`
-      : game.requirements?.minimum?.storage ??
-        game.requirements?.storage ??
-        "Sin dato";
+      : "Según el paquete";
 
   return (
     <>
@@ -206,6 +246,11 @@ export default async function DownloadPage({
               {genres.slice(0, 4).map((genre) => (
                 <span key={genre}>{genre}</span>
               ))}
+              {download.packageKind && (
+                <span>
+                  {download.packageKind.toUpperCase()}
+                </span>
+              )}
             </div>
 
             <p>{game.description}</p>

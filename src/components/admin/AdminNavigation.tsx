@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import {
+  AppWindow,
+  Boxes,
   ChevronDown,
   ExternalLink,
   FileText,
@@ -12,6 +14,7 @@ import {
   Palette,
   ShieldCheck,
   Tags,
+  Waypoints,
   UsersRound,
   Wrench,
 } from "lucide-react";
@@ -44,6 +47,18 @@ const navigationGroups = [
         ownerOnly: false,
       },
       {
+        href: "/admin/colecciones",
+        label: "Colecciones",
+        icon: Boxes,
+        ownerOnly: false,
+      },
+      {
+        href: "/admin/programas",
+        label: "Programas",
+        icon: AppWindow,
+        ownerOnly: false,
+      },
+      {
         href: "/admin/portada",
         label: "Inicio",
         icon: Home,
@@ -59,6 +74,12 @@ const navigationGroups = [
         href: "/admin/catalogos",
         label: "Clasificaciones y etiquetas",
         icon: Tags,
+        ownerOnly: false,
+      },
+      {
+        href: "/admin/plataformas",
+        label: "Plataformas",
+        icon: Waypoints,
         ownerOnly: false,
       },
     ],

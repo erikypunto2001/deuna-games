@@ -55,6 +55,18 @@ function publicationPath(
     return "/admin/paginas/presentacion?seccion=publicacion";
   }
 
+  if (type === "software") {
+    return `/admin/programas/${encodeURIComponent(key)}`;
+  }
+
+  if (type === "game_collection") {
+    return `/admin/colecciones/${encodeURIComponent(key)}`;
+  }
+
+  if (type === "platform_catalog") {
+    return "/admin/plataformas";
+  }
+
   return "/admin/configuracion?seccion=publicacion";
 }
 
@@ -75,6 +87,9 @@ function publicationTypeLabel(
   if (type === "about_config") return "Quiénes somos";
   if (type === "game_taxonomy") return "Clasificaciones y etiquetas";
   if (type === "public_pages_config") return "Páginas públicas";
+  if (type === "software") return "Programa";
+  if (type === "game_collection") return "Colección";
+  if (type === "platform_catalog") return "Plataformas";
   return "Marca y apariencia";
 }
 

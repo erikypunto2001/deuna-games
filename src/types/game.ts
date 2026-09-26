@@ -120,6 +120,45 @@ export type GameDistributionMetadata = {
   checksumSha256?: string;
 };
 
+export type DistributionPackageKind =
+  | "installer"
+  | "archive"
+  | "portable"
+  | "iso"
+  | "chd"
+  | "cso"
+  | "rvz"
+  | "gdi"
+  | "pkg"
+  | "patch"
+  | "other";
+
+export type DistributionPackage = {
+  id: string;
+  kind: DistributionPackageKind;
+  label?: string;
+  sizeGb?: number;
+  fileCount?: number;
+  channel?: GameDistributionChannel;
+  checksumSha256?: string;
+  enabled?: boolean;
+  sources?: GameDownloadSource[];
+};
+
+export type GameRelease = {
+  id: string;
+  platformId: string;
+  label?: string;
+  region?: string;
+  releaseDate?: string;
+  version?: string;
+  requirements?: GameRequirements;
+  performance?: GamePerformanceCalibration;
+  performanceMetadata?: GamePerformanceMetadata;
+  packages?: DistributionPackage[];
+  recommendedSoftwareSlugs?: string[];
+};
+
 export type GameCoverArtworkSource = "card" | "custom";
 
 export type GameImageViewportAspect =
@@ -285,6 +324,12 @@ export type Game = {
   tags?: string[];
   ageRating?: GameAgeRating;
   platforms?: GamePlatform[];
+  /*
+   * Modelo multiplataforma actual. Los campos legacy siguen siendo legibles
+   * durante la migración, pero los releases son la fuente estructurada para
+   * plataformas, paquetes, requisitos y software relacionado.
+   */
+  releases?: GameRelease[];
   compatibilityMetadata?: GameCompatibilityMetadata;
 
   badge?: string;

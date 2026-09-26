@@ -34,7 +34,7 @@ export const sourcePublicPagesConfig: PublicPagesConfig = {
     title: "Juegos",
     description:
       "Explora nuestro catálogo, filtra por clasificación, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.",
-    platformLabel: "PC",
+    platformLabel: "PC y consolas",
   },
   updates: {
     eyebrow: "VERSIONES Y MEJORAS",

@@ -15,9 +15,18 @@ import {
 
 import type { Game } from "@/types/game";
 import type {
+  GameCollection,
+} from "@/types/game-collection";
+import type {
   GameTaxonomy,
   GameTaxonomyTerm,
 } from "@/types/game-taxonomy";
+import type {
+  PlatformCatalog,
+} from "@/types/platform";
+import type {
+  Software,
+} from "@/types/software";
 import type { GameUpdate } from "@/types/update";
 
 const taxonomyIconKeys = [
@@ -79,6 +88,9 @@ export const editorialItemTypes = [
   "about_config",
   "game_taxonomy",
   "public_pages_config",
+  "platform_catalog",
+  "software",
+  "game_collection",
 ] as const;
 
 export type EditorialItemType =
@@ -314,7 +326,153 @@ const downloadSchema = z
     fileCount: z.number().int().positive().max(10_000).optional(),
     platform: optionalShortText,
   })
-  .strict();
+  .strict()
+  .superRefine((download, context) => {
+    const sourceIds = new Set<string>();
+
+    download.sources?.forEach((source, index) => {
+      if (sourceIds.has(source.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index, "id"],
+          message:
+            "Las fuentes de descarga deben tener IDs únicos.",
+        });
+      }
+      sourceIds.add(source.id);
+    });
+  });
+
+const distributionChannelSchema = z.enum([
+  "stable",
+  "beta",
+  "testing",
+]);
+
+const distributionPackageSchema = z
+  .object({
+    id: identifierSchema,
+    kind: z.enum([
+      "installer",
+      "archive",
+      "portable",
+      "iso",
+      "chd",
+      "cso",
+      "rvz",
+      "gdi",
+      "pkg",
+      "patch",
+      "other",
+    ]),
+    label: optionalShortText,
+    sizeGb: z.number().positive().max(100_000).optional(),
+    fileCount: z.number().int().positive().max(10_000).optional(),
+    channel: distributionChannelSchema.optional(),
+    checksumSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    enabled: z.boolean().optional(),
+    sources: z
+      .array(editorialDownloadSourceSchema)
+      .max(12)
+      .optional(),
+  })
+  .strict()
+  .superRefine((item, context) => {
+    const sourceIds = new Set<string>();
+
+    item.sources?.forEach((source, index) => {
+      if (sourceIds.has(source.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index, "id"],
+          message:
+            "Las fuentes de un paquete deben tener IDs únicos.",
+        });
+      }
+      sourceIds.add(source.id);
+    });
+  });
+
+const gameReleaseSchema = z
+  .object({
+    id: identifierSchema,
+    platformId: identifierSchema,
+    label: optionalShortText,
+    region: z.string().trim().max(80).optional(),
+    releaseDate: optionalShortText,
+    version: optionalShortText,
+    requirements: requirementsSchema.optional(),
+    performance: performanceCalibrationSchema.optional(),
+    performanceMetadata: z
+      .object({
+        source: z
+          .enum([
+            "internal",
+            "developer",
+            "publisher",
+            "community",
+            "external",
+          ])
+          .optional(),
+        sourceLabel: z.string().trim().min(1).max(160).optional(),
+        measuredAt: optionalShortText,
+        confidence: z.enum(["low", "medium", "high"]).optional(),
+      })
+      .strict()
+      .optional(),
+    packages: z
+      .array(distributionPackageSchema)
+      .max(12)
+      .optional(),
+    recommendedSoftwareSlugs: z
+      .array(identifierSchema)
+      .max(12)
+      .optional(),
+  })
+  .strict()
+  .superRefine((release, context) => {
+    if (
+      release.platformId !== "pc-windows" &&
+      (
+        release.requirements ||
+        release.performance ||
+        release.performanceMetadata
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["platformId"],
+        message:
+          "Requisitos y FPS sólo corresponden al release PC / Windows.",
+      });
+    }
+
+    const packageIds = new Set<string>();
+    release.packages?.forEach((item, index) => {
+      if (packageIds.has(item.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["packages", index, "id"],
+          message:
+            "Los paquetes de un release deben tener IDs únicos.",
+        });
+      }
+      packageIds.add(item.id);
+    });
+
+    const softwareSlugs = new Set<string>();
+    release.recommendedSoftwareSlugs?.forEach((slug, index) => {
+      if (softwareSlugs.has(slug)) {
+        context.addIssue({
+          code: "custom",
+          path: ["recommendedSoftwareSlugs", index],
+          message:
+            "El software recomendado no puede repetirse dentro del mismo release.",
+        });
+      }
+      softwareSlugs.add(slug);
+    });
+  });
 
 function uniqueIdentifiers(maximum: number) {
   return z
@@ -649,6 +807,10 @@ export const editorialGameSchema: z.ZodType<Game> = z
     requirements: requirementsSchema.optional(),
     performance: performanceCalibrationSchema.optional(),
     download: downloadSchema.optional(),
+    releases: z
+      .array(gameReleaseSchema)
+      .max(32)
+      .optional(),
   })
   .strict()
   .superRefine((game, context) => {
@@ -660,12 +822,25 @@ export const editorialGameSchema: z.ZodType<Game> = z
       });
     }
 
+    const releaseIds = new Set<string>();
+    game.releases?.forEach((release, index) => {
+      if (releaseIds.has(release.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["releases", index, "id"],
+          message:
+            "Los releases de un juego deben tener IDs únicos.",
+        });
+      }
+      releaseIds.add(release.id);
+    });
   });
 
 export const editorialUpdateSchema: z.ZodType<GameUpdate> = z
   .object({
     id: identifierSchema,
     gameSlug: identifierSchema,
+    releaseId: identifierSchema.optional(),
     version: z.string().trim().min(1).max(80),
     publishedAt: z
       .string()
@@ -680,6 +855,189 @@ export const editorialUpdateSchema: z.ZodType<GameUpdate> = z
     featured: z.boolean().optional(),
   })
   .strict();
+
+const platformFamilySchema = z
+  .object({
+    id: identifierSchema,
+    name: z.string().trim().min(1).max(80),
+    order: z.number().int().min(0).max(10_000),
+    active: z.boolean(),
+  })
+  .strict();
+
+const platformDefinitionSchema = z
+  .object({
+    id: identifierSchema,
+    familyId: identifierSchema,
+    name: z.string().trim().min(1).max(100),
+    shortName: z.string().trim().min(1).max(40).optional(),
+    kind: z.enum(["pc", "console", "handheld"]),
+    order: z.number().int().min(0).max(10_000),
+    active: z.boolean(),
+  })
+  .strict();
+
+export const editorialPlatformCatalogSchema: z.ZodType<PlatformCatalog> = z
+  .object({
+    families: z.array(platformFamilySchema).max(40),
+    platforms: z.array(platformDefinitionSchema).max(200),
+  })
+  .strict()
+  .superRefine((catalog, context) => {
+    const familyIds = new Set<string>();
+
+    catalog.families.forEach((family, index) => {
+      if (familyIds.has(family.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["families", index, "id"],
+          message:
+            "Las familias de plataforma deben tener IDs únicos.",
+        });
+      }
+      familyIds.add(family.id);
+    });
+
+    const platformIds = new Set<string>();
+
+    catalog.platforms.forEach((platform, index) => {
+      if (platformIds.has(platform.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["platforms", index, "id"],
+          message:
+            "Las plataformas deben tener IDs únicos.",
+        });
+      }
+      platformIds.add(platform.id);
+
+      if (!familyIds.has(platform.familyId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["platforms", index, "familyId"],
+          message:
+            "La plataforma referencia una familia inexistente.",
+        });
+      }
+    });
+  });
+
+export const editorialSoftwareSchema: z.ZodType<Software> = z
+  .object({
+    id: identifierSchema,
+    slug: identifierSchema,
+    name: z.string().trim().min(1).max(140),
+    shortDescription: z.string().trim().min(1).max(240).optional(),
+    description: z.string().trim().min(1).max(3_000),
+    kind: z.enum([
+      "emulator",
+      "utility",
+      "upscaler",
+      "launcher",
+      "runtime",
+      "other",
+    ]),
+    version: optionalShortText,
+    developer: optionalShortText,
+    website: downloadHrefSchema.optional(),
+    runsOnPlatformIds: z.array(identifierSchema).max(20),
+    emulatesPlatformIds: z.array(identifierSchema).max(40).optional(),
+    packages: z
+      .array(
+        distributionPackageSchema
+          .extend({
+            platformId: identifierSchema,
+          })
+          .strict()
+      )
+      .max(20)
+      .optional(),
+    coverImage: localImageSchema.optional(),
+    imageAlt: z.string().trim().min(1).max(240).optional(),
+    featured: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((software, context) => {
+    if (software.id !== software.slug) {
+      context.addIssue({
+        code: "custom",
+        path: ["slug"],
+        message:
+          "El ID y el slug del programa deben coincidir.",
+      });
+    }
+
+    const runsOnPlatformIds = new Set<string>();
+    software.runsOnPlatformIds.forEach((platformId, index) => {
+      if (runsOnPlatformIds.has(platformId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["runsOnPlatformIds", index],
+          message:
+            "Una plataforma de ejecución no puede repetirse.",
+        });
+      }
+      runsOnPlatformIds.add(platformId);
+    });
+
+    const emulatesPlatformIds = new Set<string>();
+    software.emulatesPlatformIds?.forEach((platformId, index) => {
+      if (emulatesPlatformIds.has(platformId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["emulatesPlatformIds", index],
+          message:
+            "Una plataforma emulada no puede repetirse.",
+        });
+      }
+      emulatesPlatformIds.add(platformId);
+    });
+
+    const packageIds = new Set<string>();
+    software.packages?.forEach((item, index) => {
+      if (packageIds.has(item.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["packages", index, "id"],
+          message:
+            "Los paquetes de un programa deben tener IDs únicos.",
+        });
+      }
+      packageIds.add(item.id);
+
+      if (!runsOnPlatformIds.has(item.platformId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["packages", index, "platformId"],
+          message:
+            "Cada paquete debe pertenecer a una plataforma donde se ejecuta el programa.",
+        });
+      }
+    });
+  });
+
+export const editorialGameCollectionSchema: z.ZodType<GameCollection> = z
+  .object({
+    id: identifierSchema,
+    slug: identifierSchema,
+    title: z.string().trim().min(1).max(140),
+    description: z.string().trim().min(1).max(2_500),
+    gameSlugs: uniqueIdentifiers(300),
+    coverImage: localImageSchema.optional(),
+    imageAlt: z.string().trim().min(1).max(240).optional(),
+    featured: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((collection, context) => {
+    if (collection.id !== collection.slug) {
+      context.addIssue({
+        code: "custom",
+        path: ["slug"],
+        message:
+          "El ID y el slug de la colección deben coincidir.",
+      });
+    }
+  });
 
 export const editorialSiteConfigSchema = z
   .object({
@@ -883,6 +1241,9 @@ export type EditorialPayloadByType = {
   about_config: EditorialAboutConfig;
   game_taxonomy: GameTaxonomy;
   public_pages_config: EditorialPublicPagesConfig;
+  platform_catalog: PlatformCatalog;
+  software: Software;
+  game_collection: GameCollection;
 };
 
 export function parseEditorialPayload<
@@ -901,7 +1262,13 @@ export function parseEditorialPayload<
               ? editorialAboutConfigSchema
               : type === "game_taxonomy"
                 ? editorialGameTaxonomySchema
-                : editorialPublicPagesConfigSchema;
+                : type === "public_pages_config"
+                  ? editorialPublicPagesConfigSchema
+                  : type === "platform_catalog"
+                    ? editorialPlatformCatalogSchema
+                    : type === "software"
+                      ? editorialSoftwareSchema
+                      : editorialGameCollectionSchema;
 
   return schema.parse(payload) as EditorialPayloadByType[Type];
 }

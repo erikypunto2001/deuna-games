@@ -77,6 +77,13 @@ export async function POST(
       );
     }
 
+    if (result.outcome === "in_use") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=relacion-publica-en-uso`
+      );
+    }
+
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,

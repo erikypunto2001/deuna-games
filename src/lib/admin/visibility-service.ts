@@ -4,12 +4,18 @@ import {
   withAdminTransaction,
 } from "./database";
 import {
+  validatePublishedGameHide,
+  validatePublishedSoftwareHide,
+} from "./managed-editorial-relations";
+import {
   verifyAdminSession,
 } from "./session";
 
 type HideableEditorialType =
   | "game"
-  | "game_update";
+  | "game_update"
+  | "software"
+  | "game_collection";
 
 type VisibilityItemRow = {
   id: string;
@@ -31,6 +37,11 @@ export type HideEditorialResult =
     }
   | {
       outcome: "conflict";
+      key: string;
+      publicationNumber: number;
+    }
+  | {
+      outcome: "in_use";
       key: string;
       publicationNumber: number;
     }
@@ -97,6 +108,30 @@ async function hideEditorialContent(
       };
     }
 
+    const dependencyState =
+      type === "software"
+        ? await validatePublishedSoftwareHide(
+            client,
+            key
+          )
+        : type === "game"
+          ? await validatePublishedGameHide(
+              client,
+              key
+            )
+          : {
+              ok: true as const,
+            };
+
+    if (!dependencyState.ok) {
+      return {
+        outcome: "in_use",
+        key: item.item_key,
+        publicationNumber:
+          item.publication_number,
+      };
+    }
+
     await client.query(
       `UPDATE deuna_admin.editorial_items
        SET public_visible = false,
@@ -149,6 +184,32 @@ export function hideUpdatePublication(
 ) {
   return hideEditorialContent(
     "game_update",
+    key,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function hideSoftwarePublication(
+  key: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return hideEditorialContent(
+    "software",
+    key,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function hideGameCollectionPublication(
+  key: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return hideEditorialContent(
+    "game_collection",
     key,
     expectedPublicationNumber,
     actorUserId

@@ -158,7 +158,9 @@ assert(
     !publicationPanel.includes("/restore") &&
     gamePublication.includes("Publicar") &&
     integratedUpdate.includes("publish-update") &&
-    integratedUpdate.includes("Publicar nueva versión") &&
+    /Publicar\s+nueva\s+versión/.test(
+      integratedUpdate
+    ) &&
     mediaUpload.includes("media-upload"),
   "Las acciones de publicación vigentes y los subflujos multimedia deben seguir identificables para quedar fuera del guardado persistente, sin reintroducir restauración."
 );

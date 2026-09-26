@@ -126,6 +126,50 @@ El ranking personalizado parte del ranking editorial existente en lugar de reemp
 
 Los avisos de Mi DeUna se derivan de las actualizaciones públicas reales de cada juego. La cuenta sólo conserva desde cuándo se sigue un juego y hasta qué momento se vieron sus avisos; no duplica una tabla de notificaciones por usuario.
 
+## Arquitectura multiplataforma, Programas y Colecciones
+
+Los juegos pueden publicar varios `releases` independientes. Cada release
+pertenece a una plataforma del catálogo maestro, conserva su versión, región,
+requisitos y FPS cuando corresponden, y puede contener varios paquetes de
+descarga. Los paquetes declaran su formato (`installer`, `archive`, `iso`,
+`chd`, `cso`, `rvz`, `gdi`, `pkg`, etc.), canal, SHA-256 y mirrors
+con estado independiente.
+
+El catálogo de plataformas se administra desde **Admin > Plataformas**. Las
+familias y plataformas publicadas son extensibles: agregar una nueva consola no
+requiere modificar la navegación pública ni las colecciones automáticas. Los
+identificadores que ya están referenciados por juegos o programas no pueden
+eliminarse mientras sigan en uso.
+
+**Programas** publica emuladores, utilidades, escaladores, launchers y runtimes
+como contenido editorial current-only. Cada ficha diferencia las plataformas
+donde el programa se ejecuta de las plataformas que emula, y sus paquetes de
+descarga usan el mismo contrato de integridad/mirrors que los juegos. Un release
+de juego puede recomendar programas publicados concretos.
+
+**Colecciones** combina dos fuentes:
+
+- colecciones editoriales de sagas o franquicias, cuyo orden de juegos se
+  conserva exactamente como se definió en Admin;
+- colecciones automáticas por plataforma, agrupadas por la familia publicada
+  (PC, PlayStation, Xbox, Nintendo, Sega u otras que se creen después).
+
+Guardar y publicar siguen siendo operaciones separadas para Plataformas,
+Programas y Colecciones. La web pública sólo consume `published_payload`
+visible; nunca lee borradores.
+
+La migración `022_multiplatform_editorial.sql` amplía los tipos permitidos de
+`editorial_items` con `platform_catalog`, `software` y
+`game_collection`. Después de traer esta rama a un entorno local existente,
+la actualización soportada sigue siendo:
+
+```bash
+npm run admin:update-local
+```
+
+Este comando aplica migraciones, importa contenido fuente vigente, diagnostica
+residuos y ejecuta los preflights sin purgar datos automáticamente.
+
 ## Finder de hardware y FPS
 
 `/requisitos` realiza una detección local orientativa usando únicamente lo que el navegador puede exponer cuando no existe un perfil explícito más fiable.

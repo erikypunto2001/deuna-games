@@ -5,6 +5,10 @@ import type {
   GameEditorSection,
 } from "@/lib/admin/game-editor-flow";
 import {
+  resolveGameReleases,
+  resolvePcRelease,
+} from "@/lib/games/releases";
+import {
   hasCompleteContextualMediaAccessibility,
 } from "@/lib/media/game-media-accessibility";
 import {
@@ -40,8 +44,24 @@ function hasText(value: string | undefined) {
   return Boolean(value?.trim());
 }
 
-function hasMinimumRequirements(game: Game) {
-  const minimum = game.requirements?.minimum ?? game.requirements;
+function pcRequirements(
+  game: Game
+) {
+  return resolvePcRelease(
+    game
+  )?.requirements;
+}
+
+function hasMinimumRequirements(
+  game: Game
+) {
+  const requirements =
+    pcRequirements(
+      game
+    );
+  const minimum =
+    requirements?.minimum ??
+    requirements;
 
   return Boolean(
     hasText(minimum?.processor) &&
@@ -50,8 +70,13 @@ function hasMinimumRequirements(game: Game) {
   );
 }
 
-function hasRecommendedRequirements(game: Game) {
-  const recommended = game.requirements?.recommended;
+function hasRecommendedRequirements(
+  game: Game
+) {
+  const recommended =
+    pcRequirements(
+      game
+    )?.recommended;
 
   return Boolean(
     hasText(recommended?.processor) &&
@@ -60,22 +85,68 @@ function hasRecommendedRequirements(game: Game) {
   );
 }
 
-function hasVisibleDownload(game: Game) {
-  const download = game.download;
-  if (!download) return false;
-
-  if (hasText(download.href)) return true;
-
-  return Boolean(
-    download.sources?.some(
-      (source) =>
-        source.enabled !== false &&
-        source.status !== "down" &&
-        hasText(source.href)
-    )
+function downloadablePackages(
+  game: Game
+) {
+  return resolveGameReleases(
+    game
+  ).flatMap(
+    (release) =>
+      (
+        release.packages ??
+        []
+      ).filter(
+        (item) =>
+          item.enabled !== false &&
+          (
+            item.sources ??
+            []
+          ).some(
+            (source) =>
+              source.enabled !==
+                false &&
+              source.status !==
+                "down" &&
+              hasText(
+                source.href
+              )
+          )
+      )
   );
 }
 
+function hasVisibleDownload(
+  game: Game
+) {
+  return (
+    downloadablePackages(
+      game
+    ).length > 0
+  );
+}
+
+function hasCompleteDistributionIntegrity(
+  game: Game
+) {
+  const packages =
+    downloadablePackages(
+      game
+    );
+
+  return (
+    packages.length > 0 &&
+    packages.every(
+      (item) =>
+        Boolean(
+          item.channel &&
+            /^[a-f0-9]{64}$/.test(
+              item.checksumSha256 ??
+                ""
+            )
+        )
+    )
+  );
+}
 function cardMediaReadinessDetail(mode: GameDestinationMediaMode) {
   if (mode === "video") {
     return "Video principal 3:2 y su imagen de respaldo 3:2 deben tener recurso y recorte confirmados.";
@@ -157,7 +228,11 @@ export function evaluateGamePublicationReadiness(
       label: "Plataformas confirmadas",
       detail: "Compatibilidad debe indicar explícitamente al menos una plataforma; ausencia ya no equivale a PC.",
       section: "requisitos",
-      complete: Boolean(game.platforms?.length),
+      complete: Boolean(
+        resolveGameReleases(
+          game
+        ).length
+      ),
       priority: "recommended",
     },
     {
@@ -193,7 +268,14 @@ export function evaluateGamePublicationReadiness(
       label: "Estimación de FPS",
       detail: "Una calibración editorial o histórica permite adaptar los FPS al hardware de cada visitante.",
       section: "rendimiento",
-      complete: Boolean(resolvePerformanceProfile(game.slug, game.performance)),
+      complete: Boolean(
+        resolvePerformanceProfile(
+          game.slug,
+          resolvePcRelease(
+            game
+          )?.performance
+        )
+      ),
       priority: "recommended",
     },
     {
@@ -202,9 +284,15 @@ export function evaluateGamePublicationReadiness(
       detail: "Origen, fecha y confianza documentados permiten explicar y auditar el dato base usado por la estimación.",
       section: "rendimiento",
       complete: Boolean(
-        game.performanceMetadata?.source &&
-          game.performanceMetadata?.measuredAt &&
-          game.performanceMetadata?.confidence
+        resolvePcRelease(
+          game
+        )?.performanceMetadata?.source &&
+          resolvePcRelease(
+            game
+          )?.performanceMetadata?.measuredAt &&
+          resolvePcRelease(
+            game
+          )?.performanceMetadata?.confidence
       ),
       priority: "recommended",
     },
@@ -270,12 +358,10 @@ export function evaluateGamePublicationReadiness(
       label: "Integridad de distribución",
       detail: "Canal y SHA-256 documentan qué paquete corresponde a esta revisión y permiten verificar que todos los mirrors entreguen los mismos bytes.",
       section: "descargas",
-      complete: Boolean(
-        game.distributionMetadata?.channel &&
-          /^[a-f0-9]{64}$/.test(
-            game.distributionMetadata?.checksumSha256 ?? ""
-          )
-      ),
+      complete:
+        hasCompleteDistributionIntegrity(
+          game
+        ),
       priority: "recommended",
     },
     {

@@ -1,5 +1,7 @@
 export const representativeGameSlug = "elden-ring";
 export const representativeUpdateId = "visual-historical-update";
+export const representativeSoftwareSlug = "visual-emulator";
+export const representativeCollectionSlug = "visual-collection";
 const representativeGameTitle = "ELDEN RING";
 
 export const browserViewports = [
@@ -15,6 +17,8 @@ export const browserViewports = [
 export const coveredPageRoutePatterns = [
   "/",
   "/actualizaciones",
+  "/colecciones",
+  "/colecciones/[slug]",
   "/cuenta",
   "/juegos",
   "/juegos/[slug]",
@@ -23,6 +27,8 @@ export const coveredPageRoutePatterns = [
   "/juegos/nuevos",
   "/juegos/populares",
   "/privacidad",
+  "/programas",
+  "/programas/[slug]",
   "/quienes-somos",
   "/requisitos",
   "/admin",
@@ -30,6 +36,9 @@ export const coveredPageRoutePatterns = [
   "/admin/actualizaciones/[id]",
   "/admin/actualizaciones/nueva",
   "/admin/catalogos",
+  "/admin/colecciones",
+  "/admin/colecciones/[slug]",
+  "/admin/colecciones/nueva",
   "/admin/configuracion",
   "/admin/cuentas",
   "/admin/juegos",
@@ -41,6 +50,10 @@ export const coveredPageRoutePatterns = [
   "/admin/login",
   "/admin/mantenimiento",
   "/admin/paginas",
+  "/admin/plataformas",
+  "/admin/programas",
+  "/admin/programas/[slug]",
+  "/admin/programas/nuevo",
   "/admin/paginas/presentacion",
   "/admin/paginas/quienes-somos",
   "/admin/portada",
@@ -50,6 +63,10 @@ export const coveredPageRoutePatterns = [
 export const publicVisualPages = [
   { id: "public-home", pathname: "/", expectedText: null },
   { id: "public-games", pathname: "/juegos", expectedText: null },
+  { id: "public-collections", pathname: "/colecciones", expectedText: "Colecciones" },
+  { id: "public-collection-detail", pathname: `/colecciones/${representativeCollectionSlug}`, expectedText: "Colección visual CI" },
+  { id: "public-programs", pathname: "/programas", expectedText: "Programas" },
+  { id: "public-program-detail", pathname: `/programas/${representativeSoftwareSlug}`, expectedText: "Emulador visual CI" },
   { id: "public-updates", pathname: "/actualizaciones", expectedText: null },
   { id: "public-finder", pathname: "/requisitos", expectedText: null, dismissDialog: true },
   { id: "public-about", pathname: "/quienes-somos", expectedText: null },
@@ -127,6 +144,13 @@ export const adminVisualPages = [
   { id: "admin-dashboard", pathname: "/admin", expectedText: "Resumen" },
   { id: "admin-games", pathname: "/admin/juegos", expectedText: "Juegos" },
   { id: "admin-new-game", pathname: "/admin/juegos/nuevo", expectedText: "Nuevo juego" },
+  { id: "admin-platforms", pathname: "/admin/plataformas", expectedText: "Plataformas" },
+  { id: "admin-programs", pathname: "/admin/programas", expectedText: "Programas" },
+  { id: "admin-program-detail", pathname: `/admin/programas/${representativeSoftwareSlug}`, expectedText: "Emulador visual CI" },
+  { id: "admin-new-program", pathname: "/admin/programas/nuevo", expectedText: "Nuevo programa" },
+  { id: "admin-collections", pathname: "/admin/colecciones", expectedText: "Colecciones" },
+  { id: "admin-collection-detail", pathname: `/admin/colecciones/${representativeCollectionSlug}`, expectedText: "Colección visual CI" },
+  { id: "admin-new-collection", pathname: "/admin/colecciones/nueva", expectedText: "Nueva colección" },
   ...gameEditorSections.map(([section, id]) => ({
     id: `admin-${id}`,
     pathname: `/admin/juegos/${representativeGameSlug}?seccion=${section}`,

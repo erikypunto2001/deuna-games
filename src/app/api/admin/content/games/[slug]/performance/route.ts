@@ -132,6 +132,16 @@ export async function POST(
       );
     }
 
+    if (
+      result.outcome ===
+      "unsupported_platform"
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=rendimiento-sin-pc&seccion=rendimiento`
+      );
+    }
+
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,

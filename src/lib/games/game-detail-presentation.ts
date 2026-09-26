@@ -1,6 +1,11 @@
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
+import {
+  gamePlatformIds,
+  resolveGameReleases,
+  resolvePcRelease,
+} from "@/lib/games/releases";
 import type {
   Game,
   GameAgeRatingSystem,
@@ -66,20 +71,31 @@ export function resolveGameDetailPresentation(
   game: Game
 ) {
   const download = resolveGameDownload(game);
-  const requirements = game.requirements;
+  const pcRelease = resolvePcRelease(game);
+  const requirements =
+    pcRelease?.requirements;
   const minimum =
     requirements?.minimum ??
     legacyMinimumRequirements(requirements);
-  const recommended = requirements?.recommended;
+  const recommended =
+    requirements?.recommended;
   const requirementRows = buildRequirementRows(
     minimum,
     recommended
   );
 
-  const platforms = game.platforms ?? [];
-  const platformLabel = platforms.length
-    ? platforms.join(", ")
-    : "A confirmar";
+  const releases =
+    resolveGameReleases(game);
+  const platformIds =
+    gamePlatformIds(game);
+  const platforms =
+    game.platforms ?? [];
+  const platformLabel =
+    platforms.length
+      ? platforms.join(", ")
+      : platformIds.length
+        ? platformIds.join(", ")
+        : "A confirmar";
 
   const genres =
     game.genres?.length
@@ -120,6 +136,15 @@ export function resolveGameDetailPresentation(
     visibleTags,
     ageRatingLabel,
     sizeLabel,
-    versionLabel: game.version ?? "A confirmar",
+    platformIds,
+    releases,
+    pcRelease,
+    versionLabel:
+      releases.find(
+        (release) =>
+          release.version
+      )?.version ??
+      game.version ??
+      "A confirmar",
   };
 }

@@ -35,6 +35,9 @@ import {
   resolveGameDetailPresentation,
 } from "@/lib/games/game-detail-presentation";
 import {
+  resolvePcRelease,
+} from "@/lib/games/releases";
+import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
@@ -108,6 +111,10 @@ export default async function AdminGamePreviewPage({
     getPublicHomeConfig(),
   ]);
   const game = item.payload;
+  const pcRelease =
+    resolvePcRelease(
+      game
+    );
   const publicHeroGames = buildHomeGameCollections(
     publicGames,
     publicHomeConfig
@@ -390,8 +397,14 @@ export default async function AdminGamePreviewPage({
         </p>
         <GamePerformanceEstimate
           slug={game.slug}
-          calibration={game.performance ?? null}
-          metadata={game.performanceMetadata ?? null}
+          calibration={
+            pcRelease?.performance ??
+            null
+          }
+          metadata={
+            pcRelease?.performanceMetadata ??
+            null
+          }
         />
       </section>
 

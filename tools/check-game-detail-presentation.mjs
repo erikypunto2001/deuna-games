@@ -45,7 +45,9 @@ assert(
     presentation.includes(".filter((tag) => tag !== game.category)") &&
     presentation.includes('system === "CLASSIND"') &&
     presentation.includes('system === "OTHER"') &&
-    presentation.includes('versionLabel: game.version ?? "A confirmar"') &&
+    presentation.includes("resolveGameReleases(game)") &&
+    presentation.includes("releases.find(") &&
+    presentation.includes("game.version ??") &&
     presentation.includes("recommended?.storage"),
   "La presentación compartida debe resolver descarga, requisitos, taxonomía, clasificación etaria, versión y almacenamiento."
 );
@@ -64,7 +66,7 @@ for (const [label, page] of [
       !page.includes("function buildRequirementRows(") &&
       !page.includes("function legacyRequirements(") &&
       !page.includes("function legacyMinimum(") &&
-      !page.includes('from "@/lib/games/download"'),
+      !page.includes("resolveGameDownload(game)"),
     `${label} debe consumir la presentación compartida sin reconstruir requisitos ni descargas.`
   );
 }

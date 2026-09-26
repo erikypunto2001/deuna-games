@@ -62,6 +62,7 @@ for (const required of [
   '"home_config", "home"',
   '"about_config", "about"',
   '"public_pages_config", "public-pages"',
+  '"platform_catalog", "platforms"',
   "published_payload",
   "published_checksum",
   "public_visible",

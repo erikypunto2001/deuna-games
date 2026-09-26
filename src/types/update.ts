@@ -9,6 +9,7 @@ export type UpdateType =
 export type GameUpdate = {
   id: string;
   gameSlug: string;
+  releaseId?: string;
   version: string;
   publishedAt: string;
   type: UpdateType;

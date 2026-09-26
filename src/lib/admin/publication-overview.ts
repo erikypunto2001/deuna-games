@@ -15,6 +15,9 @@ const publishableTypes = [
   "about_config",
   "game_taxonomy",
   "public_pages_config",
+  "platform_catalog",
+  "software",
+  "game_collection",
 ] as const;
 
 type PublishableType = (typeof publishableTypes)[number];
@@ -154,6 +157,9 @@ export async function getPublicationOverview(): Promise<PublicationOverview> {
              WHEN 'site_config' THEN 'Identidad pública'
              WHEN 'game_taxonomy' THEN 'Catálogos de juegos'
              WHEN 'public_pages_config' THEN 'Presentación pública'
+             WHEN 'platform_catalog' THEN 'Plataformas'
+             WHEN 'software' THEN 'Programa'
+             WHEN 'game_collection' THEN 'Colección'
              ELSE item.item_key
            END
          ) AS label,
