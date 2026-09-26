@@ -191,8 +191,6 @@ async function main() {
                 ],
               },
             ],
-            imageAlt:
-              "Emulador visual de prueba",
             featured: true,
           }
         )
@@ -214,8 +212,6 @@ async function main() {
             gameSlugs: [
               representativeGameSlug,
             ],
-            imageAlt:
-              "Colección visual de prueba",
             featured: true,
           }
         )
