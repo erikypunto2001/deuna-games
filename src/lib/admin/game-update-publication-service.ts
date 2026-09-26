@@ -11,9 +11,14 @@ import {
   resolveGameDownload,
 } from "@/lib/games/download";
 import {
+  resolveGameReleases,
+} from "@/lib/games/releases";
+import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
 import type {
+  DistributionPackage,
+  DistributionPackageKind,
   Game,
   GameDistributionMetadata,
   GameDownloadSource,
@@ -61,14 +66,16 @@ type ExistingUpdateRow = {
 
 export type PublishGameUpdateInput = {
   expectedRevision: number;
+  releaseId: string;
   version: string;
   type: UpdateType;
   summary: string;
   featured: boolean;
-  download: {
+  package: {
+    id: string;
+    kind: DistributionPackageKind;
     sizeGb?: number;
     fileCount?: number;
-    platform?: string;
     sources?: GameDownloadSource[];
   };
   distributionMetadata?: GameDistributionMetadata;
@@ -106,7 +113,11 @@ function normalizeVersionToken(value: string) {
     .replace(/-+/g, "-");
 }
 
-function updateIdentifier(slug: string, version: string) {
+function updateIdentifier(
+  slug: string,
+  releaseId: string,
+  version: string
+) {
   const normalizedVersion =
     normalizeVersionToken(version) || "version";
   const digest = createHash("sha256")
@@ -114,7 +125,10 @@ function updateIdentifier(slug: string, version: string) {
     .digest("hex")
     .slice(0, 10);
   const versionToken = normalizedVersion.slice(0, 28);
-  const suffix = `${versionToken}-${digest}`;
+  const releaseToken =
+    normalizeVersionToken(releaseId) || "release";
+  const suffix =
+    `${releaseToken}-${versionToken}-${digest}`;
   const maximumSlug = Math.max(1, 160 - suffix.length - 1);
   const prefix = slug
     .slice(0, maximumSlug)
@@ -154,27 +168,60 @@ async function writeAudit(
   );
 }
 
-function buildDownload(
-  input: PublishGameUpdateInput["download"]
-): NonNullable<Game["download"]> | undefined {
-  const download = {
-    ...(input.sources?.length
-      ? { sources: input.sources }
-      : {}),
+function buildPackage(
+  input: PublishGameUpdateInput["package"],
+  metadata: GameDistributionMetadata | undefined
+): DistributionPackage | undefined {
+  const sources = input.sources?.length
+    ? input.sources
+    : undefined;
+
+  if (!sources) {
+    return undefined;
+  }
+
+  const distribution =
+    buildDistributionMetadata(metadata);
+
+  return {
+    id: input.id,
+    kind: input.kind,
     ...(input.sizeGb !== undefined
       ? { sizeGb: input.sizeGb }
       : {}),
     ...(input.fileCount !== undefined
       ? { fileCount: input.fileCount }
       : {}),
-    ...(input.platform?.trim()
-      ? { platform: input.platform.trim() }
+    ...(distribution?.channel
+      ? { channel: distribution.channel }
       : {}),
+    ...(distribution?.checksumSha256
+      ? {
+          checksumSha256:
+            distribution.checksumSha256,
+        }
+      : {}),
+    sources,
   };
+}
 
-  return Object.keys(download).length > 0
-    ? download
-    : undefined;
+function legacyDownloadFromPackage(
+  item: DistributionPackage,
+  platformId: string
+): NonNullable<Game["download"]> {
+  return {
+    sources: item.sources,
+    ...(item.sizeGb !== undefined
+      ? { sizeGb: item.sizeGb }
+      : {}),
+    ...(item.fileCount !== undefined
+      ? { fileCount: item.fileCount }
+      : {}),
+    platform:
+      platformId === "pc-windows"
+        ? "PC"
+        : platformId,
+  };
 }
 
 function buildDistributionMetadata(
@@ -387,40 +434,144 @@ export async function publishIntegratedGameUpdate(
       "game",
       item.published_payload
     );
-    const version = input.version.trim();
-    const versionToken = normalizeVersionToken(version);
-    const currentVersionToken = normalizeVersionToken(
-      publishedGame.version ?? ""
-    );
+    const releases =
+      resolveGameReleases(
+        publishedGame
+      );
+    const releaseIndex =
+      releases.findIndex(
+        (release) =>
+          release.id ===
+          input.releaseId
+      );
+
+    if (releaseIndex < 0) {
+      return { outcome: "not_found" };
+    }
+
+    const currentRelease =
+      releases[releaseIndex];
+    const version =
+      input.version.trim();
+    const versionToken =
+      normalizeVersionToken(
+        version
+      );
+    const currentVersionToken =
+      normalizeVersionToken(
+        currentRelease.version ??
+          ""
+      );
 
     if (
       versionToken &&
-      versionToken === currentVersionToken
+      versionToken ===
+        currentVersionToken
     ) {
-      return { outcome: "same_version" };
+      return {
+        outcome:
+          "same_version",
+      };
     }
 
-    const nextDownload = buildDownload(input.download);
-    const nextGame = parseEditorialPayload(
-      "game",
-      {
-        ...publishedGame,
-        version,
-        download: nextDownload,
-        distributionMetadata: nextDownload
-          ? buildDistributionMetadata(input.distributionMetadata)
-          : undefined,
-      }
-    );
-    const resolvedDownload = resolveGameDownload(nextGame);
+    const nextPackage =
+      buildPackage(
+        input.package,
+        input.distributionMetadata
+      );
+
+    if (!nextPackage) {
+      return {
+        outcome:
+          "no_download",
+      };
+    }
+
+    const currentPackages =
+      currentRelease.packages ??
+      [];
+    const packageIndex =
+      currentPackages.findIndex(
+        (packageItem) =>
+          packageItem.id ===
+          nextPackage.id
+      );
+    const nextPackages =
+      packageIndex >= 0
+        ? currentPackages.map(
+            (
+              packageItem,
+              index
+            ) =>
+              index ===
+              packageIndex
+                ? nextPackage
+                : packageItem
+          )
+        : [
+            ...currentPackages,
+            nextPackage,
+          ];
+    const nextReleases = [
+      ...releases,
+    ];
+    nextReleases[
+      releaseIndex
+    ] = {
+      ...currentRelease,
+      version,
+      packages:
+        nextPackages,
+    };
+
+    const pcUpdate =
+      currentRelease
+        .platformId ===
+      "pc-windows";
+    const legacyDownload =
+      pcUpdate
+        ? legacyDownloadFromPackage(
+            nextPackage,
+            currentRelease
+              .platformId
+          )
+        : publishedGame.download;
+    const legacyDistribution =
+      pcUpdate
+        ? buildDistributionMetadata(
+            input.distributionMetadata
+          )
+        : publishedGame
+            .distributionMetadata;
+
+    const nextGame =
+      parseEditorialPayload(
+        "game",
+        {
+          ...publishedGame,
+          releases:
+            nextReleases,
+          ...(pcUpdate
+            ? { version }
+            : {}),
+          download:
+            legacyDownload,
+          distributionMetadata:
+            legacyDistribution,
+        }
+      );
+    const resolvedDownload =
+      resolveGameDownload(
+        nextGame
+      );
 
     if (
-      !resolvedDownload ||
-      !resolvedDownload.sources.some(
-        (source) => source.status === "available"
-      )
+      !resolvedDownload
     ) {
-      return { outcome: "no_download" };
+      return {
+        outcome:
+          "no_download",
+      };
     }
 
     const existingVersions =
@@ -440,9 +591,16 @@ export async function publishIntegratedGameUpdate(
             row.draft_payload
           );
 
+          const existingReleaseId =
+            existingUpdate.releaseId ??
+            "pc-windows";
+
           return (
-            normalizeVersionToken(existingUpdate.version) ===
-            versionToken
+            existingReleaseId ===
+              input.releaseId &&
+            normalizeVersionToken(
+              existingUpdate.version
+            ) === versionToken
           );
         } catch {
           return false;
@@ -453,7 +611,12 @@ export async function publishIntegratedGameUpdate(
       return { outcome: "update_exists" };
     }
 
-    const updateId = updateIdentifier(slug, version);
+    const updateId =
+      updateIdentifier(
+        slug,
+        input.releaseId,
+        version
+      );
     const normalizedGame = normalizedPayload(
       "game",
       nextGame
@@ -493,9 +656,17 @@ export async function publishIntegratedGameUpdate(
       {
         revision: nextRevision,
         integratedGameUpdate: true,
+        releaseId:
+          input.releaseId,
         version,
-        distributionChannel: nextGame.distributionMetadata?.channel ?? null,
-        checksumConfigured: Boolean(nextGame.distributionMetadata?.checksumSha256),
+        distributionChannel:
+          nextPackage.channel ??
+          null,
+        checksumConfigured:
+          Boolean(
+            nextPackage
+              .checksumSha256
+          ),
       }
     );
 
@@ -533,15 +704,25 @@ export async function publishIntegratedGameUpdate(
         revision: nextRevision,
         firstVisibility: false,
         integratedGameUpdate: true,
+        releaseId:
+          input.releaseId,
         version,
-        distributionChannel: nextGame.distributionMetadata?.channel ?? null,
-        checksumConfigured: Boolean(nextGame.distributionMetadata?.checksumSha256),
+        distributionChannel:
+          nextPackage.channel ??
+          null,
+        checksumConfigured:
+          Boolean(
+            nextPackage
+              .checksumSha256
+          ),
       }
     );
 
     const update: GameUpdate = {
       id: updateId,
       gameSlug: slug,
+      releaseId:
+        input.releaseId,
       version,
       publishedAt: new Date().toISOString(),
       type: input.type,
