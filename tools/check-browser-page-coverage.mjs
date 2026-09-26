@@ -101,6 +101,10 @@ const redirectPatterns = new Set(
 // and therefore must remain directly represented in adminVisualPages.
 const dynamicSweepPatterns = new Set([
   "/juegos/[slug]/descargar",
+  "/colecciones/[slug]",
+  "/programas/[slug]",
+  "/admin/colecciones/[slug]",
+  "/admin/programas/[slug]",
 ]);
 
 const scenarioCovered = discovered.filter(
