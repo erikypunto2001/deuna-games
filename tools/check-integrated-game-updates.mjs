@@ -10,8 +10,10 @@ const files = {
     "src/app/api/admin/content/games/[slug]/publish-update/route.ts",
   gameInformationRoute:
     "src/app/api/admin/content/games/[slug]/information/route.ts",
-  gameDownloadRoute:
-    "src/app/api/admin/content/games/[slug]/download/route.ts",
+  gameReleasesRoute:
+    "src/app/api/admin/content/games/[slug]/releases/route.ts",
+  releasesEditor:
+    "src/components/admin/GameReleasesEditor.tsx",
   notices: "src/components/admin/EditorStateNotice.tsx",
   service:
     "src/lib/admin/game-update-publication-service.ts",
@@ -108,10 +110,13 @@ expect(
   "Información debe preservar la versión de cualquier juego ya publicado para impedir cambios de versión fuera de Nueva versión."
 );
 expect(
-  entries.gameDownloadRoute.includes("saveGameDownloadDraft") &&
-    !entries.gameDownloadRoute.includes("descargas-por-actualizacion") &&
+  entries.gameReleasesRoute.includes("saveGameReleasesSection") &&
+    entries.gameReleasesRoute.includes("validateGameReleaseRelations") &&
+    entries.releasesEditor.includes("Guardar plataformas y descargas") &&
+    entries.releasesEditor.includes('"maintenance"') &&
+    entries.releasesEditor.includes("Agregar mirror") &&
     entries.notices.includes("mantenimiento de mirrors"),
-  "Descargas debe seguir disponible para mantenimiento operativo de mirrors sin obligar a inventar una versión nueva."
+  "Plataformas y descargas debe permitir mantenimiento operativo de paquetes/mirrors como borrador, sin obligar a inventar una versión nueva."
 );
 expect(
   entries.service.includes("withAdminTransaction") &&
