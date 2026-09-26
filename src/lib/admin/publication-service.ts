@@ -26,6 +26,12 @@ import {
   listGameImageReferences,
 } from "./game-media-integrity";
 import {
+  validatePublishedGameCollectionRelations,
+  validatePublishedGameRelations,
+  validatePublishedPlatformCatalogRemoval,
+  validatePublishedSoftwareRelations,
+} from "./managed-editorial-relations";
+import {
   verifyAdminSession,
 } from "./session";
 
@@ -95,6 +101,9 @@ export type PublishEditorialResult =
       outcome: "conflict";
       revision: number;
     }
+  | {
+      outcome: "invalid_relations";
+    }
   | { outcome: "not_found" };
 
 export type PublishGameResult = PublishEditorialResult;
@@ -127,6 +136,59 @@ async function assertActor(
       "La sesión administrativa no coincide con el actor."
     );
   }
+}
+
+async function validatePublicationRelations(
+  client: PoolClient,
+  type: PublishableEditorialType,
+  payload: unknown
+) {
+  if (type === "game") {
+    return validatePublishedGameRelations(
+      client,
+      parseEditorialPayload(
+        "game",
+        payload
+      )
+    );
+  }
+
+  if (type === "software") {
+    return validatePublishedSoftwareRelations(
+      client,
+      parseEditorialPayload(
+        "software",
+        payload
+      )
+    );
+  }
+
+  if (type === "game_collection") {
+    const collection =
+      parseEditorialPayload(
+        "game_collection",
+        payload
+      );
+
+    return validatePublishedGameCollectionRelations(
+      client,
+      collection.gameSlugs
+    );
+  }
+
+  if (type === "platform_catalog") {
+    return validatePublishedPlatformCatalogRemoval(
+      client,
+      parseEditorialPayload(
+        "platform_catalog",
+        payload
+      )
+    );
+  }
+
+  return {
+    ok: true as const,
+  };
 }
 
 export async function getPublishedGameImageReferences(
@@ -278,6 +340,20 @@ async function publishEditorialDraft(
       return {
         outcome: "conflict",
         revision: item.revision,
+      };
+    }
+
+    const relations =
+      await validatePublicationRelations(
+        client,
+        type,
+        item.draft_payload
+      );
+
+    if (!relations.ok) {
+      return {
+        outcome:
+          "invalid_relations",
       };
     }
 
