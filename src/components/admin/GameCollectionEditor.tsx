@@ -166,17 +166,6 @@ export default function GameCollectionEditor({
         />
       </label>
 
-      <label className={adminStyles.fieldWide}>
-        <span>Texto alternativo de portada</span>
-        <input
-          name="imageAlt"
-          defaultValue={collection?.imageAlt ?? ""}
-          maxLength={240}
-          required
-          placeholder="Colección Mortal Kombat"
-        />
-      </label>
-
       <div className={adminStyles.fieldWide + " " + styles.root}>
         <div>
           <strong>Orden de la colección</strong>
