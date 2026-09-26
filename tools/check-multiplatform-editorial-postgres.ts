@@ -13,8 +13,10 @@ import {
 } from "../src/lib/admin/database-config.ts";
 import {
   validatePublishedGameCollectionRelations,
+  validatePublishedGameHide,
   validatePublishedGameRelations,
   validatePublishedPlatformCatalogRemoval,
+  validatePublishedSoftwareHide,
   validatePublishedSoftwareRelations,
 } from "../src/lib/admin/managed-editorial-relations.ts";
 
@@ -55,6 +57,8 @@ const softwareSlug =
   `ci-software-${suffix}`;
 const gameSlug =
   `ci-game-${suffix}`;
+const collectionSlug =
+  `ci-collection-${suffix}`;
 
 try {
   const catalogResult =
@@ -286,6 +290,86 @@ try {
     "Una colección debe aceptar un juego publicado."
   );
 
+  const softwareHide =
+    await validatePublishedSoftwareHide(
+      runtimeClient,
+      softwareSlug
+    );
+  assert(
+    !softwareHide.ok &&
+      softwareHide.usedBy.includes(
+        gameSlug
+      ),
+    "No debe ocultarse un programa todavía recomendado por un juego público."
+  );
+
+  const collection =
+    parseEditorialPayload(
+      "game_collection",
+      {
+        id: collectionSlug,
+        slug: collectionSlug,
+        title: "CI Collection",
+        description:
+          "Fixture temporal para validar ocultamiento.",
+        gameSlugs: [
+          gameSlug,
+        ],
+        imageAlt:
+          "Fixture CI",
+      }
+    );
+
+  await migrationClient.query(
+    `INSERT INTO deuna_admin.editorial_items (
+       id,
+       item_type,
+       item_key,
+       source_payload,
+       source_checksum,
+       source_present,
+       draft_payload,
+       draft_status,
+       published_payload,
+       published_checksum,
+       public_visible
+     )
+     VALUES (
+       $1,
+       'game_collection',
+       $2,
+       $3::jsonb,
+       $4,
+       false,
+       $3::jsonb,
+       'modified',
+       $3::jsonb,
+       $4,
+       true
+     )`,
+    [
+      randomUUID(),
+      collectionSlug,
+      JSON.stringify(
+        collection
+      ),
+      "c".repeat(64),
+    ]
+  );
+
+  const gameHide =
+    await validatePublishedGameHide(
+      runtimeClient,
+      gameSlug
+    );
+  assert(
+    !gameHide.ok &&
+      gameHide.usedBy.includes(
+        collectionSlug
+      ),
+    "No debe ocultarse un juego todavía referenciado por una colección pública."
+  );
+
   const nextCatalog = {
     ...catalog,
     platforms:
@@ -310,7 +394,7 @@ try {
   );
 
   console.log(
-    "Relaciones multiplataforma PostgreSQL: OK (runtime sólo valida; fixtures usan migrador; dependencias públicas protegidas)."
+    "Relaciones multiplataforma PostgreSQL: OK (publicación y ocultamiento protegen dependencias públicas con mínimo privilegio)."
   );
 } finally {
   await migrationClient.query(
@@ -322,10 +406,15 @@ try {
       OR (
         item_type = 'game'
         AND item_key = $2
+      )
+      OR (
+        item_type = 'game_collection'
+        AND item_key = $3
       )`,
     [
       softwareSlug,
       gameSlug,
+      collectionSlug,
     ]
   ).catch(() => {});
 
