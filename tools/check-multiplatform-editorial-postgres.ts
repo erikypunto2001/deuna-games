@@ -12,10 +12,12 @@ import {
   getAdminDatabaseConfig,
 } from "../src/lib/admin/database-config.ts";
 import {
+  validatePublishedCollectionSlugNamespace,
   validatePublishedGameCollectionRelations,
   validatePublishedGameHide,
   validatePublishedGameRelations,
   validatePublishedPlatformCatalogRemoval,
+  validatePublishedPlatformCollectionNamespace,
   validatePublishedSoftwareHide,
   validatePublishedSoftwareRelations,
 } from "../src/lib/admin/managed-editorial-relations.ts";
@@ -370,6 +372,45 @@ try {
     "No debe ocultarse un juego todavía referenciado por una colección pública."
   );
 
+  const collectionSlugCollision =
+    await validatePublishedCollectionSlugNamespace(
+      runtimeClient,
+      platform.id
+    );
+  assert(
+    !collectionSlugCollision.ok,
+    "Una colección editorial no debe poder usar el ID de una plataforma pública activa."
+  );
+
+  const catalogNamespaceCollision =
+    await validatePublishedPlatformCollectionNamespace(
+      runtimeClient,
+      {
+        ...catalog,
+        platforms: [
+          ...catalog.platforms,
+          {
+            ...platform,
+            id: collectionSlug,
+            name:
+              "CI collision platform",
+            shortName:
+              "CI collision",
+            order:
+              platform.order +
+              10_000,
+          },
+        ],
+      }
+    );
+  assert(
+    !catalogNamespaceCollision.ok &&
+      catalogNamespaceCollision.conflicts.includes(
+        collectionSlug
+      ),
+    "Un catálogo público no debe poder introducir una plataforma con el slug de una colección visible."
+  );
+
   const nextCatalog = {
     ...catalog,
     platforms:
@@ -394,7 +435,7 @@ try {
   );
 
   console.log(
-    "Relaciones multiplataforma PostgreSQL: OK (publicación y ocultamiento protegen dependencias públicas con mínimo privilegio)."
+    "Relaciones multiplataforma PostgreSQL: OK (publicación, ocultamiento y namespace de Colecciones protegen dependencias públicas con mínimo privilegio)."
   );
 } finally {
   await migrationClient.query(
