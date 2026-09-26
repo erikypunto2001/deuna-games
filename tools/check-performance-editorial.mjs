@@ -136,8 +136,8 @@ assert(
   readiness.includes('section: "rendimiento"') &&
     readiness.includes("resolvePerformanceProfile") &&
     changes.includes('label: "Rendimiento"') &&
-    changes.includes("draft.performance") &&
-    changes.includes("published.performance"),
+    changes.includes("performanceState(") &&
+    changes.includes("resolvePcRelease"),
   "Publicación debe mostrar tanto la preparación como los cambios de calibración que saldrán a la web."
 );
 
@@ -151,7 +151,8 @@ assert(
 
 assert(
   publicPerformanceRoute.includes("getPublicGameBySlug") &&
-    publicPerformanceRoute.includes("game.performance ?? null") &&
+    publicPerformanceRoute.includes("resolvePcRelease") &&
+    publicPerformanceRoute.includes("pcRelease?.performance") &&
     publicPerformanceRoute.includes('"Cache-Control": "no-store, max-age=0"') &&
     !publicPerformanceRoute.includes("draft_payload"),
   "El endpoint de calibración para visitantes debe leer exclusivamente el juego público y nunca el borrador."
@@ -192,7 +193,8 @@ for (const [name, component] of [
 
 assert(
   requirementsPage.includes("getPublicGames") &&
-    requirementsPage.includes("game.performance") &&
+    requirementsPage.includes("resolvePcRelease") &&
+    requirementsPage.includes("?.performance") &&
     requirementsPage.includes('id="deuna-performance-calibrations"') &&
     requirementsPage.includes('type="application/json"') &&
     requirementsPage.includes("safeJsonLd(performanceCalibrations)"),
@@ -212,7 +214,8 @@ assert(
 assert(
   previewPage.includes("GamePerformanceEstimate") &&
     previewPage.includes("RENDIMIENTO DEL BORRADOR") &&
-    previewPage.includes("calibration={game.performance ?? null}") &&
+    previewPage.includes("resolvePcRelease") &&
+    previewPage.includes("pcRelease?.performance") &&
     previewPage.includes("Esta pantalla usa el borrador de PostgreSQL") &&
     !previewPage.includes('/publish"') &&
     !previewPage.includes('/hide"'),
