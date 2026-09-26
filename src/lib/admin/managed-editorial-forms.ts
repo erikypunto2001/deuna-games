@@ -347,8 +347,6 @@ export const collectionCreateFormSchema =
       requiredText(140),
     description:
       requiredText(2_500),
-    imageAlt:
-      requiredText(240),
     featured:
       booleanText,
     gameSlugsJson:
