@@ -14,6 +14,9 @@ import {
   collectionCreateFormSchema,
 } from "@/lib/admin/managed-editorial-forms";
 import {
+  validateGameSlugs,
+} from "@/lib/admin/managed-editorial-relations";
+import {
   createManagedEditorialDraft,
 } from "@/lib/admin/managed-editorial-service";
 import {
@@ -97,6 +100,19 @@ export async function POST(
             data.featured,
         }
       );
+
+    const relations =
+      await validateGameSlugs(
+        payload.gameSlugs
+      );
+
+    if (!relations.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=juego"
+      );
+    }
 
     const result =
       await createManagedEditorialDraft(
