@@ -6,7 +6,6 @@ import {
 import { notFound } from "next/navigation";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
@@ -31,7 +30,7 @@ type Section =
   | "actualizaciones"
   | "compatibilidad"
   | "publicacion"
-  | "historial";
+;
 
 type PageProps = {
   searchParams: Promise<{
@@ -47,8 +46,7 @@ function single(value: string | string[] | undefined) {
 function resolveSection(value: string | undefined): Section {
   return value === "actualizaciones" ||
     value === "compatibilidad" ||
-    value === "publicacion" ||
-    value === "historial"
+    value === "publicacion"
     ? value
     : "juegos";
 }
@@ -289,7 +287,6 @@ export default async function AdminPublicPresentationPage({
               state={publicationState}
               requestState={state}
               publishAction="/api/admin/content/public-pages/publish"
-              restoreActionBase="/api/admin/content/public-pages-publications"
             />
           ) : (
             <p>
@@ -297,13 +294,6 @@ export default async function AdminPublicPresentationPage({
             </p>
           )}
         </section>
-      )}
-
-      {section === "historial" && (
-        <EditorialHistory
-          revisions={item.revisions}
-          currentRevision={item.revision}
-        />
       )}
     </>
   );

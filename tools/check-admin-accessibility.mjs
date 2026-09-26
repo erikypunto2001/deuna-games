@@ -28,7 +28,6 @@ const [
   dashboard,
   publicationOverview,
   publicationPanel,
-  editorialHistory,
   rootLayout,
   homePage,
   globalCss,
@@ -68,7 +67,6 @@ const [
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
   source("src/components/admin/PublicationPanel.tsx"),
-  source("src/components/admin/EditorialHistory.tsx"),
   source("src/app/layout.tsx"),
   source("src/app/page.tsx"),
   source("src/app/globals.css"),
@@ -145,13 +143,13 @@ assert(
   themeContract.includes('button[aria-label^="Subir "]') &&
     themeContract.includes('button[aria-label^="Bajar "]') &&
     themeContract.includes('button[aria-label^="Quitar "]') &&
-    themeContract.includes('button[title="Deshacer"]') &&
-    themeContract.includes('button[title="Rehacer"]') &&
+    !themeContract.includes('button[title="Deshacer"]') &&
+    !themeContract.includes('button[title="Rehacer"]') &&
     themeContract.includes('details > summary') &&
     themeContract.includes('a[href*="?seccion=multimedia#"]') &&
     themeContract.includes("min-width: 44px") &&
     themeContract.includes("min-height: 44px"),
-  "Los controles editoriales compactos de Inicio deben conservar hit-areas táctiles reales de al menos 44px."
+  "Los controles editoriales compactos vigentes deben conservar hit-areas táctiles reales de al menos 44px sin reintroducir Deshacer/Rehacer."
 );
 
 assert(
@@ -312,15 +310,15 @@ assert(
     updateWorkspace.includes("<table>") &&
     updateWorkspace.includes('scope="row"') &&
     updateWorkspace.includes('role="status"'),
-  "El flujo integrado de actualización debe conservar formulario etiquetado, bloqueo semántico, avisos de estado e historial tabular accesible."
+  "El flujo integrado de actualización debe conservar formulario etiquetado, bloqueo semántico, avisos de estado y tabla accesible."
 );
 
 assert(
   publicationPanel.includes('role="status"') &&
     publicationPanel.includes('role="alert"') &&
-    publicationPanel.includes("Restaurar publicación ${publication.publicationNumber}") &&
-    editorialHistory.includes("Restaurar revisión ${revision.revision}"),
-  "Publicación e Historial deben anunciar resultados y distinguir cada acción de restauración para tecnologías de asistencia."
+    !publicationPanel.includes("Restaurar") &&
+    !publicationPanel.includes("restoreActionBase"),
+  "Publicación debe anunciar resultados accesibles sin exponer acciones de recuperación de versiones anteriores."
 );
 
 assert(

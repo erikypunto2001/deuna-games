@@ -28,21 +28,13 @@ export default function GameDeletionPanel({
         </h2>
         <p>
           Esta acción sólo existe para juegos creados desde el panel. Elimina
-          su espacio editorial, historial, actualizaciones asociadas,
+          su espacio editorial actual, actualizaciones asociadas,
           preferencias, valoraciones e Índice DeUna. Las recompensas ya
           concedidas a cuentas no se recalculan ni se eliminan.
         </p>
       </div>
 
       <div className={styles.facts}>
-        <div className={styles.fact}>
-          <span>Revisiones</span>
-          <strong>{preview.revisions}</strong>
-        </div>
-        <div className={styles.fact}>
-          <span>Publicaciones</span>
-          <strong>{preview.publications}</strong>
-        </div>
         <div className={styles.fact}>
           <span>Actualizaciones</span>
           <strong>{preview.updates}</strong>
@@ -98,14 +90,6 @@ export default function GameDeletionPanel({
           {preview.homePublishedReferences > 0 ? " en su snapshot publicado" : ""}.
           Retíralo desde Inicio y publica ese cambio cuando corresponda; esta
           operación nunca modifica ni publica Inicio automáticamente.
-        </div>
-      ) : preview.reason === "home_history_reference" ? (
-        <div className={styles.blocker}>
-          <AlertTriangle size={17} aria-hidden="true" />{" "}
-          No se puede eliminar todavía. Una versión histórica de Inicio
-          referencia este juego. Compacta el historial desde Mantenimiento
-          después de retirar el juego del Inicio actual; así ninguna
-          restauración futura podrá reintroducir el slug eliminado.
         </div>
       ) : preview.reason === "source_managed" ? (
         <div className={styles.blocker}>

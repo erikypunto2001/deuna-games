@@ -105,9 +105,7 @@ web pública
 
 La web pública consume `published_payload` visible; no debe leer `draft_payload`.
 
-Los juegos conservan únicamente su estado editorial actual en `editorial_items`: borrador, publicación, `revision` y `publication_number`. Guardar o publicar un juego no crea filas restaurables en `editorial_revisions` ni `editorial_publications`.
-
-Las demás superficies editoriales que usan historial —entre ellas actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas— mantienen revisiones inmutables y restauración. Restaurar una revisión de esas superficies crea una nueva revisión; no destruye su historial.
+Todo el contenido administrable conserva únicamente su estado editorial actual en `editorial_items`: borrador, publicación, `revision` y `publication_number`. Guardar o publicar reemplaza el estado vigente correspondiente y no crea snapshots restaurables ni permite volver a una versión anterior. Los contadores de revisión/publicación se conservan sólo para concurrencia, trazabilidad operativa y coherencia del flujo actual.
 
 Catálogos mantiene una taxonomía maestra de **Clasificaciones** y una lista separada de **Etiquetas**. Los campos físicos heredados de `Game` se conservan sólo por compatibilidad de almacenamiento; la interfaz pública y editorial trabaja con el modelo unificado.
 
@@ -162,7 +160,7 @@ El área `/admin` incorpora:
 - bloqueo progresivo y controles de rate limiting;
 - reautenticación del Owner para crear, activar, desactivar o restablecer accesos;
 - validación estricta de origen y de campos de formulario;
-- publicación explícita; historial/restauración para las superficies que lo requieren y estado actual único para juegos;
+- publicación explícita con estado actual único para todas las superficies; sin historial restaurable ni rollback editorial;
 - `noindex`, `noarchive` y `no-store` en rutas administrativas;
 - ausencia deliberada de telemetría de visitantes en la base administrativa.
 
@@ -177,14 +175,14 @@ horas, marcadores de borrado sin master, namespaces conocidos que sigan vacíos,
 temporales multimedia DeUna reconocidos que lleven más de 24 horas abandonados
 y limpiezas físicas pendientes de juegos ya eliminados.
 
-La protección multimedia recorre los estados vigentes y, para las superficies que conservan historial, también sus revisiones y snapshots. En juegos sólo protegen archivos el borrador actual y la publicación actual; una referencia que existía únicamente en una versión antigua de un juego ya no retiene el master. Los archivos sin
+La protección multimedia recorre únicamente los estados editoriales vigentes: fuente, borrador actual y publicación actual. Una referencia que existía sólo en una versión anterior ya no retiene el master. Los archivos sin
 referencia de menos de 24 horas conservan un período de gracia para no competir
 con cargas recientes. Namespaces desconocidos, entradas inesperadas y
 actualizaciones editoriales que apuntan a un juego inexistente se presentan
 como **revisión manual** y nunca se eliminan mediante la limpieza general. La
 operación tampoco borra cuentas válidas, avatares, perfiles de hardware,
-recompensas, `admin_audit_log`, contenido editorial vigente ni historial
-restaurable.
+recompensas, `admin_audit_log` ni contenido editorial vigente. El historial
+restaurable no forma parte del modelo de datos.
 
 La limpieza general exige Owner, reautenticación, la frase exacta de
 confirmación y un fingerprint del diagnóstico mostrado. El servidor recalcula
@@ -203,9 +201,9 @@ desaparece por completo; si el filesystem falla, Mantenimiento permite al
 Owner reintentarlo y una limpieza exitosa elimina también el directorio vacío
 antes de liberar el slug.
 
-El historial editorial permanece separado de la limpieza de basura para las superficies que lo conservan: una versión antigua de Inicio, Catálogos, Configuración u otra superficie histórica no se considera basura por definición. Mantenimiento permite compactar sólo el historial de Inicio o todo el historial restaurable, conservando el estado vigente como baseline. Los juegos quedan excluidos de esa compactación porque no conservan revisiones ni publicaciones históricas: sólo existen su borrador y snapshot público actuales. La multimedia histórica sigue protegida únicamente cuando pertenece a una superficie que realmente mantiene restauración. Estas acciones exigen reautenticación y controles de concurrencia.
+No existe historial editorial restaurable en ninguna superficie del panel. Mantenimiento se limita a residuos operativos, PostgreSQL y multimedia huérfana; nunca conserva versiones antiguas como baseline recuperable. `admin_audit_log` permanece separado como registro de seguridad y trazabilidad, sin payloads destinados a restauración.
 
-Antes de ejecutar una limpieza o compactación sobre datos valiosos debe existir
+Antes de ejecutar una limpieza destructiva sobre datos valiosos debe existir
 un backup verificado; en local se puede crear con
 `npm run admin:backup-local`.
 

@@ -69,7 +69,6 @@ restart_visual_runtime() {
 
 npm run visual:card-video-fixture
 npm run visual:home-row-interaction-fixture
-npm run visual:card-video-legacy-history-fixture
 
 restart_visual_runtime
 npm run visual:card-video-browser

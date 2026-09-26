@@ -591,8 +591,7 @@ a.draftState {
   background: rgba(255, 8, 71, 0.055);
 }
 
-.editorPanel,
-.historyPanel {
+.editorPanel {
   margin-top: 22px;
   padding: 22px;
   border: 1px solid #19232e;
@@ -678,8 +677,7 @@ a.draftState {
   line-height: 1.55;
 }
 
-.formActions button,
-.historyList button {
+.formActions button {
   min-height: 44px;
   padding: 0 15px;
   color: var(--text-on-brand);
@@ -693,44 +691,6 @@ a.draftState {
   font-weight: 800;
 }
 
-.historyList {
-  display: grid;
-  margin-top: 18px;
-  list-style: none;
-}
-
-.historyList li {
-  min-height: 61px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 11px 2px;
-  border-top: 1px solid #17212b;
-}
-
-.historyList strong,
-.historyList span {
-  display: block;
-}
-
-.historyList strong {
-  color: #cbd3dd;
-  font-size: 12px;
-}
-
-.historyList span {
-  margin-top: 4px;
-  color: #748191;
-  font-size: 11px;
-}
-
-.historyList button {
-  min-height: 44px;
-  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
-  border: 1px solid color-mix(in srgb, var(--brand) 24%, #354252);
-  background: color-mix(in srgb, var(--brand) 5%, #0a1119);
-}
 
 .securityGrid {
   display: grid;
@@ -932,14 +892,8 @@ a.draftState {
   .adminSection,
   .eventPanel,
   .tablePanel,
-  .editorPanel,
-  .historyPanel {
+  .editorPanel {
     padding: 16px;
-  }
-
-  .historyList li {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 

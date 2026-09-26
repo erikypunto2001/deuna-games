@@ -218,6 +218,25 @@ function positiveNumberInput(html, name) {
   return value;
 }
 
+function currentPublicationNumber(html) {
+  const match = html.match(
+    /<span>Publicación actual<\/span>\s*<strong>([\s\S]*?)<\/strong>/i
+  );
+  const visibleValue = decodeHtml(
+    (match?.[1] ?? "").replace(/<[^>]+>/g, "")
+  ).replace(/\s+/g, " ").trim();
+  const numberMatch = visibleValue.match(/^#([0-9]+)$/);
+  const value = Number(numberMatch?.[1]);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      "El panel no expone un número de publicación actual verificable."
+    );
+  }
+
+  return value;
+}
+
 function redirectLocation(response, label) {
   if (response.status !== 303) {
     throw new Error(
@@ -235,38 +254,14 @@ function redirectLocation(response, label) {
   return url;
 }
 
-function currentRestoreAction(html) {
-  const forms = html.match(/<form\b[\s\S]*?<\/form>/gi) ?? [];
-  const candidates = [];
+function assertNoRestoreActions(html) {
+  const actions = [...html.matchAll(/<form[^>]*action="([^"]+)"/gi)]
+    .map((match) => decodeHtml(match[1]))
+    .filter((action) => action.includes("/restore"));
 
-  for (const form of forms) {
-    const opening = form.match(/^<form\b[^>]*>/i)?.[0] ?? "";
-    const actionMatch = opening.match(/\baction="([^"]+)"/i);
-    if (!actionMatch) continue;
-
-    const action = decodeHtml(actionMatch[1]);
-    if (
-      !action.startsWith(
-        "/api/admin/content/configuration-publications/"
-      ) ||
-      !action.endsWith("/restore")
-    ) {
-      continue;
-    }
-
-    const buttonTags = form.match(/<button\b[^>]*>/gi) ?? [];
-    const disabled = buttonTags.some((button) =>
-      /\bdisabled(?:\s|=|>)/i.test(button)
-    );
-    if (disabled) candidates.push(action);
+  if (actions.length > 0) {
+    throw new Error(`El panel todavía expone acciones de restauración: ${actions.join(", ")}.`);
   }
-
-  if (candidates.length !== 1) {
-    throw new Error(
-      `No se pudo identificar una única publicación actual de identidad (${candidates.length} candidatas).`
-    );
-  }
-  return candidates[0];
 }
 
 function publicLogoIdentity(html) {
@@ -564,13 +559,10 @@ if (publishRevision !== savedRevision) {
     `Publicación ve una revisión distinta del logo (${publishRevision} != ${savedRevision}).`
   );
 }
-const publicationNumberBefore = positiveNumberInput(
-  publicationBefore.body,
-  "expectedPublicationNumber"
-);
-const previousRestoreAction = currentRestoreAction(
+const publicationNumberBefore = currentPublicationNumber(
   publicationBefore.body
 );
+assertNoRestoreActions(publicationBefore.body);
 
 const publishBody = new URLSearchParams({
   expectedRevision: String(savedRevision),
@@ -601,9 +593,8 @@ const publicationAfterPublish = await request(
   `${publishRedirect.pathname}${publishRedirect.search}`,
   { headers: { cookie } }
 );
-const publicationNumberAfterPublish = positiveNumberInput(
-  publicationAfterPublish.body,
-  "expectedPublicationNumber"
+const publicationNumberAfterPublish = currentPublicationNumber(
+  publicationAfterPublish.body
 );
 if (publicationNumberAfterPublish <= publicationNumberBefore) {
   throw new Error(
@@ -663,84 +654,17 @@ if (
   );
 }
 
-const restoreBody = new URLSearchParams({
-  expectedPublicationNumber: String(
-    publicationNumberAfterPublish
-  ),
-}).toString();
-const restoreResponse = await request(
-  previousRestoreAction,
-  {
-    method: "POST",
-    headers: formHeaders(publicationPath, cookie),
-    body: restoreBody,
-  }
-);
-const restoreRedirect = redirectLocation(
-  restoreResponse,
-  "La restauración de la identidad anterior"
-);
-if (
-  restoreRedirect.pathname !== "/admin/configuracion" ||
-  restoreRedirect.searchParams.get("seccion") !== "publicacion" ||
-  restoreRedirect.searchParams.get("estado") !== "publicacion-restaurada"
-) {
-  throw new Error(
-    `Restaurar la identidad no terminó correctamente: ${restoreRedirect.href}.`
-  );
-}
+assertNoRestoreActions(publicationAfterPublish.body);
 
-const publicationAfterRestore = await request(
-  `${restoreRedirect.pathname}${restoreRedirect.search}`,
-  { headers: { cookie } }
-);
-const publicationNumberAfterRestore = positiveNumberInput(
-  publicationAfterRestore.body,
-  "expectedPublicationNumber"
-);
-if (publicationNumberAfterRestore <= publicationNumberAfterPublish) {
-  throw new Error(
-    `Restaurar la identidad no creó una publicación nueva (${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}).`
-  );
+const publicCurrentOnly = await request("/");
+if (publicCurrentOnly.status !== 200) {
+  throw new Error(`La Home pública respondió ${publicCurrentOnly.status} después de publicar.`);
 }
-
-const publicRestored = await request("/");
-if (publicRestored.status !== 200) {
-  throw new Error(
-    `La Home pública respondió ${publicRestored.status} después de restaurar la identidad.`
-  );
-}
-if (
-  !sameIdentity(
-    publicLogoIdentity(publicRestored.body),
-    publishedIdentityBefore
-  )
-) {
-  throw new Error(
-    "Restaurar la publicación anterior no recuperó exactamente el logo público previo."
-  );
-}
-const socialRestored = await socialSnapshot();
-if (!sameSocialSnapshot(socialRestored, socialBefore)) {
-  throw new Error(
-    "Restaurar la publicación anterior no recuperó exactamente OG/Twitter."
-  );
-}
-
-const draftAfterRestore = await request(identityPath, {
-  headers: { cookie },
-});
-if (
-  draftAfterRestore.status !== 200 ||
-  positiveNumberInput(draftAfterRestore.body, "expectedRevision") !== savedRevision ||
-  singleInputValue(draftAfterRestore.body, "logoAsset") !== publicPath ||
-  checkedInputValue(draftAfterRestore.body, "logoColorMode") !== "custom"
-) {
-  throw new Error(
-    "Restaurar una publicación histórica reescribió el borrador del logo."
-  );
+const draftCurrentOnly = await request(identityPath, { headers: { cookie } });
+if (draftCurrentOnly.status !== 200 || positiveNumberInput(draftCurrentOnly.body, "expectedRevision") !== savedRevision) {
+  throw new Error("El flujo current-only no preservó el borrador después de publicar.");
 }
 
 console.log(
-  `Site logo publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; SVG + OG/Twitter seguros y separación borrador/público preservada).`
+  `Site logo publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish}; SVG + OG/Twitter seguros, current-only y sin acciones de restauración).`
 );

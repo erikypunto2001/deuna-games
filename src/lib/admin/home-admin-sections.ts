@@ -2,7 +2,6 @@ export const homeAdminSections = [
   { id: "hero", label: "Editor del Hero" },
   { id: "contenido", label: "Resto de Inicio" },
   { id: "publicacion", label: "Publicación" },
-  { id: "historial", label: "Historial" },
 ] as const;
 
 export type HomeAdminSection =

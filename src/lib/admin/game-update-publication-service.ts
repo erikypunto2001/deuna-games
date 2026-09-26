@@ -257,34 +257,7 @@ async function insertPublishedUpdate(
 
   if (!row) return null;
 
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions
-       (item_id, revision, payload, action, actor_user_id)
-     VALUES ($1, $2, $3::jsonb, 'draft_saved', $4)`,
-    [row.id, row.revision, serialized, actorUserId]
-  );
 
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_publications
-       (
-         item_id,
-         publication_number,
-         payload,
-         checksum,
-         source_revision,
-         action,
-         actor_user_id
-       )
-     VALUES ($1, $2, $3::jsonb, $4, $5, 'bootstrap', $6)`,
-    [
-      row.id,
-      row.publication_number,
-      serialized,
-      digest,
-      row.revision,
-      actorUserId,
-    ]
-  );
 
   await writeAudit(
     client,
@@ -322,27 +295,6 @@ async function insertPublishedUpdate(
     ]
   );
 
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_publications
-       (
-         item_id,
-         publication_number,
-         payload,
-         checksum,
-         source_revision,
-         action,
-         actor_user_id
-       )
-     VALUES ($1, $2, $3::jsonb, $4, $5, 'published', $6)`,
-    [
-      row.id,
-      nextPublication,
-      serialized,
-      digest,
-      row.revision,
-      actorUserId,
-    ]
-  );
 
   await writeAudit(
     client,

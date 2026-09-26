@@ -10,9 +10,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Preferencias del usuario
 
-- GitHub es la fuente de verdad del código versionado. Antes de preparar cambios, comprobar el repositorio, la rama y el commit actuales y no basarse en recuerdos o copias antiguas.
-- Para cambios preparados por ChatGPT, usar primero el flujo de staging por Google Drive configurado para el proyecto: verificar `control/baseline.txt`, modificar sólo los archivos necesarios en `mirror/` y preparar `control/change-set.json` con hashes SHA-256.
-- No hacer commit ni push del cambio recién preparado antes de que el usuario lo aplique y pruebe localmente mediante el flujo Drive, salvo pedido explícito. Después de la confirmación local, volver a comprobar concurrencia en GitHub e integrar exactamente lo probado en una rama de trabajo/PR cuando corresponda.
+- GitHub es la fuente de verdad del código versionado y el único canal de integración del proyecto. Antes de preparar cambios, comprobar el repositorio, la rama y el commit actuales y no basarse en recuerdos ni copias externas antiguas.
+- Trabajar los cambios versionados directamente en una rama de trabajo de GitHub y mantenerlos revisables mediante commits pequeños y pull requests. No usar Google Drive, mirrors, baselines ni change-sets como etapa intermedia del código.
+- Antes de escribir en una rama remota, volver a comprobar su HEAD para evitar pisar trabajo concurrente. Las actualizaciones de rama deben ser fast-forward; no usar force push para ocultar conflictos.
+- Usar CI como validación remota reproducible y distinguirla de la prueba local. Cuando una función requiera entorno local, navegador, dispositivo, PostgreSQL o datos que GitHub Actions no pueda reproducir, indicar al usuario los pocos comandos necesarios y revisar el resultado que comparta.
+- No fusionar a `master` ni desplegar producción sin autorización específica del usuario. Cuando un cambio esté validado, integrar mediante la rama/PR correspondiente y comprobar el estado final de GitHub.
 - No afirmar que se ejecutó un comando, servidor o prueba dentro del WSL del usuario sin acceso real a ese entorno. En cambios visuales, indicar al usuario cómo iniciar `npm run mobile:secure` cuando corresponda y basar cualquier URL o resultado local en la salida que el usuario muestre.
 - En cambios de la home o de su panel de control, revisar y verificar ambos lados. Para el hero, comprobar las previews de escritorio, tableta y móvil, la edición y la prueba interactiva con el mismo diseño y ancho que la home.
 

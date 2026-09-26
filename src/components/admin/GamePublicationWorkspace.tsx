@@ -65,7 +65,7 @@ function RequestNotice({
   if (state === "oculto") {
     return (
       <div className={`${styles.notice} ${styles.noticeWarning}`}>
-        El juego fue retirado de la web. El borrador y el snapshot público actual siguen conservados; los juegos no mantienen historial restaurable.
+        El juego fue retirado de la web. El borrador y el snapshot público actual siguen conservados; sólo se conserva el estado editorial vigente.
       </div>
     );
   }
@@ -185,14 +185,6 @@ function RequestNotice({
     );
   }
 
-  if (state === "eliminacion-home-historial") {
-    return (
-      <div className={`${styles.notice} ${styles.noticeWarning}`}>
-        Una versión histórica de Inicio todavía referencia este juego. Compacta el historial desde Mantenimiento después de retirar las referencias actuales.
-      </div>
-    );
-  }
-
   if (state === "solicitud" || state === "datos") {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
@@ -230,7 +222,7 @@ function resolveStatus(
     return {
       eyebrow: "CAMBIOS PENDIENTES",
       title: "La web todavía muestra la publicación actual",
-      text: "Los cambios están guardados únicamente como borrador. Publicar reemplazará el snapshot público actual sin crear historial restaurable.",
+      text: "Los cambios están guardados únicamente como borrador. Publicar reemplazará el snapshot público actual sin guardar versiones anteriores.",
       tone: "pending" as const,
     };
   }
@@ -465,7 +457,7 @@ export default function GamePublicationWorkspace({
           <p>
             {neverPublished
               ? "Al confirmar, este borrador empezará a aparecer en el catálogo público. La operación queda auditada y el borrador seguirá separado para futuros cambios."
-              : "Al confirmar, la revisión actual reemplazará el snapshot público vigente. No se conservan publicaciones históricas restaurables para juegos."}
+              : "Al confirmar, la revisión actual reemplazará el snapshot público vigente. La publicación vigente reemplaza a la anterior."}
           </p>
 
           {readiness.recommendedMissing > 0 && (

@@ -368,30 +368,16 @@ if (!initialReadiness.essentialsReady) {
   );
 }
 
-const initialHistoryResult = await adminQuery(
+const retiredHistory = await adminQuery(
   `SELECT
-     (
-       SELECT count(*)::int
-         FROM deuna_admin.editorial_revisions
-        WHERE item_id = $1
-     ) AS revisions,
-     (
-       SELECT count(*)::int
-         FROM deuna_admin.editorial_publications
-        WHERE item_id = $1
-     ) AS publications`,
-  [fixture.id]
+     to_regclass('deuna_admin.editorial_revisions')::text AS revisions_table,
+     to_regclass('deuna_admin.editorial_publications')::text AS publications_table`
 );
-const initialHistory = initialHistoryResult.rows[0];
-
 if (
-  !initialHistory ||
-  initialHistory.revisions !== 0 ||
-  initialHistory.publications !== 0
+  retiredHistory.rows[0]?.revisions_table !== null ||
+  retiredHistory.rows[0]?.publications_table !== null
 ) {
-  throw new Error(
-    `El fixture multimedia conserva historial restaurable de juego (revisiones=${String(initialHistory?.revisions)}, publicaciones=${String(initialHistory?.publications)}).`
-  );
+  throw new Error("Las tablas de historial editorial todavía existen después de la migración current-only.");
 }
 
 const loginBody = new URLSearchParams({
@@ -618,17 +604,7 @@ const publishedResult = await adminQuery(
      published_payload,
      revision,
      publication_number,
-     public_visible,
-     (
-       SELECT count(*)::int
-         FROM deuna_admin.editorial_revisions
-        WHERE item_id = $1
-     ) AS revisions,
-     (
-       SELECT count(*)::int
-         FROM deuna_admin.editorial_publications
-        WHERE item_id = $1
-     ) AS publications
+     public_visible
    FROM deuna_admin.editorial_items
    WHERE id = $1`,
   [fixture.id]
@@ -643,12 +619,10 @@ if (
   !published ||
   publishedNumber !== fixture.publication_number + 1 ||
   published.public_visible !== true ||
-  publishedGame?.coverImage !== publicPath ||
-  published.revisions !== 0 ||
-  published.publications !== 0
+  publishedGame?.coverImage !== publicPath
 ) {
   throw new Error(
-    "Publicar no dejó exactamente el snapshot actual esperado con cero historial restaurable de juego."
+    "Publicar no dejó exactamente el snapshot actual esperado en el modelo current-only."
   );
 }
 
@@ -733,17 +707,7 @@ const detachedResult = await adminQuery(
      draft_payload,
      revision,
      publication_number,
-     public_visible,
-     (
-       SELECT count(*)::int
-         FROM deuna_admin.editorial_revisions
-        WHERE item_id = $1
-     ) AS revisions,
-     (
-       SELECT count(*)::int
-         FROM deuna_admin.editorial_publications
-        WHERE item_id = $1
-     ) AS publications
+     public_visible
    FROM deuna_admin.editorial_items
    WHERE id = $1`,
   [fixture.id]
@@ -759,12 +723,10 @@ if (
   detached.publication_number !== publishedNumber ||
   detached.public_visible !== false ||
   detachedGame?.coverArtworkSource !== "card" ||
-  detachedGame.coverImage === publicPath ||
-  detached.revisions !== 0 ||
-  detached.publications !== 0
+  detachedGame.coverImage === publicPath
 ) {
   throw new Error(
-    "Desasignar el master no conservó el estado actual del juego sin recrear historial."
+    "Desasignar el master no conservó correctamente el estado actual del juego."
   );
 }
 
@@ -973,5 +935,5 @@ console.log(
     `(slug=${slug}, bytes=${image.length}, ` +
     "upload=anon404/admin-private, draft=custom-pending-private, " +
     "crop=confirmed-private, published=current-public, hidden=private, " +
-    "draft/current-only-protection, orphan=deletable, no-game-history, hard-delete=pending+retry+physical-clean)."
+    "draft/current-only-protection, orphan=deletable, current-only-history-retired, hard-delete=pending+retry+physical-clean)."
 );

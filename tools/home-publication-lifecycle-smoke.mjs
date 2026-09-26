@@ -168,6 +168,25 @@ function positiveNumberInput(html, name) {
   return value;
 }
 
+function currentPublicationNumber(html) {
+  const match = html.match(
+    /<span>Publicación actual<\/span>\s*<strong>([\s\S]*?)<\/strong>/i
+  );
+  const visibleValue = decodeHtml(
+    (match?.[1] ?? "").replace(/<[^>]+>/g, "")
+  ).replace(/\s+/g, " ").trim();
+  const numberMatch = visibleValue.match(/^#([0-9]+)$/);
+  const value = Number(numberMatch?.[1]);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      "El panel no expone un número de publicación actual verificable."
+    );
+  }
+
+  return value;
+}
+
 function redirectLocation(response, label) {
   if (response.status !== 303) {
     throw new Error(
@@ -197,38 +216,14 @@ function publicHeading(html) {
     .trim();
 }
 
-function currentRestoreAction(html) {
-  const forms = html.match(/<form\b[\s\S]*?<\/form>/gi) ?? [];
-  const candidates = [];
+function assertNoRestoreActions(html) {
+  const actions = [...html.matchAll(/<form[^>]*action="([^"]+)"/gi)]
+    .map((match) => decodeHtml(match[1]))
+    .filter((action) => action.includes("/restore"));
 
-  for (const form of forms) {
-    const opening = form.match(/^<form\b[^>]*>/i)?.[0] ?? "";
-    const actionMatch = opening.match(/\baction="([^"]+)"/i);
-    if (!actionMatch) continue;
-
-    const action = decodeHtml(actionMatch[1]);
-    if (
-      !action.startsWith(
-        "/api/admin/content/home-publications/"
-      ) ||
-      !action.endsWith("/restore")
-    ) {
-      continue;
-    }
-
-    const buttonTags = form.match(/<button\b[^>]*>/gi) ?? [];
-    const disabled = buttonTags.some((button) =>
-      /\bdisabled(?:\s|=|>)/i.test(button)
-    );
-    if (disabled) candidates.push(action);
+  if (actions.length > 0) {
+    throw new Error(`El panel todavía expone acciones de restauración: ${actions.join(", ")}.`);
   }
-
-  if (candidates.length !== 1) {
-    throw new Error(
-      `No se pudo identificar una única publicación actual (${candidates.length} candidatas).`
-    );
-  }
-  return candidates[0];
 }
 
 const marker =
@@ -400,13 +395,10 @@ if (publishRevision !== savedRevision) {
     `Publicación ve una revisión distinta del borrador (${publishRevision} != ${savedRevision}).`
   );
 }
-const publicationNumberBefore = positiveNumberInput(
-  publicationBefore.body,
-  "expectedPublicationNumber"
-);
-const previousRestoreAction = currentRestoreAction(
+const publicationNumberBefore = currentPublicationNumber(
   publicationBefore.body
 );
+assertNoRestoreActions(publicationBefore.body);
 
 const publishBody = new URLSearchParams({
   expectedRevision: String(savedRevision),
@@ -442,9 +434,8 @@ if (publicationAfterPublish.status !== 200) {
     `El estado posterior a publicar no pudo releerse (${publicationAfterPublish.status}).`
   );
 }
-const publicationNumberAfterPublish = positiveNumberInput(
-  publicationAfterPublish.body,
-  "expectedPublicationNumber"
+const publicationNumberAfterPublish = currentPublicationNumber(
+  publicationAfterPublish.body
 );
 if (publicationNumberAfterPublish <= publicationNumberBefore) {
   throw new Error(
@@ -481,97 +472,28 @@ if (
   );
 }
 
-const restoreBody = new URLSearchParams({
-  expectedPublicationNumber: String(
-    publicationNumberAfterPublish
-  ),
-}).toString();
-const restoreResponse = await request(
-  previousRestoreAction,
-  {
-    method: "POST",
-    headers: formHeaders(publicationPath, cookie),
-    body: restoreBody,
-  }
-);
-const restoreRedirect = redirectLocation(
-  restoreResponse,
-  "La restauración de la publicación anterior"
-);
-if (
-  restoreRedirect.pathname !== "/admin/portada" ||
-  restoreRedirect.searchParams.get("seccion") !== "publicacion" ||
-  restoreRedirect.searchParams.get("estado") !== "publicacion-restaurada"
-) {
-  throw new Error(
-    `Restaurar no terminó en estado=publicacion-restaurada: ${restoreRedirect.href}.`
-  );
+assertNoRestoreActions(publicationAfterPublish.body);
+
+const publicAfterPublish = await request("/");
+if (publicAfterPublish.status !== 200 || publicHeading(publicAfterPublish.body) !== marker) {
+  throw new Error("La publicación vigente no permaneció activa después del flujo current-only.");
 }
 
-const publicationAfterRestore = await request(
-  `${restoreRedirect.pathname}${restoreRedirect.search}`,
-  { headers: { cookie } }
-);
-if (publicationAfterRestore.status !== 200) {
-  throw new Error(
-    `El estado posterior a restaurar no pudo releerse (${publicationAfterRestore.status}).`
-  );
-}
-const publicationNumberAfterRestore = positiveNumberInput(
-  publicationAfterRestore.body,
-  "expectedPublicationNumber"
-);
-if (publicationNumberAfterRestore <= publicationNumberAfterPublish) {
-  throw new Error(
-    `Restaurar no creó una publicación nueva (${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}).`
-  );
-}
-if (!publicationAfterRestore.body.includes("Hay cambios listos para publicar.")) {
-  throw new Error(
-    "Tras restaurar el snapshot anterior, el Admin no marcó el borrador divergente como pendiente de publicar."
-  );
-}
-
-const publicRestored = await request("/");
-if (publicRestored.status !== 200) {
-  throw new Error(
-    `La Home pública respondió ${publicRestored.status} después de restaurar.`
-  );
-}
-const restoredHeading = publicHeading(publicRestored.body);
-if (
-  publicRestored.body.includes(marker) ||
-  restoredHeading !== publishedHeadingBefore
-) {
-  throw new Error(
-    `La restauración no recuperó el snapshot público anterior (${restoredHeading}).`
-  );
-}
-
-const draftAfterRestore = await request(contentPath, {
+const draftAfterCurrentPublish = await request(contentPath, {
   headers: { cookie },
 });
-if (draftAfterRestore.status !== 200) {
+if (draftAfterCurrentPublish.status !== 200) {
   throw new Error(
-    `El borrador no pudo releerse después de restaurar (${draftAfterRestore.status}).`
+    `El borrador no pudo releerse después de publicar (${draftAfterCurrentPublish.status}).`
   );
 }
-const draftRevisionAfterRestore = positiveNumberInput(
-  draftAfterRestore.body,
-  "expectedRevision"
-);
-const draftPresentationAfterRestore = JSON.parse(
-  singleValue(draftAfterRestore.body, "presentationJson")
-);
 if (
-  draftRevisionAfterRestore !== savedRevision ||
-  draftPresentationAfterRestore?.copy?.hero?.accessibleTitle !== marker
+  positiveNumberInput(draftAfterCurrentPublish.body, "expectedRevision") !== savedRevision ||
+  JSON.parse(singleValue(draftAfterCurrentPublish.body, "presentationJson"))?.copy?.hero?.accessibleTitle !== marker
 ) {
-  throw new Error(
-    "Restaurar una publicación histórica reescribió el borrador, rompiendo la separación editorial."
-  );
+  throw new Error("Publicar reescribió inesperadamente el borrador current-only.");
 }
 
 console.log(
-  `Home publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; publicar y restaurar no reescriben el borrador).`
+  `Home publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish}; sin historial ni acciones de restauración).`
 );

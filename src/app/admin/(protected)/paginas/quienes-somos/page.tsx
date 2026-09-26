@@ -3,7 +3,6 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
@@ -33,7 +32,6 @@ const sections = [
   "proposito",
   "cierre",
   "publicacion",
-  "historial",
 ] as const;
 
 type AboutSection = (typeof sections)[number];
@@ -335,7 +333,6 @@ export default async function AdminAboutEditorPage({
             state={publicationState}
             requestState={state}
             publishAction="/api/admin/content/about/publish"
-            restoreActionBase="/api/admin/content/about-publications"
           />
         ) : (
           <p>
@@ -343,11 +340,6 @@ export default async function AdminAboutEditorPage({
           </p>
         )}
       </section>}
-
-      {section === "historial" && <EditorialHistory
-        revisions={item.revisions}
-        currentRevision={item.revision}
-      />}
     </>
   );
 }

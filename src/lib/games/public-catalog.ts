@@ -16,10 +16,6 @@ import {
 } from "@/lib/admin/content-validation";
 import type { Game } from "@/types/game";
 
-type PublicationTableRow = {
-  publication_table: string | null;
-};
-
 type EditorialGameRow = {
   item_key: string;
   published_payload: unknown;
@@ -96,18 +92,6 @@ function mergeEditorialGames(
 }
 
 async function readEditorialGames() {
-  const workspace =
-    await adminQuery<PublicationTableRow>(
-      `SELECT
-         to_regclass(
-           'deuna_admin.editorial_publications'
-         )::text AS publication_table`
-    );
-
-  if (!workspace.rows[0]?.publication_table) {
-    return null;
-  }
-
   const result = await adminQuery<EditorialGameRow>(
     `SELECT
        item_key,

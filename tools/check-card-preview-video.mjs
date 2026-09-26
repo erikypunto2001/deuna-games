@@ -1,8 +1,9 @@
-import { readFile } from "node:fs/promises";
+﻿import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import "./check-card-preview-runtime.mjs";
 import "./check-universal-game-card-3d.mjs";
+
 
 const root = process.cwd();
 const failures = [];
@@ -11,6 +12,7 @@ const assert = (condition, message) => {
   if (!condition) failures.push(message);
 };
 const has = (text, ...needles) => needles.every((needle) => text.includes(needle));
+
 
 const [
   policy,
@@ -90,6 +92,7 @@ const [
   source("src/types/game.ts"),
 ]);
 
+
 assert(
   has(
     policy,
@@ -106,10 +109,12 @@ assert(
   "La política de video debe conservar límites, calidades, FPS y viewport 3:2."
 );
 
+
 assert(
   has(safeWebm, "MAX_EDITORIAL_PREVIEW_BYTES", "inspectSafeEditorialWebm", "digest"),
   "Los masters WebM editoriales deben seguir pasando por validación segura y hash."
 );
+
 
 assert(
   has(
@@ -125,6 +130,7 @@ assert(
   "La importación externa debe conservar proveedores explícitos y validación por URL."
 );
 
+
 const standardModes = modePolicy.match(
   /STANDARD_GAME_MEDIA_MODES\s*=\s*\[([\s\S]*?)\]/
 )?.[1] ?? "";
@@ -134,6 +140,7 @@ assert(
     modePolicy.includes("card: STANDARD_GAME_MEDIA_MODES"),
   "La Card activa debe admitir sólo Imagen/Video; Imagen+hover queda reservado al Hero."
 );
+
 
 assert(
   has(
@@ -147,6 +154,7 @@ assert(
     !libraryEditor.includes("sourceBusy || busy) return"),
   "La Biblioteca de video debe usar una única autoridad síncrona para impedir solapamientos entre preparación de fuente y creación del master."
 );
+
 
 assert(
   has(
@@ -170,6 +178,7 @@ assert(
   "La biblioteca debe crear un master reusable sin asignarlo a destinos ni enviar crops de Hero/Card durante la creación."
 );
 
+
 assert(
   has(
     trimEditor,
@@ -186,6 +195,7 @@ assert(
   "El trim del master debe limitarse al tramo temporal y salida técnica."
 );
 
+
 assert(
   has(
     mediaViewportEditor,
@@ -200,6 +210,7 @@ assert(
   ),
   "Imagen y video deben compartir un único motor de encuadre espacial."
 );
+
 
 assert(
   has(
@@ -237,6 +248,7 @@ assert(
   "El Admin debe limitar Card a Imagen/Video, exponer shared/custom explícito, mantener crops 4:5/3:2 independientes y no reintroducir video de Portada."
 );
 
+
 assert(
   has(
     utilityRail,
@@ -252,6 +264,7 @@ assert(
     !utilityRail.includes("Hero · 16:9"),
   "El rail debe reflejar Portada image-only, Hero 3:1 y Card 3:2."
 );
+
 
 assert(
   has(
@@ -272,6 +285,7 @@ assert(
   "El estado compartido del workspace debe transportar intención Card/Portada sin modo/video de Portada."
 );
 
+
 assert(
   has(
     mediaWorkspace,
@@ -291,6 +305,7 @@ assert(
     !mediaWorkspace.includes("coverVideo:"),
   "El snapshot Admin debe resolver la intención efectiva y excluir modo/video de Portada."
 );
+
 
 assert(
   has(
@@ -320,6 +335,7 @@ assert(
   "La API debe ser autoridad de shared/custom, rechazar hover de Card, invalidar crops al cambiar masters y mantener Card/video independiente."
 );
 
+
 assert(
   has(
     libraryRoute,
@@ -336,6 +352,7 @@ assert(
   "Portada/Hero/Card deben preservar crops y evitar revisiones al reasignar el mismo recurso, sin impedir normalizar playback legacy."
 );
 
+
 assert(
   has(
     imageLayoutRoute,
@@ -347,6 +364,7 @@ assert(
   ),
   "Confirmar un crop debe ligar server-side la metadata al recurso activo."
 );
+
 
 assert(
   has(
@@ -361,6 +379,7 @@ assert(
     !viewportEditor.includes('target === "cover"'),
   "El editor de viewport de video no puede admitir Portada."
 );
+
 
 assert(
   has(
@@ -378,6 +397,7 @@ assert(
   "El renderer específico de Portada debe resolver shared/custom, conservar su recorte 4:5 y seguir siendo image-only."
 );
 
+
 assert(
   has(
     cardPresentation,
@@ -392,6 +412,7 @@ assert(
   ),
   "La presentación pública debe priorizar intención explícita y usar inferencia sólo para snapshots legacy."
 );
+
 
 assert(
   has(
@@ -414,6 +435,7 @@ assert(
   "El dominio debe forzar Portada=image, Card activa Imagen/Video y conservar Card/Hero/Detalle como únicos destinos de video."
 );
 
+
 assert(
   has(
     gameTypes,
@@ -431,6 +453,7 @@ assert(
   "El contrato Game debe persistir intención/provenance y excluir video activo de Portada."
 );
 
+
 assert(
   has(
     requirements,
@@ -447,12 +470,14 @@ assert(
   "Readiness debe validar la fuente del crop y exigir la imagen 3:2 de Card incluso cuando hay video."
 );
 
+
 assert(
   publicationReadiness.includes("La Portada requiere una imagen y su recorte 4:5 confirmado.") &&
     !publicationReadiness.includes("La Portada debe completar los recursos exigidos por su modo activo.") &&
     !publicationReadiness.includes("La imagen inicial 3:2 y el video que entra al hover"),
   "Readiness de publicación debe describir Portada image-only y Card sólo Imagen/Video."
 );
+
 
 assert(
   !gameTypes.includes("GamePreviewMode") &&
@@ -474,6 +499,7 @@ assert(
     !publicationChanges.includes("directPreview"),
   "El contrato activo y el diff de publicación no deben exponer previews externos legacy; la capa de compatibilidad debe consumir esas claves antes del parser core."
 );
+
 
 assert(
   has(
@@ -498,6 +524,7 @@ assert(
   "La validación debe aceptar historial legado, normalizar shared/custom, sincronizar Portada compartida con Card y eliminar video activo de Portada."
 );
 
+
 for (const route of [uploadRoute, importRoute]) {
   assert(
     has(
@@ -513,6 +540,7 @@ for (const route of [uploadRoute, importRoute]) {
     "Carga/importación debe limitarse a generar el master reusable en Biblioteca; la asignación a Hero/Card pertenece sólo a media-library."
   );
 }
+
 
 assert(
   has(
@@ -531,6 +559,7 @@ assert(
   "Guardar layout de video debe ser metadata-only y rechazar Portada."
 );
 
+
 assert(
   has(
     legacyCover,
@@ -544,11 +573,19 @@ assert(
       'owner.type === "game"',
       "legacyGameCoverVideoReference(payload)",
       "legacyCoverVideo ? [legacyCoverVideo] : []",
-      "const historicalPublicationRows"
+      "published_payload",
+      "public_visible",
+      "isCurrentlyPublished",
+      "safePublicationReferences(owner, item.published_payload)",
+      "refreshed.references.has(publicPath)"
     ) &&
+    !serving.includes("editorial_publications") &&
+    !serving.includes("editorial_revisions") &&
+    !serving.includes("historicalPublicationRows") &&
     !serving.includes("getHistoricalGameMediaReferences"),
-  "Los WebM legacy de Portada sólo pueden servirse desde el snapshot público actual; el historial de juegos no debe protegerlos ni exponerlos."
+  "Los WebM legacy de Portada sólo pueden servirse desde la publicación vigente; ningún historial debe protegerlos ni exponerlos."
 );
+
 
 assert(
   has(
@@ -561,6 +598,7 @@ assert(
   "Integridad activa debe excluir video de Portada y cubrir el resto de referencias."
 );
 
+
 assert(
   hygiene.includes('pushUnique(labels, "Portada")') &&
     !hygiene.includes("coverMode") &&
@@ -568,6 +606,7 @@ assert(
     !hygiene.includes("videoMedia?.cover"),
   "Higiene debe clasificar Portada activa sin ramas de video/hover."
 );
+
 
 assert(
   has(
@@ -580,10 +619,12 @@ assert(
   "El resolver de preview debe omitir video en modo Imagen y devolver sólo WebM interno cuando Card está en Video."
 );
 
+
 assert(
   has(cardWrapper, "UniversalGameCardBase", "GameFavoriteButton", "variant={variant}"),
   "UniversalGameCard debe delegar el renderer multimedia canónico al base."
 );
+
 
 assert(
   has(
@@ -610,6 +651,7 @@ assert(
   "La Card pública debe alinear la cara visible con touch y activar Video tanto en interacción como en detalle directo sólo bajo el estado y visibilidad correspondientes."
 );
 
+
 assert(
   has(
     cardPresentationCss,
@@ -621,12 +663,14 @@ assert(
   "La Card debe conservar shell 4:5, media 3:2, fallback touch y reduced-motion."
 );
 
+
 assert(
   has(hoverPreview, "FramedVideo", 'preload="none"', "active && previewClip") &&
     has(framedVideo, "resolveFramedMediaLayout", "ResizeObserver") &&
     has(framedLayout, "resolvePreviewViewportCrop", "frameWidth / crop.width", "frameHeight / crop.height"),
   "El video de Card debe cargar diferido y aplicar recorte lógico sin duplicar masters."
 );
+
 
 const activeCoverBoundarySources = [
   workspace,
@@ -661,6 +705,7 @@ for (const forbidden of [
   );
 }
 
+
 const activePreviewSources = [
   libraryEditor,
   workspace,
@@ -680,11 +725,13 @@ for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"
   );
 }
 
+
 if (failures.length) {
   console.error("\nCard/Portada multimedia: ERROR\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
+
 
 console.log(
   "Card/Portada multimedia: OK (shared/custom explícito; Portada 4:5; Card 3:2 Imagen/Video; crops ligados a fuente; touch accesible; fallback de video preservado)."

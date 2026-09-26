@@ -242,6 +242,25 @@ function positiveNumberInput(html, name) {
   return value;
 }
 
+function currentPublicationNumber(html) {
+  const match = html.match(
+    /<span>Publicación actual<\/span>\s*<strong>([\s\S]*?)<\/strong>/i
+  );
+  const visibleValue = decodeHtml(
+    (match?.[1] ?? "").replace(/<[^>]+>/g, "")
+  ).replace(/\s+/g, " ").trim();
+  const numberMatch = visibleValue.match(/^#([0-9]+)$/);
+  const value = Number(numberMatch?.[1]);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      "El panel no expone un número de publicación actual verificable."
+    );
+  }
+
+  return value;
+}
+
 function redirectLocation(response, label) {
   if (response.status !== 303) {
     throw new Error(
@@ -264,40 +283,14 @@ function redirectLocation(response, label) {
   return url;
 }
 
-function currentRestoreAction(html) {
-  const forms = html.match(/<form\b[\s\S]*?<\/form>/gi) ?? [];
-  const candidates = [];
+function assertNoRestoreActions(html) {
+  const actions = [...html.matchAll(/<form[^>]*action="([^"]+)"/gi)]
+    .map((match) => decodeHtml(match[1]))
+    .filter((action) => action.includes("/restore"));
 
-  for (const form of forms) {
-    const opening = form.match(/^<form\b[^>]*>/i)?.[0] ?? "";
-    const actionMatch = opening.match(/\baction="([^"]+)"/i);
-    if (!actionMatch) continue;
-
-    const action = decodeHtml(actionMatch[1]);
-    if (
-      !action.startsWith(
-        "/api/admin/content/configuration-publications/"
-      ) ||
-      !action.endsWith("/restore")
-    ) {
-      continue;
-    }
-
-    const buttonTags = form.match(/<button\b[^>]*>/gi) ?? [];
-    const disabled = buttonTags.some((button) =>
-      /\bdisabled(?:\s|=|>)/i.test(button)
-    );
-
-    if (disabled) candidates.push(action);
+  if (actions.length > 0) {
+    throw new Error(`El panel todavía expone acciones de restauración: ${actions.join(", ")}.`);
   }
-
-  if (candidates.length !== 1) {
-    throw new Error(
-      `No se pudo identificar una única publicación actual de identidad (${candidates.length} candidatas).`
-    );
-  }
-
-  return candidates[0];
 }
 
 function publicLogoIdentity(html) {
@@ -843,13 +836,10 @@ if (publishRevision !== savedRevision) {
     `Publicación ve una revisión distinta del raster (${publishRevision} != ${savedRevision}).`
   );
 }
-const publicationNumberBefore = positiveNumberInput(
-  publicationBefore.body,
-  "expectedPublicationNumber"
-);
-const previousRestoreAction = currentRestoreAction(
+const publicationNumberBefore = currentPublicationNumber(
   publicationBefore.body
 );
+assertNoRestoreActions(publicationBefore.body);
 
 const publishResponse = await request(
   "/api/admin/content/configuration/publish",
@@ -880,9 +870,8 @@ const publicationAfterPublish = await request(
   `${publishRedirect.pathname}${publishRedirect.search}`,
   { headers: { cookie } }
 );
-const publicationNumberAfterPublish = positiveNumberInput(
-  publicationAfterPublish.body,
-  "expectedPublicationNumber"
+const publicationNumberAfterPublish = currentPublicationNumber(
+  publicationAfterPublish.body
 );
 if (
   publicationNumberAfterPublish <= publicationNumberBefore
@@ -976,137 +965,17 @@ if (
   );
 }
 
-const restoreResponse = await request(
-  previousRestoreAction,
-  {
-    method: "POST",
-    headers: formHeaders(publicationPath, cookie),
-    body: new URLSearchParams({
-      expectedPublicationNumber: String(
-        publicationNumberAfterPublish
-      ),
-    }).toString(),
-  }
-);
-const restoreRedirect = redirectLocation(
-  restoreResponse,
-  "La restauración de la identidad previa al raster"
-);
-if (
-  restoreRedirect.pathname !== "/admin/configuracion" ||
-  restoreRedirect.searchParams.get("seccion") !==
-    "publicacion" ||
-  restoreRedirect.searchParams.get("estado") !==
-    "publicacion-restaurada"
-) {
-  throw new Error(
-    `Restaurar tras raster no terminó correctamente: ${restoreRedirect.href}.`
-  );
-}
+assertNoRestoreActions(publicationAfterPublish.body);
 
-const publicationAfterRestore = await request(
-  `${restoreRedirect.pathname}${restoreRedirect.search}`,
-  { headers: { cookie } }
-);
-const publicationNumberAfterRestore = positiveNumberInput(
-  publicationAfterRestore.body,
-  "expectedPublicationNumber"
-);
-if (
-  publicationNumberAfterRestore <= publicationNumberAfterPublish
-) {
-  throw new Error(
-    `Restaurar tras raster no creó publicación nueva (${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}).`
-  );
+const publicCurrentOnly = await request("/");
+if (publicCurrentOnly.status !== 200) {
+  throw new Error(`La Home pública respondió ${publicCurrentOnly.status} después de publicar.`);
 }
-
-const publicRestored = await request("/");
-if (
-  publicRestored.status !== 200 ||
-  !sameIdentity(
-    publicLogoIdentity(publicRestored.body),
-    publishedIdentityBefore
-  )
-) {
-  throw new Error(
-    "Restaurar la publicación anterior no recuperó exactamente la identidad pública previa al raster."
-  );
-}
-const socialRestored = await socialSnapshot();
-if (!sameSocialSnapshot(socialRestored, socialBefore)) {
-  throw new Error(
-    "Restaurar la publicación anterior no recuperó exactamente OG/Twitter tras el raster."
-  );
-}
-const appIconsRestored = await appIconSnapshot();
-if (!sameAppIconSnapshot(appIconsRestored, appIconsBefore)) {
-  throw new Error(
-    "Restaurar la publicación anterior no recuperó exactamente favicon/Apple/PWA."
-  );
-}
-
-const anonymousRestoredAsset = await request(publicPath);
-const anonymousRestoredCacheControl = String(
-  anonymousRestoredAsset.headers["cache-control"] ?? ""
-).toLowerCase();
-if (
-  anonymousRestoredAsset.status !== 200 ||
-  !String(
-    anonymousRestoredAsset.headers["content-type"] ?? ""
-  ).toLowerCase().startsWith("image/png") ||
-  anonymousRestoredAsset.sha256 !== pathDigest ||
-  !anonymousRestoredCacheControl.includes("public") ||
-  !anonymousRestoredCacheControl.includes("immutable") ||
-  anonymousRestoredAsset.content.includes(
-    Buffer.from(traceText, "utf8")
-  )
-) {
-  throw new Error(
-    "Restaurar la identidad previa dejó de servir de forma pública e inmutable el logo que ya formó parte del historial publicado."
-  );
-}
-const adminRestoredAsset = await request(publicPath, {
-  headers: { cookie },
-});
-const adminRestoredCacheControl = String(
-  adminRestoredAsset.headers["cache-control"] ?? ""
-).toLowerCase();
-if (
-  adminRestoredAsset.status !== 200 ||
-  adminRestoredAsset.sha256 !== pathDigest ||
-  !adminRestoredCacheControl.includes("public") ||
-  !adminRestoredCacheControl.includes("immutable") ||
-  adminRestoredCacheControl.includes("private") ||
-  adminRestoredCacheControl.includes("no-store")
-) {
-  throw new Error(
-    "Un asset raster históricamente publicado no conservó la misma política pública e inmutable al solicitarlo con sesión Admin."
-  );
-}
-
-const draftAfterRestore = await request(identityPath, {
-  headers: { cookie },
-});
-if (
-  draftAfterRestore.status !== 200 ||
-  positiveNumberInput(
-    draftAfterRestore.body,
-    "expectedRevision"
-  ) !== savedRevision ||
-  singleInputValue(
-    draftAfterRestore.body,
-    "logoAsset"
-  ) !== publicPath ||
-  checkedInputValue(
-    draftAfterRestore.body,
-    "logoColorMode"
-  ) !== "original"
-) {
-  throw new Error(
-    "Restaurar una publicación histórica reescribió el borrador raster del logo."
-  );
+const draftCurrentOnly = await request(identityPath, { headers: { cookie } });
+if (draftCurrentOnly.status !== 200 || positiveNumberInput(draftCurrentOnly.body, "expectedRevision") !== savedRevision) {
+  throw new Error("El flujo current-only no preservó el borrador después de publicar.");
 }
 
 console.log(
-  `Site logo raster publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; PNG metadata/nombre descartados, asset draft privado, MIME por contenido, modo original forzado, favicon/PWA versionados, OG/Twitter y assets históricos públicos e inmutables preservados).`
+  `Site logo raster publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish}; PNG saneado, favicon/PWA y OG/Twitter current-only, sin historial restaurable).`
 );

@@ -155,10 +155,13 @@ expect(
     ) &&
     entries.browserManifest.includes("historical-update-edit") &&
     entries.browserManifest.includes("historical-update-publication") &&
-    entries.browserManifest.includes("historical-update-history") &&
+    !entries.browserManifest.includes("historical-update-history") &&
+    entries.legacyEditor.includes('"editar"') &&
+    entries.legacyEditor.includes('"publicacion"') &&
+    !entries.legacyEditor.includes('"historial"') &&
     !entries.sitewideSmoke.includes("src/data/update-records.ts") &&
     !entries.sitewideSmoke.includes("fixture.updateIds"),
-  "La compatibilidad histórica debe probarse con un borrador privado efímero real en editar/publicación/historial, sin depender de fixtures demo retirados."
+  "La compatibilidad con borradores antiguos debe probarse con un borrador privado efímero real en editar/publicación, sin reintroducir una sección de historial restaurable ni depender de fixtures demo retirados."
 );
 expect(
   entries.accountNotificationsRunner.includes(
@@ -177,8 +180,12 @@ expect(
 );
 expect(
   entries.publicUpdates.includes("getPublicResolvedUpdates") &&
+    entries.publicUpdates.includes("FROM deuna_admin.editorial_items") &&
+    entries.publicUpdates.includes("WHERE item_type = 'game_update'") &&
+    !entries.publicUpdates.includes("editorial_revisions") &&
+    !entries.publicUpdates.includes("editorial_publications") &&
     entries.publicGame.includes("getPublicUpdatesForGame"),
-  "La página pública de Actualizaciones y el historial del juego deben conservarse."
+  "Las actualizaciones públicas y las versiones por juego deben salir del estado editorial vigente sin depender de tablas de historial retiradas."
 );
 
 const retiredDemoIds = [
@@ -217,5 +224,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Actualizaciones integradas: OK (publicación atómica real, fixtures demo retirados sin borrar historial, mantenimiento de mirrors separado y navegación administrativa coherente)."
+  "Actualizaciones integradas: OK (publicación atómica real, estado current-only sin historial restaurable, mantenimiento de mirrors separado y navegación administrativa coherente)."
 );

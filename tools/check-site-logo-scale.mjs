@@ -3,6 +3,7 @@ import { frontendSiteConfigFormSchema } from '../src/lib/admin/frontend-content-
 import { editorialSiteConfigSchema } from '../src/lib/admin/content-validation.ts';
 import { siteConfig } from '../src/lib/site.ts';
 
+
 const form = {...siteConfig, expectedRevision: '1', logoAsset: ''};
 for (const scale of [50, 100, 137, 200]) {
   const parsed = frontendSiteConfigFormSchema.parse({...form, logoScale: String(scale)});
@@ -17,4 +18,4 @@ for (const scale of ['', '0', '49', '201', '100.5', 'abc', 'Infinity']) {
 const {logoScale, ...legacy} = siteConfig;
 assert.equal(logoScale, 100);
 assert.equal(editorialSiteConfigSchema.safeParse(legacy).success, true);
-console.log('Logo size: OK (form conversion, validation, serialized payload and historical publications).');
+console.log('Logo size: OK (form conversion, validation, serialized payload and legacy payload compatibility).');

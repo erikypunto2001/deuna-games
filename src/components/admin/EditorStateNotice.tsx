@@ -35,7 +35,7 @@ const notices = {
   "actualizacion-cambios-pendientes": {
     kind: "warning",
     message:
-      "El juego tiene otros cambios sin publicar. Por seguridad no se mezclaron con la actualización. Publica o restaura esos cambios y vuelve a intentarlo.",
+      "El juego tiene otros cambios sin publicar. Por seguridad no se mezclaron con la actualización. Publica o descarta esos cambios manualmente y vuelve a intentarlo.",
   },
   "actualizacion-preparacion-incompleta": {
     kind: "error",
@@ -60,7 +60,7 @@ const notices = {
   "actualizacion-duplicada": {
     kind: "warning",
     message:
-      "Ya existe un aviso registrado para esa versión de este juego. Revisa el historial antes de intentar publicarla nuevamente.",
+      "Ya existe un aviso registrado para esa versión de este juego. Revisa las actualizaciones existentes antes de intentar publicarla nuevamente.",
   },
   duplicado: {
     kind: "warning",
@@ -80,7 +80,7 @@ const notices = {
   "catalogo-guardado": {
     kind: "success",
     message:
-      "Catálogos guardados y versionados. Ningún juego ni página pública fue modificado.",
+      "Catálogos guardados como borrador actual. Ningún juego ni página pública fue modificado.",
   },
   "catalogo-en-uso": {
     kind: "warning",
@@ -96,11 +96,6 @@ const notices = {
     kind: "warning",
     message:
       "La sugerencia automática no se aplicó porque el Índice DeUna todavía no tiene migración activa, evidencias suficientes o confianza media/alta. La valoración editorial existente no fue modificada.",
-  },
-  restaurado: {
-    kind: "success",
-    message:
-      "Revisión restaurada como un borrador nuevo y recuperable.",
   },
   "imagen-subida": {
     kind: "success",
@@ -127,15 +122,10 @@ const notices = {
     message:
       "Ese master está protegido porque el borrador todavía lo referencia. Quita primero la asignación del destino o de Galería; Biblioteca nunca elimina una referencia activa de forma implícita.",
   },
-  "recurso-en-historial": {
-    kind: "warning",
-    message:
-      "Ese master está protegido por una revisión o publicación histórica restaurable. No se eliminó el archivo: conservarlo garantiza que Restaurar siga pudiendo reconstruir esa versión.",
-  },
   "recurso-eliminado": {
     kind: "success",
     message:
-      "Master huérfano eliminado de la biblioteca editorial y del almacenamiento. No estaba referenciado por el borrador, la publicación actual ni el historial restaurable.",
+      "Master huérfano eliminado de la biblioteca editorial y del almacenamiento. No estaba referenciado por el borrador ni por la publicación actual.",
   },
   "recurso-eliminacion-pendiente": {
     kind: "warning",
@@ -230,12 +220,12 @@ const notices = {
   eliminado: {
     kind: "success",
     message:
-      "Juego creado desde Admin eliminado definitivamente junto con su historial y dependencias editoriales asociadas.",
+      "Juego creado desde Admin eliminado definitivamente junto con sus dependencias editoriales asociadas.",
   },
   "eliminado-media-pendiente": {
     kind: "warning",
     message:
-      "El juego y sus datos asociados fueron eliminados, pero la limpieza física de uno o más recursos multimedia quedó pendiente. El contenido ya no es público ni restaurable.",
+      "El juego y sus datos asociados fueron eliminados, pero la limpieza física de uno o más recursos multimedia quedó pendiente. El contenido ya no es público y no queda ninguna versión anterior recuperable.",
   },
   "eliminacion-media-no-verificada": {
     kind: "error",
@@ -276,51 +266,6 @@ const notices = {
     kind: "error",
     message:
       "La limpieza general no se ejecutó porque la contraseña, la frase de confirmación o el snapshot esperado no son válidos.",
-  },
-  "historial-compactado": {
-    kind: "success",
-    message:
-      "Historial editorial compactado. Se conservaron el borrador, la publicación y la visibilidad actuales de cada registro; las versiones antiguas dejaron de ser restaurables.",
-  },
-  "mantenimiento-confirmacion": {
-    kind: "error",
-    message:
-      "La compactación no se ejecutó porque la confirmación, contraseña o snapshot esperado no son válidos.",
-  },
-  "mantenimiento-conflicto": {
-    kind: "warning",
-    message:
-      "El historial cambió después de cargar esta pantalla. No se eliminó ninguna versión. Recarga Mantenimiento y revisa nuevamente los conteos.",
-  },
-  "inicio-mantenimiento-confirmacion": {
-    kind: "error",
-    message:
-      "La compactación de Inicio no se ejecutó porque la confirmación, contraseña o snapshot esperado no son válidos.",
-  },
-  "inicio-mantenimiento-conflicto": {
-    kind: "warning",
-    message:
-      "El historial de Inicio cambió después de cargar esta pantalla. No se eliminó ninguna versión. Recarga antes de volver a confirmar.",
-  },
-  "inicio-historial-compactado": {
-    kind: "success",
-    message:
-      "Historial de Inicio compactado a un baseline actual sin modificar los historiales de juegos ni otras superficies editoriales.",
-  },
-  "historial-limpiado": {
-    kind: "success",
-    message:
-      "Respaldos históricos del juego eliminados. Se conservaron el borrador y el snapshot actuales como baseline; las versiones anteriores dejaron de ser restaurables.",
-  },
-  "historial-conflicto": {
-    kind: "warning",
-    message:
-      "El historial del juego cambió desde que cargaste la página. No se eliminó ninguna versión. Recarga Historial antes de volver a confirmar.",
-  },
-  "historial-confirmacion": {
-    kind: "error",
-    message:
-      "La limpieza del historial no se ejecutó porque la contraseña, el identificador o los conteos esperados no son válidos.",
   },
   reauth: {
     kind: "error",

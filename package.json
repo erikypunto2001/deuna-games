@@ -64,7 +64,6 @@
     "visual:card-3d": "node ./tools/universal-game-card-3d-browser-smoke.mjs",
     "visual:card-hover-lowres": "node ./tools/game-card-hover-low-resolution-browser-smoke.mjs",
     "visual:card-video-fixture": "node --conditions=react-server ./tools/card-video-visual-fixture.ts",
-    "visual:card-video-legacy-history-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/card-video-legacy-history-fixture.ts",
     "visual:card-video-browser": "node ./tools/card-video-browser-smoke.mjs",
     "visual:home-row-static-detail-fixture": "node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/home-row-static-detail-visual-fixture.ts --mode=static-detail",
     "visual:home-row-static-detail-browser": "node ./tools/home-row-static-detail-browser-smoke.mjs",

@@ -1,25 +1,19 @@
-import {
-  readFile,
-} from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
 const failures = [];
-
-function assert(condition, message) {
-  if (!condition) failures.push(message);
-}
-
-async function source(relativePath) {
-  return readFile(
-    path.join(root, relativePath),
-    "utf8"
-  );
-}
+const source = (relativePath) => readFile(path.join(root, relativePath), "utf8");
+const assert = (condition, message) => { if (!condition) failures.push(message); };
+const has = (text, ...needles) => needles.every((needle) => text.includes(needle));
+const missing = async (relativePath) => {
+  try { await access(path.join(root, relativePath)); return false; } catch { return true; }
+};
 
 const [
   publicationService,
+  contentService,
   creationService,
   visibilityService,
   publicSiteConfig,
@@ -30,27 +24,19 @@ const [
   publicCatalog,
   publicUpdates,
   gamePublicRevalidation,
-  publishRoute,
-  restoreRoute,
+  configPublishRoute,
   homePublishRoute,
-  homeRestoreRoute,
   aboutPublishRoute,
-  aboutRestoreRoute,
   taxonomyPublishRoute,
-  taxonomyRestoreRoute,
   publicPagesPublishRoute,
-  publicPagesRestoreRoute,
   hideGameRoute,
   hideUpdateRoute,
-  publicationMigration,
-  visibilityMigration,
-  homeMigration,
-  aboutMigration,
-  taxonomyMigration,
-  publicPagesMigration,
+  retirementMigration,
   migrator,
+  publicationPanel,
 ] = await Promise.all([
   source("src/lib/admin/publication-service.ts"),
+  source("src/lib/admin/content-service.ts"),
   source("src/lib/admin/content-create-service.ts"),
   source("src/lib/admin/visibility-service.ts"),
   source("src/lib/site/public-site-config.ts"),
@@ -62,24 +48,15 @@ const [
   source("src/lib/updates/public-updates.ts"),
   source("src/lib/admin/game-public-revalidation.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
-  source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
-  source("src/app/api/admin/content/" + "home/publish/route.ts"),
-  source("src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts"),
+  source("src/app/api/admin/content/home/publish/route.ts"),
   source("src/app/api/admin/content/about/publish/route.ts"),
-  source("src/app/api/admin/content/about-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/catalogs/publish/route.ts"),
-  source("src/app/api/admin/content/catalog-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/public-pages/publish/route.ts"),
-  source("src/app/api/admin/content/public-pages-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
   source("src/app/api/admin/content/updates/[id]/hide/route.ts"),
-  source("database/migrations/003_editorial_publications.sql"),
-  source("database/migrations/004_editorial_visibility.sql"),
-  source("database/migrations/005_home_editorial_config.sql"),
-  source("database/migrations/006_about_editorial_config.sql"),
-  source("database/migrations/007_game_taxonomy.sql"),
-  source("database/migrations/008_public_pages_editorial.sql"),
+  source("database/migrations/020_retire_editorial_history.sql"),
   source("tools/admin/migrate.ts"),
+  source("src/components/admin/PublicationPanel.tsx"),
 ]);
 
 assert(
@@ -89,64 +66,36 @@ assert(
     publicationService.includes('| "game_taxonomy"') &&
     publicationService.includes('| "public_pages_config"') &&
     publicationService.includes("parseEditorialPayload(type, payload)") &&
-    publicationService.includes(
-      'return getPublicationState("site_config", "site")'
-    ) &&
-    publicationService.includes(
-      'return getPublicationState("home_config", "home")'
-    ) &&
-    publicationService.includes(
-      'return getPublicationState("about_config", "about")'
-    ) &&
-    publicationService.includes(
-      'return getPublicationState("game_taxonomy", "games")'
-    ) &&
-    publicationService.includes("PUBLIC_PAGES_EDITORIAL_KEY") &&
-    publicationService.includes(
-      'publishEditorialDraft(\n    "about_config",\n    "about"'
-    ) &&
-    publicationService.includes(
-      'restoreEditorialPublication(\n    "about_config"'
-    ) &&
-    publicationService.includes(
-      'publishEditorialDraft(\n    "game_taxonomy",\n    "games"'
-    ) &&
-    publicationService.includes(
-      'restoreEditorialPublication(\n    "game_taxonomy"'
-    ) &&
-    publicationService.includes(
-      'publishEditorialDraft(\n    "public_pages_config"'
-    ) &&
-    publicationService.includes(
-      'restoreEditorialPublication(\n    "public_pages_config"'
-    ),
-  "Identidad, portada, páginas, Catálogos y superficies públicas deben compartir el mismo servicio genérico de publicación y restauración."
+    !publicationService.includes("editorial_publications") &&
+    !publicationService.includes("restoreEditorialPublication"),
+  "Todas las superficies deben compartir publicación current-only sin servicio de restauración ni tabla de snapshots históricos."
+);
+
+assert(
+  contentService.includes("FOR UPDATE") &&
+    contentService.includes("admin_audit_log") &&
+    !contentService.includes("editorial_revisions") &&
+    !contentService.includes("restoreEditorialRevision") &&
+    !contentService.includes("draft_restored"),
+  "Guardar borradores debe conservar concurrencia y auditoría sin crear revisiones restaurables."
 );
 
 assert(
   publicationService.includes("FOR UPDATE") &&
     publicationService.includes("published_payload") &&
     publicationService.includes("published_checksum") &&
-    publicationService.includes("editorial_publications") &&
     publicationService.includes("admin_audit_log") &&
     publicationService.includes("public_visible = true") &&
-    publicationService.includes("!item.public_visible") &&
     !/\bDELETE\s+FROM\b/i.test(publicationService),
-  "La publicación debe ser transaccional, auditable, activar visibilidad explícita, conservar historial y no borrar registros."
+  "Publicar debe reemplazar el snapshot vigente de forma transaccional y auditable, sin borrar el item."
 );
 
 assert(
   creationService.includes("source_present") &&
-    creationService.includes("'modified'") &&
     creationService.includes("public_visible") &&
-    creationService.includes("false") &&
-    creationService.includes("ON CONFLICT (item_type, item_key)") &&
     creationService.includes("content_created") &&
-    creationService.includes('Extract<EditorialItemType, "game">') &&
-    creationService.includes("createGameDraft") &&
-    !creationService.includes("game_update") &&
     !/\bDELETE\s+FROM\b/i.test(creationService),
-  "Las altas directas del panel deben limitarse a juegos privados; las actualizaciones nuevas sólo pueden nacer desde Nueva versión."
+  "Las altas desde el panel deben conservar el contrato privado y auditable."
 );
 
 assert(
@@ -155,72 +104,52 @@ assert(
     visibilityService.includes("content_hidden") &&
     visibilityService.includes("admin_audit_log") &&
     !visibilityService.includes("published_payload") &&
-    !visibilityService.includes("published_checksum") &&
     !/\bDELETE\s+FROM\b/i.test(visibilityService),
-  "Ocultar debe ser transaccional y auditable, cambiar sólo visibilidad y nunca tocar snapshots ni borrar contenido."
+  "Ocultar debe cambiar sólo visibilidad y nunca reescribir el snapshot vigente."
 );
 
-for (const [name, content] of [
-  ["catálogo", publicCatalog],
-  ["actualizaciones", publicUpdates],
-]) {
+for (const [name, content] of [["catálogo", publicCatalog], ["actualizaciones", publicUpdates]]) {
   assert(
-    content.includes("public_visible") &&
-      content.includes("published_payload") &&
-      content.includes("!editorial.public_visible") &&
-      !content.includes("draft_payload"),
-    `La lectura pública de ${name} debe considerar filas ocultas para suprimir contenido fuente y usar sólo snapshots publicados.`
+    content.includes("public_visible") && content.includes("published_payload") && !content.includes("draft_payload"),
+    `La lectura pública de ${name} debe usar sólo el estado publicado vigente.`
   );
 }
 
-assert(
-  publicSiteConfig.includes("public_visible = true") &&
-    publicSiteConfig.includes("published_payload") &&
-    !publicSiteConfig.includes("draft_payload"),
-  "La configuración pública debe exigir visibilidad explícita y usar sólo el snapshot publicado."
-);
+for (const [name, content, type] of [
+  ["configuración", publicSiteConfig, "site_config"],
+  ["Inicio", publicHomeConfig, "home_config"],
+  ["Quiénes somos", publicAboutConfig, "about_config"],
+  ["Catálogos", publicTaxonomy, "game_taxonomy"],
+  ["superficies públicas", publicPagesConfig, "public_pages_config"],
+]) {
+  assert(
+    content.includes("public_visible = true") && content.includes("published_payload") && content.includes(type) && !content.includes("draft_payload"),
+    `${name} debe exigir visibilidad y leer únicamente la publicación vigente.`
+  );
+}
 
-assert(
-  publicHomeConfig.includes("public_visible = true") &&
-    publicHomeConfig.includes("published_payload") &&
-    publicHomeConfig.includes("item_type = 'home_config'") &&
-    !publicHomeConfig.includes("draft_payload"),
-  "La portada pública debe exigir visibilidad explícita y usar sólo el snapshot publicado."
-);
-
-assert(
-  publicAboutConfig.includes("public_visible = true") &&
-    publicAboutConfig.includes("published_payload") &&
-    publicAboutConfig.includes("item_type = 'about_config'") &&
-    !publicAboutConfig.includes("draft_payload"),
-  "Quiénes somos debe exigir visibilidad explícita y usar sólo el snapshot publicado."
-);
-
-assert(
-  publicTaxonomy.includes("public_visible = true") &&
-    publicTaxonomy.includes("published_payload") &&
-    publicTaxonomy.includes("item_type = 'game_taxonomy'") &&
-    !publicTaxonomy.includes("draft_payload"),
-  "Catálogos públicos debe exigir visibilidad explícita y leer sólo el snapshot publicado."
-);
-
-assert(
-  publicPagesConfig.includes("public_visible = true") &&
-    publicPagesConfig.includes("published_payload") &&
-    publicPagesConfig.includes("item_type = 'public_pages_config'") &&
-    publicPagesConfig.includes("PUBLIC_PAGES_EDITORIAL_KEY") &&
-    !publicPagesConfig.includes("draft_payload"),
-  "Las superficies públicas deben leer sólo snapshots publicados y usar una identidad editorial centralizada."
-);
+for (const [name, route, action] of [
+  ["configuración", configPublishRoute, "publishSiteConfigDraft"],
+  ["Inicio", homePublishRoute, "publishHomeConfigDraft"],
+  ["Quiénes somos", aboutPublishRoute, "publishAboutConfigDraft"],
+  ["Catálogos", taxonomyPublishRoute, "publishGameTaxonomyDraft"],
+  ["superficies públicas", publicPagesPublishRoute, "publishPublicPagesConfigDraft"],
+]) {
+  assert(route.includes("authorizeAdminFormRequest") && route.includes(action), `Publicar ${name} debe exigir autorización administrativa.`);
+}
 
 assert(
   hideGameRoute.includes("authorizeAdminFormRequest") &&
     hideGameRoute.includes("expectedPublicationNumber") &&
-    hideGameRoute.includes("hasExactAdminFormFields") &&
     hideGameRoute.includes("revalidatePublicGameSurfaces"),
-  "Ocultar juego debe exigir sesión/origen, control de concurrencia y el refresco público compartido."
+  "Ocultar juego debe conservar autorización, concurrencia y revalidación pública."
 );
-
+assert(
+  hideUpdateRoute.includes("authorizeAdminFormRequest") &&
+    hideUpdateRoute.includes("expectedPublicationNumber") &&
+    hideUpdateRoute.includes("revalidatePath"),
+  "Ocultar actualización debe conservar autorización, concurrencia y revalidación pública."
+);
 for (const publicPath of [
   'revalidatePath("/")',
   'revalidatePath("/juegos")',
@@ -229,145 +158,52 @@ for (const publicPath of [
   'revalidatePath(`/juegos/${slug}`)',
   'revalidatePath(`/juegos/${slug}/descargar`)',
 ]) {
-  assert(
-    gamePublicRevalidation.includes(publicPath),
-    `El refresco público de juegos debe conservar ${publicPath}.`
-  );
+  assert(gamePublicRevalidation.includes(publicPath), `El refresco público de juegos debe conservar ${publicPath}.`);
 }
 
 assert(
-  hideUpdateRoute.includes("authorizeAdminFormRequest") &&
-    hideUpdateRoute.includes("expectedPublicationNumber") &&
-    hideUpdateRoute.includes("hasExactAdminFormFields") &&
-    hideUpdateRoute.includes("revalidatePath"),
-  "Ocultar actualización debe exigir sesión/origen, control de concurrencia y revalidación pública."
+  has(
+    retirementMigration,
+    "DROP TABLE IF EXISTS deuna_admin.editorial_revisions",
+    "DROP TABLE IF EXISTS deuna_admin.editorial_publications",
+    "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_history",
+    "DROP FUNCTION IF EXISTS deuna_admin.compact_editorial_item_history"
+  ),
+  "La migración 020 debe retirar físicamente toda infraestructura restaurable."
 );
 
-assert(
-  publishRoute.includes("authorizeAdminFormRequest") &&
-    publishRoute.includes("publishSiteConfigDraft") &&
-    publishRoute.includes('revalidatePath("/", "layout")'),
-  "Publicar configuración debe exigir sesión/origen y revalidar la identidad pública."
-);
-
-assert(
-  restoreRoute.includes("authorizeAdminFormRequest") &&
-    restoreRoute.includes("restoreSiteConfigPublication") &&
-    restoreRoute.includes("expectedPublicationNumber"),
-  "Restaurar configuración debe exigir sesión/origen y control de concurrencia por número de publicación."
-);
-
-assert(
-  homePublishRoute.includes("authorizeAdminFormRequest") &&
-    homePublishRoute.includes("publishHomeConfigDraft") &&
-    homePublishRoute.includes('revalidatePath("/")'),
-  "Publicar portada debe exigir sesión/origen y revalidar Inicio."
-);
-
-assert(
-  homeRestoreRoute.includes("authorizeAdminFormRequest") &&
-    homeRestoreRoute.includes("restoreHomeConfigPublication") &&
-    homeRestoreRoute.includes("expectedPublicationNumber") &&
-    homeRestoreRoute.includes('revalidatePath("/")'),
-  "Restaurar portada debe exigir sesión/origen, concurrencia y revalidación de Inicio."
-);
-
-assert(
-  aboutPublishRoute.includes("authorizeAdminFormRequest") &&
-    aboutPublishRoute.includes("publishAboutConfigDraft") &&
-    aboutPublishRoute.includes('revalidatePath("/quienes-somos")'),
-  "Publicar Quiénes somos debe exigir sesión/origen y revalidar la página pública."
-);
-
-assert(
-  aboutRestoreRoute.includes("authorizeAdminFormRequest") &&
-    aboutRestoreRoute.includes("restoreAboutConfigPublication") &&
-    aboutRestoreRoute.includes("expectedPublicationNumber") &&
-    aboutRestoreRoute.includes('revalidatePath("/quienes-somos")'),
-  "Restaurar Quiénes somos debe exigir sesión/origen, concurrencia y revalidación pública."
-);
-
-for (const [name, route, action] of [
-  ["publicación", taxonomyPublishRoute, "publishGameTaxonomyDraft"],
-  ["restauración", taxonomyRestoreRoute, "restoreGameTaxonomyPublication"],
+for (const route of [
+  "src/app/api/admin/content/revisions/[revisionId]/restore/route.ts",
+  "src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/about-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/catalog-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/public-pages-publications/[publicationId]/restore/route.ts",
+  "src/app/api/admin/content/update-publications/[publicationId]/restore/route.ts",
 ]) {
-  assert(
-    route.includes("authorizeAdminFormRequest") &&
-      route.includes(action) &&
-      route.includes('revalidatePath("/")') &&
-      route.includes('revalidatePath("/juegos")'),
-    `La ${name} de Catálogos debe exigir sesión/origen y refrescar Inicio y Juegos.`
-  );
+  assert(await missing(route), `La ruta retirada todavía existe: ${route}`);
 }
 
 assert(
-  taxonomyRestoreRoute.includes("expectedPublicationNumber"),
-  "Restaurar Catálogos debe exigir control de concurrencia por número de publicación."
+  !publicationPanel.includes("restoreActionBase") &&
+    !publicationPanel.includes("Restaurar") &&
+    !publicationPanel.includes("Historial de publicaciones"),
+  "El panel de Publicación no debe exponer historial ni acciones de rollback."
 );
-
-for (const [name, route, action] of [
-  ["publicación", publicPagesPublishRoute, "publishPublicPagesConfigDraft"],
-  ["restauración", publicPagesRestoreRoute, "restorePublicPagesConfigPublication"],
-]) {
-  assert(
-    route.includes("authorizeAdminFormRequest") &&
-      route.includes(action) &&
-      route.includes('revalidatePath("/juegos")') &&
-      route.includes('revalidatePath("/actualizaciones")') &&
-      route.includes('revalidatePath("/requisitos")'),
-    `La ${name} de superficies públicas debe exigir sesión/origen y refrescar todas las rutas afectadas.`
-  );
-}
-
-assert(
-  publicPagesRestoreRoute.includes("expectedPublicationNumber"),
-  "Restaurar superficies públicas debe exigir control de concurrencia por número de publicación."
-);
-
-assert(
-  publicationMigration.includes("published_payload") &&
-    publicationMigration.includes("editorial_publications") &&
-    publicationMigration.includes("'bootstrap'") &&
-    !/WHERE\s+item_type\s*=\s*'game'/i.test(publicationMigration),
-  "La migración de publicaciones debe inicializar snapshots para todos los tipos editoriales."
-);
-
-assert(
-  visibilityMigration.includes("public_visible") &&
-    visibilityMigration.includes("DEFAULT true") &&
-    visibilityMigration.includes("SET public_visible = true"),
-  "La migración de visibilidad debe conservar visible todo contenido existente y permitir que las altas nuevas nazcan ocultas."
-);
-
-for (const [name, migration, type] of [
-  ["portada", homeMigration, "home_config"],
-  ["páginas", aboutMigration, "about_config"],
-  ["Catálogos", taxonomyMigration, "game_taxonomy"],
-  ["superficies públicas", publicPagesMigration, "public_pages_config"],
-]) {
-  assert(
-    migration.includes(type) &&
-      migration.includes("editorial_items_type_check") &&
-      !/\bDELETE\s+FROM\b/i.test(migration),
-    `La migración de ${name} debe ampliar únicamente los tipos editoriales sin borrar contenido.`
-  );
-}
 
 assert(
   migrator.includes("GRANT INSERT (\n        id,\n        item_type,\n        item_key") &&
-    migrator.includes("public_visible") &&
+    !migrator.includes("editorial_revisions") &&
+    !migrator.includes("editorial_publications") &&
+    !migrator.includes("compact_editorial_history") &&
     !/GRANT\s+DELETE\s+ON\s+deuna_admin\./i.test(migrator),
-  "El runtime debe recibir INSERT editorial sólo por columnas y nunca permisos DELETE sobre el esquema administrativo."
+  "El runtime debe conservar privilegios mínimos y no recibir permisos sobre objetos históricos retirados."
 );
 
 if (failures.length > 0) {
   console.error("\nPublicación administrativa: BLOQUEADA\n");
-  failures.forEach((failure) =>
-    console.error(`- ${failure}`)
-  );
+  failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
-  console.log(
-    "Publicación administrativa: OK (juegos, actualizaciones, identidad, portada, Catálogos, páginas y superficies públicas usan snapshots, auditoría, refresco público y restauración sin borrado)."
-  );
+  console.log("Publicación administrativa: OK (estado actual único, auditoría, concurrencia y revalidación pública; sin historial restaurable ni endpoints de rollback).");
 }

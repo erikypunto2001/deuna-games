@@ -71,7 +71,6 @@ assert(
 for (const excludedAction of [
   "/publish",
   "/hide",
-  "/restore",
   "/media-upload",
   "/preview-upload",
   "/preview-import",
@@ -155,12 +154,13 @@ assert(
 
 assert(
   publicationPanel.includes("publish") &&
-    publicationPanel.includes("restore") &&
+    !publicationPanel.includes("restoreActionBase") &&
+    !publicationPanel.includes("/restore") &&
     gamePublication.includes("Publicar") &&
     integratedUpdate.includes("publish-update") &&
     integratedUpdate.includes("Publicar nueva versión") &&
     mediaUpload.includes("media-upload"),
-  "Las acciones de publicación y los subflujos multimedia deben seguir identificables para quedar fuera del guardado persistente."
+  "Las acciones de publicación vigentes y los subflujos multimedia deben seguir identificables para quedar fuera del guardado persistente, sin reintroducir restauración."
 );
 
 if (failures.length > 0) {

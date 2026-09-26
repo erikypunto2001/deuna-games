@@ -166,12 +166,6 @@ async function loadProtectedReferences() {
        SELECT published_payload
          FROM deuna_admin.editorial_items
         WHERE published_payload IS NOT NULL
-       UNION ALL
-       SELECT revision.payload
-         FROM deuna_admin.editorial_revisions AS revision
-       UNION ALL
-       SELECT publication.payload
-         FROM deuna_admin.editorial_publications AS publication
      )
      SELECT payload
        FROM payloads`

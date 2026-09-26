@@ -367,12 +367,6 @@ export async function saveGameTaxonomyDraft(
       ]
     );
 
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions
-         (item_id, revision, payload, action, actor_user_id)
-       VALUES ($1, $2, $3::jsonb, 'draft_saved', $4)`,
-      [item.id, nextRevision, serialized, actorUserId]
-    );
 
     await client.query(
       `INSERT INTO deuna_admin.admin_audit_log

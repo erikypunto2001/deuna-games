@@ -30,11 +30,6 @@ type ContentCountRow = {
   count: number;
 };
 
-type PublicationCountRow = {
-  item_type: string;
-  item_key: string;
-  count: number;
-};
 
 const failures: string[] = [];
 
@@ -285,36 +280,6 @@ async function checkPublishedWorkspace(pool: Pool) {
     }
   }
 
-  const history = await pool.query<PublicationCountRow>(
-    `SELECT item.item_type,
-            item.item_key,
-            count(publication.id)::integer AS count
-       FROM deuna_admin.editorial_items AS item
-       LEFT JOIN deuna_admin.editorial_publications AS publication
-         ON publication.item_id = item.id
-      WHERE (item.item_type, item.item_key) IN (
-        ('site_config', 'site'),
-        ('home_config', 'home'),
-        ('about_config', 'about'),
-        ('game_taxonomy', 'games'),
-        ('public_pages_config', 'public-pages')
-      )
-      GROUP BY item.item_type,
-               item.item_key`
-  );
-
-  for (const [type, key] of expected) {
-    const row = history.rows.find(
-      (candidate) =>
-        candidate.item_type === type &&
-        candidate.item_key === key
-    );
-
-    assert(
-      (row?.count ?? 0) >= 1,
-      `${type}:${key} no tiene historial de publicación inicial.`
-    );
-  }
 }
 
 function safeDatabaseError(error: unknown) {
@@ -373,7 +338,7 @@ async function main() {
   }
 
   console.log(
-    `Preflight local: OK (${games.length} juegos, ${gameUpdates.length} actualizaciones, cuentas privadas, identidad, Portada, Quiénes somos, Catálogos y superficies públicas con snapshots publicados e historial verificados sin modificar datos).`
+    `Preflight local: OK (${games.length} juegos, ${gameUpdates.length} actualizaciones, cuentas privadas, identidad, Portada, Quiénes somos, Catálogos y superficies públicas con snapshots publicados vigentes verificados sin modificar datos).`
   );
 }
 

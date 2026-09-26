@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   EyeOff,
-  RotateCcw,
   Send,
 } from "lucide-react";
 
@@ -17,16 +16,8 @@ type PublicationPanelProps = {
   requestState?: string;
   slug?: string;
   publishAction?: string;
-  restoreActionBase?: string;
   hideAction?: string;
 };
-
-const actionLabels = {
-  bootstrap: "Snapshot inicial",
-  published: "Publicación",
-  rollback: "Restauración",
-  baseline: "Baseline",
-} as const;
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("es", {
@@ -39,42 +30,21 @@ function formatDate(value: Date) {
   }).format(value);
 }
 
-function StateNotice({
-  state,
-}: {
-  state?: string;
-}) {
+function StateNotice({ state }: { state?: string }) {
   if (!state) return null;
 
   if (state === "publicado") {
     return (
-      <div
-        className={`${styles.notice} ${styles.noticeSuccess}`}
-        role="status"
-      >
-        El borrador fue publicado correctamente y ya es el snapshot activo.
+      <div className={`${styles.notice} ${styles.noticeSuccess}`} role="status">
+        El borrador fue publicado correctamente y reemplazó la publicación activa.
       </div>
     );
   }
 
   if (state === "oculto") {
     return (
-      <div
-        className={`${styles.notice} ${styles.noticeWarning}`}
-        role="status"
-      >
-        El contenido fue retirado de la web. El borrador, el snapshot y todo el historial siguen conservados.
-      </div>
-    );
-  }
-
-  if (state === "publicacion-restaurada") {
-    return (
-      <div
-        className={`${styles.notice} ${styles.noticeSuccess}`}
-        role="status"
-      >
-        La publicación histórica fue restaurada como una nueva publicación activa.
+      <div className={`${styles.notice} ${styles.noticeWarning}`} role="status">
+        El contenido fue retirado de la web. El borrador y la publicación vigente se conservan; no existen versiones anteriores restaurables.
       </div>
     );
   }
@@ -87,15 +57,9 @@ function StateNotice({
     );
   }
 
-  if (
-    state === "conflicto" ||
-    state === "conflicto-publicacion"
-  ) {
+  if (state === "conflicto" || state === "conflicto-publicacion") {
     return (
-      <div
-        className={`${styles.notice} ${styles.noticeWarning}`}
-        role="alert"
-      >
+      <div className={`${styles.notice} ${styles.noticeWarning}`} role="alert">
         El contenido cambió mientras se procesaba la operación. La página se actualizó sin sobrescribir cambios más recientes.
       </div>
     );
@@ -103,10 +67,7 @@ function StateNotice({
 
   if (state === "solicitud" || state === "datos") {
     return (
-      <div
-        className={`${styles.notice} ${styles.noticeError}`}
-        role="alert"
-      >
+      <div className={`${styles.notice} ${styles.noticeError}`} role="alert">
         La solicitud de publicación fue rechazada porque no superó la validación administrativa.
       </div>
     );
@@ -120,7 +81,6 @@ export default function PublicationPanel({
   state,
   requestState,
   publishAction,
-  restoreActionBase,
   hideAction,
 }: PublicationPanelProps) {
   const resolvedPublishAction =
@@ -128,19 +88,11 @@ export default function PublicationPanel({
     (slug
       ? `/api/admin/content/games/${encodeURIComponent(slug)}/publish`
       : null);
-  const resolvedRestoreActionBase =
-    restoreActionBase ??
-    "/api/admin/content/publications";
   const resolvedHideAction =
     hideAction ??
     (slug
       ? `/api/admin/content/games/${encodeURIComponent(slug)}/hide`
       : null);
-  const current = state.publications.find(
-    (publication) =>
-      publication.publicationNumber ===
-      state.publicationNumber
-  );
 
   if (!resolvedPublishAction) {
     throw new Error(
@@ -162,19 +114,15 @@ export default function PublicationPanel({
         </strong>
         <p>
           {state.publicVisible
-            ? "Publicar crea un snapshot separado del borrador. Restaurar una versión anterior crea otra publicación nueva y conserva todo el historial."
-            : "Ocultar no borra nada. El snapshot publicado sigue conservado y Publicar borrador volverá a mostrar el contenido mediante una nueva publicación."}
+            ? "Publicar reemplaza la publicación vigente con el borrador actual."
+            : "Ocultar mantiene el borrador y la publicación vigente. Publicar borrador volverá a mostrar ese estado actual."}
         </p>
       </div>
 
       <div className={styles.facts}>
         <div className={styles.fact}>
           <span>Visibilidad</span>
-          <strong>
-            {state.publicVisible
-              ? "Visible en la web"
-              : "Oculto de la web"}
-          </strong>
+          <strong>{state.publicVisible ? "Visible en la web" : "Oculto de la web"}</strong>
         </div>
         <div className={styles.fact}>
           <span>Publicación actual</span>
@@ -185,26 +133,18 @@ export default function PublicationPanel({
           <strong>
             {state.publishedFromRevision
               ? `#${state.publishedFromRevision}`
-              : "Snapshot inicial"}
+              : "Estado inicial"}
           </strong>
         </div>
         <div className={styles.fact}>
-          <span>Último snapshot</span>
+          <span>Última publicación</span>
           <strong>{formatDate(state.publishedAt)} UTC</strong>
         </div>
       </div>
 
       <div className={styles.publicationActions}>
-        <form
-          method="post"
-          action={resolvedPublishAction}
-          className={styles.publishForm}
-        >
-          <input
-            type="hidden"
-            name="expectedRevision"
-            value={state.draftRevision}
-          />
+        <form method="post" action={resolvedPublishAction} className={styles.publishForm}>
+          <input type="hidden" name="expectedRevision" value={state.draftRevision} />
           <button
             type="submit"
             className={styles.publishButton}
@@ -212,9 +152,7 @@ export default function PublicationPanel({
             disabled={!state.hasUnpublishedChanges}
           >
             <Send size={16} aria-hidden="true" />
-            {state.publicVisible
-              ? "Publicar borrador"
-              : "Volver a publicar"}
+            {state.publicVisible ? "Publicar borrador" : "Volver a publicar"}
           </button>
           <span className={styles.statusText}>
             {state.hasUnpublishedChanges ? (
@@ -227,104 +165,18 @@ export default function PublicationPanel({
         </form>
 
         {resolvedHideAction && state.publicVisible && (
-          <form
-            method="post"
-            action={resolvedHideAction}
-            className={styles.hideForm}
-          >
+          <form method="post" action={resolvedHideAction} className={styles.hideForm}>
             <input
               type="hidden"
               name="expectedPublicationNumber"
               value={state.publicationNumber}
             />
-            <button
-              type="submit"
-              className={styles.hideButton}
-            >
+            <button type="submit" className={styles.hideButton}>
               <EyeOff size={16} aria-hidden="true" />
               Ocultar de la web
             </button>
           </form>
         )}
-      </div>
-
-      <div className={styles.history}>
-        <div className={styles.historyHeading}>
-          <div>
-            <strong>Historial de publicaciones</strong>
-            <span>Últimas {state.publications.length} versiones conservadas</span>
-          </div>
-          {current && (
-            <span className={styles.historyMeta}>
-              checksum {current.checksum.slice(0, 10)}…
-            </span>
-          )}
-        </div>
-
-        <div className={styles.historyList}>
-          {state.publications.map((publication) => {
-            const isCurrent =
-              publication.publicationNumber ===
-              state.publicationNumber;
-
-            return (
-              <div
-                key={publication.id}
-                className={styles.historyRow}
-              >
-                <div className={styles.historyCopy}>
-                  <div className={styles.historyTitle}>
-                    <strong>
-                      #{publication.publicationNumber} · {actionLabels[publication.action]}
-                    </strong>
-                    {isCurrent && (
-                      <span className={styles.currentBadge}>
-                        {state.publicVisible
-                          ? "Activa"
-                          : "Snapshot actual"}
-                      </span>
-                    )}
-                  </div>
-                  <span className={styles.historyMeta}>
-                    {formatDate(publication.createdAt)} UTC
-                    {publication.sourceRevision
-                      ? ` · revisión ${publication.sourceRevision}`
-                      : " · origen inicial"}
-                    {` · ${publication.checksum.slice(0, 10)}…`}
-                  </span>
-                </div>
-
-                <form
-                  method="post"
-                  action={`${resolvedRestoreActionBase}/${publication.id}/restore`}
-                >
-                  <input
-                    type="hidden"
-                    name="expectedPublicationNumber"
-                    value={state.publicationNumber}
-                  />
-                  <button
-                    type="submit"
-                    className={styles.restoreButton}
-                    disabled={isCurrent}
-                    aria-label={
-                      isCurrent
-                        ? undefined
-                        : `Restaurar publicación ${publication.publicationNumber}`
-                    }
-                  >
-                    <RotateCcw size={14} aria-hidden="true" />
-                    {isCurrent
-                      ? state.publicVisible
-                        ? "Versión activa"
-                        : "Snapshot actual"
-                      : "Restaurar"}
-                  </button>
-                </form>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );

@@ -75,9 +75,11 @@ try {
   const privilege = await client.query<{
     can_delete_items: boolean;
     can_delete_panel_game: boolean;
-    can_compact_history: boolean;
-    can_compact_item_history: boolean;
-    publication_history_compactor: string | null;
+    revision_table: string | null;
+    publication_table: string | null;
+    global_compactor: string | null;
+    item_compactor: string | null;
+    publication_compactor: string | null;
     can_begin_media_cleanup: boolean;
     can_complete_media_cleanup: boolean;
   }>(
@@ -92,19 +94,17 @@ try {
          'deuna_admin.delete_panel_game(text,uuid,text,integer,integer)',
          'EXECUTE'
        ) AS can_delete_panel_game,
-       has_function_privilege(
-         current_user,
-         'deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)',
-         'EXECUTE'
-       ) AS can_compact_history,
-       has_function_privilege(
-         current_user,
-         'deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)',
-         'EXECUTE'
-       ) AS can_compact_item_history,
+       to_regclass('deuna_admin.editorial_revisions')::text AS revision_table,
+       to_regclass('deuna_admin.editorial_publications')::text AS publication_table,
+       to_regprocedure(
+         'deuna_admin.compact_editorial_history(uuid,text,integer,integer,integer)'
+       )::text AS global_compactor,
+       to_regprocedure(
+         'deuna_admin.compact_editorial_item_history(text,text,uuid,text,integer,integer)'
+       )::text AS item_compactor,
        to_regprocedure(
          'deuna_admin.compact_editorial_publication_history(text,text,uuid,text,integer)'
-       )::text AS publication_history_compactor,
+       )::text AS publication_compactor,
        has_function_privilege(
          current_user,
          'deuna_admin.begin_game_media_cleanup(text,uuid,text)',
@@ -116,21 +116,24 @@ try {
          'EXECUTE'
        ) AS can_complete_media_cleanup`
   );
+  const privilegeRow = privilege.rows[0];
   assert(
-    privilege.rows[0]?.can_delete_items === false,
-    "El rol runtime no debe recibir DELETE directo sobre editorial_items."
+    privilegeRow?.can_delete_items === false,
+    'El rol runtime no debe recibir DELETE directo sobre editorial_items.'
   );
   assert(
-    privilege.rows[0]?.can_delete_panel_game === true &&
-      privilege.rows[0]?.can_compact_history === true &&
-      privilege.rows[0]?.can_compact_item_history === true &&
-      privilege.rows[0]?.can_begin_media_cleanup === true &&
-      privilege.rows[0]?.can_complete_media_cleanup === true,
-    "El rol runtime debe ejecutar sólo las funciones de mantenimiento autorizadas."
+    privilegeRow?.can_delete_panel_game === true &&
+      privilegeRow?.can_begin_media_cleanup === true &&
+      privilegeRow?.can_complete_media_cleanup === true,
+    'El rol runtime debe ejecutar sólo las funciones de mantenimiento vigentes.'
   );
   assert(
-    privilege.rows[0]?.publication_history_compactor === null,
-    "El compactor exclusivo de publicaciones históricas de juegos debe quedar retirado."
+    privilegeRow?.revision_table === null &&
+      privilegeRow?.publication_table === null &&
+      privilegeRow?.global_compactor === null &&
+      privilegeRow?.item_compactor === null &&
+      privilegeRow?.publication_compactor === null,
+    'El almacenamiento y las funciones de historial restaurable deben estar retirados por completo.'
   );
 
   const sourceItem = await client.query<{
@@ -298,26 +301,7 @@ try {
       ownerId,
     ]
   );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions (
-       item_id, revision, payload, action, actor_user_id
-     )
-     VALUES ($1, 1, $2::jsonb, 'draft_saved', $3)`,
-    [updateId, updatePayload, ownerId]
-  );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_publications (
-       item_id,
-       publication_number,
-       payload,
-       checksum,
-       source_revision,
-       action,
-       actor_user_id
-     )
-     VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap', $4)`,
-    [updateId, updatePayload, updateDigest, ownerId]
-  );
+
 
   const accountId = randomUUID();
   await client.query(
@@ -628,324 +612,58 @@ try {
     "Completar la limpieza debe liberar el slug para reutilización futura."
   );
 
-  const gameHistory = await client.query<{
-    revisions: number;
-    publications: number;
+  const currentOnlyState = await client.query<{
+    revision_table: string | null;
+    publication_table: string | null;
+    restorable_functions: number;
   }>(
     `SELECT
+       to_regclass('deuna_admin.editorial_revisions')::text AS revision_table,
+       to_regclass('deuna_admin.editorial_publications')::text AS publication_table,
        (
          SELECT count(*)::int
-           FROM deuna_admin.editorial_revisions AS revision
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = revision.item_id
-          WHERE item.item_type = 'game'
-       ) AS revisions,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_publications AS publication
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = publication.item_id
-          WHERE item.item_type = 'game'
-       ) AS publications`
+           FROM pg_proc AS procedure
+           INNER JOIN pg_namespace AS namespace
+             ON namespace.oid = procedure.pronamespace
+          WHERE namespace.nspname = 'deuna_admin'
+            AND procedure.proname IN (
+              'compact_editorial_history',
+              'compact_editorial_item_history',
+              'compact_editorial_publication_history',
+              'reject_game_editorial_history'
+            )
+       ) AS restorable_functions`
   );
+  const currentOnlyRow = currentOnlyState.rows[0];
   assert(
-    gameHistory.rows[0]?.revisions === 0 &&
-      gameHistory.rows[0]?.publications === 0,
-    "Las migraciones deben purgar por completo el historial restaurable de juegos."
+    currentOnlyRow?.revision_table === null &&
+      currentOnlyRow?.publication_table === null &&
+      currentOnlyRow?.restorable_functions === 0,
+    'PostgreSQL no debe conservar tablas, compactadores ni guardas del antiguo historial restaurable.'
   );
 
-  const compactionTarget = await client.query<{
-    id: string;
-    revision: number;
-    publication_number: number;
-    draft_payload: unknown;
-    published_payload: unknown;
-    public_visible: boolean;
-    published_from_revision: number | null;
+  const currentSnapshots = await client.query<{
+    total: number;
+    invalid_revisions: number;
+    invalid_publications: number;
   }>(
     `SELECT
-       id,
-       revision,
-       publication_number,
-       draft_payload,
-       published_payload,
-       public_visible,
-       published_from_revision
-     FROM deuna_admin.editorial_items
-     WHERE item_type = 'game'
-       AND source_present = true
-     ORDER BY item_key
-     LIMIT 1
-     FOR UPDATE`
-  );
-  const target = compactionTarget.rows[0];
-  assert(target, "Falta un juego fuente para probar el estado actual sin historial.");
-
-  const nextRevision = target.revision + 1;
-  const nextPublication = target.publication_number + 1;
-  const targetDraft = JSON.stringify(target.draft_payload);
-  const targetPublished = JSON.stringify(target.published_payload);
-
-  await client.query(
-    `UPDATE deuna_admin.editorial_items
-        SET revision = $2,
-            publication_number = $3,
-            published_from_revision = $2
-      WHERE id = $1`,
-    [target.id, nextRevision, nextPublication]
-  );
-
-  await client.query("SAVEPOINT reject_game_revision");
-  let rejectedGameRevision = false;
-  try {
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions (
-         item_id, revision, payload, action
-       )
-       VALUES ($1, $2, $3::jsonb, 'draft_saved')`,
-      [target.id, nextRevision, targetDraft]
-    );
-  } catch (error) {
-    rejectedGameRevision =
-      error instanceof Error &&
-      "code" in error &&
-      (error as Error & { code?: string }).code === "23514";
-    await client.query("ROLLBACK TO SAVEPOINT reject_game_revision");
-  }
-  await client.query("RELEASE SAVEPOINT reject_game_revision");
-  assert(
-    rejectedGameRevision,
-    "PostgreSQL debe rechazar cualquier nueva revisión histórica de un juego."
-  );
-
-  await client.query("SAVEPOINT reject_game_publication");
-  let rejectedGamePublication = false;
-  try {
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_publications (
-         item_id,
-         publication_number,
-         payload,
-         checksum,
-         source_revision,
-         action
-       )
-       VALUES ($1, $2, $3::jsonb, $4, $5, 'published')`,
-      [
-        target.id,
-        nextPublication,
-        targetPublished,
-        hashEditorialPayload(target.published_payload),
-        nextRevision,
-      ]
-    );
-  } catch (error) {
-    rejectedGamePublication =
-      error instanceof Error &&
-      "code" in error &&
-      (error as Error & { code?: string }).code === "23514";
-    await client.query("ROLLBACK TO SAVEPOINT reject_game_publication");
-  }
-  await client.query("RELEASE SAVEPOINT reject_game_publication");
-  assert(
-    rejectedGamePublication,
-    "PostgreSQL debe rechazar cualquier nueva publicación histórica de un juego."
-  );
-
-  const before = await client.query<{
-    items: number;
-    revisions: number;
-    publications: number;
-  }>(
-    `SELECT
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_items
-          WHERE item_type <> 'game'
-       ) AS items,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_revisions AS revision
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = revision.item_id
-          WHERE item.item_type <> 'game'
-       ) AS revisions,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_publications AS publication
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = publication.item_id
-          WHERE item.item_type <> 'game'
-       ) AS publications`
-  );
-  const beforeCounts = before.rows[0];
-  assert(beforeCounts, "Faltan conteos del historial no-juego.");
-
-  const compacted = await client.query<{
-    result: unknown;
-  }>(
-    `SELECT deuna_admin.compact_editorial_history(
-       $1, $2, $3, $4, $5
-     ) AS result`,
-    [
-      ownerId,
-      sessionToken,
-      beforeCounts.items,
-      beforeCounts.revisions,
-      beforeCounts.publications,
-    ]
+       count(*)::int AS total,
+       count(*) FILTER (WHERE revision < 1)::int AS invalid_revisions,
+       count(*) FILTER (WHERE publication_number < 1)::int AS invalid_publications
+       FROM deuna_admin.editorial_items`
   );
   assert(
-    outcome(compacted.rows[0]?.result).outcome === "compacted",
-    "La compactación no-juego fue rechazada."
+    (currentSnapshots.rows[0]?.total ?? 0) > 0 &&
+      currentSnapshots.rows[0]?.invalid_revisions === 0 &&
+      currentSnapshots.rows[0]?.invalid_publications === 0,
+    'El estado editorial vigente debe conservar sus contadores de concurrencia sin depender de snapshots anteriores.'
   );
-
-  const after = await client.query<{
-    items: number;
-    revisions: number;
-    publications: number;
-    game_revisions: number;
-    game_publications: number;
-  }>(
-    `SELECT
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_items
-          WHERE item_type <> 'game'
-       ) AS items,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_revisions AS revision
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = revision.item_id
-          WHERE item.item_type <> 'game'
-       ) AS revisions,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_publications AS publication
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = publication.item_id
-          WHERE item.item_type <> 'game'
-       ) AS publications,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_revisions AS revision
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = revision.item_id
-          WHERE item.item_type = 'game'
-       ) AS game_revisions,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_publications AS publication
-           INNER JOIN deuna_admin.editorial_items AS item
-             ON item.id = publication.item_id
-          WHERE item.item_type = 'game'
-       ) AS game_publications`
-  );
-  const afterCounts = after.rows[0];
-  assert(
-    afterCounts &&
-      afterCounts.revisions === afterCounts.items &&
-      afterCounts.publications === afterCounts.items &&
-      afterCounts.game_revisions === 0 &&
-      afterCounts.game_publications === 0,
-    "La compactación debe conservar un baseline sólo para superficies con historial y ninguno para juegos."
-  );
-
-  const baselineActions = await client.query<{
-    revision_baselines: number;
-    publication_baselines: number;
-  }>(
-    `SELECT
-       (SELECT count(*)::int FROM deuna_admin.editorial_revisions WHERE action = 'baseline') AS revision_baselines,
-       (SELECT count(*)::int FROM deuna_admin.editorial_publications WHERE action = 'baseline') AS publication_baselines`
-  );
-  assert(
-    (baselineActions.rows[0]?.revision_baselines ?? 0) > 0 &&
-      (baselineActions.rows[0]?.publication_baselines ?? 0) > 0,
-    "La compactación debe identificar el baseline de las superficies que sí conservan historial."
-  );
-
-  const preserved = await client.query<{
-    draft_payload: unknown;
-    published_payload: unknown;
-    public_visible: boolean;
-    revision: number;
-    publication_number: number;
-    published_from_revision: number | null;
-  }>(
-    `SELECT
-       draft_payload,
-       published_payload,
-       public_visible,
-       revision,
-       publication_number,
-       published_from_revision
-     FROM deuna_admin.editorial_items
-     WHERE id = $1`,
-    [target.id]
-  );
-  const preservedRow = preserved.rows[0];
-  assert(
-    preservedRow &&
-      JSON.stringify(preservedRow.draft_payload) === targetDraft &&
-      JSON.stringify(preservedRow.published_payload) === targetPublished &&
-      preservedRow.public_visible === target.public_visible &&
-      preservedRow.revision === nextRevision &&
-      preservedRow.publication_number === nextPublication &&
-      preservedRow.published_from_revision === nextRevision,
-    "Compactar otros historiales no debe alterar el estado actual de un juego."
-  );
-
-  const homeCounts = await client.query<{
-    revisions: number;
-    publications: number;
-  }>(
-    `SELECT
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_revisions
-          WHERE item_id = $1
-       ) AS revisions,
-       (
-         SELECT count(*)::int
-           FROM deuna_admin.editorial_publications
-          WHERE item_id = $1
-       ) AS publications`,
-    [homeRow.id]
-  );
-  const homeCountRow = homeCounts.rows[0];
-  assert(homeCountRow, "Faltan conteos de historial de Inicio.");
-
-  const homeCompacted = await client.query<{
-    result: unknown;
-  }>(
-    `SELECT deuna_admin.compact_editorial_item_history(
-       'home_config',
-       'home',
-       $1,
-       $2,
-       $3,
-       $4
-     ) AS result`,
-    [
-      ownerId,
-      sessionToken,
-      homeCountRow.revisions,
-      homeCountRow.publications,
-    ]
-  );
-  assert(
-    outcome(homeCompacted.rows[0]?.result).outcome ===
-      "compacted",
-    "La compactación acotada de Inicio fue rechazada."
-  );
-
 
   await client.query("ROLLBACK");
 
   console.log(
-    "Higiene editorial PostgreSQL: OK (mínimo privilegio, borrado coordinado, cola multimedia durable, juegos sin historial restaurable y compactación preservada para otras superficies)."
+    "Higiene editorial PostgreSQL: OK (mínimo privilegio, borrado coordinado, cola multimedia durable y modelo editorial current-only sin tablas ni funciones de rollback)."
   );
 } catch (error) {
   await client.query("ROLLBACK").catch(() => {});

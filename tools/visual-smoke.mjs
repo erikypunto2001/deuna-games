@@ -16,6 +16,7 @@ import {
   setTimeout as delay,
 } from "node:timers/promises";
 
+
 const baseUrl = (
   process.env.DEUNA_VISUAL_BASE_URL ??
   "http://127.0.0.1:3000"
@@ -28,6 +29,7 @@ const adminUsername =
   process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
 const adminPassword =
   process.env.DEUNA_VISUAL_ADMIN_PASSWORD;
+
 
 const viewports = [
   {
@@ -50,6 +52,7 @@ const viewports = [
   },
 ];
 
+
 const publicPages = [
   {
     id: "home",
@@ -59,12 +62,61 @@ const publicPages = [
   },
 ];
 
+
+const retiredEditorialHistoryTexts = [
+  "Historial de publicaciones",
+  "Historial de revisiones",
+  "Historial de marca y apariencia",
+  "Restaurar publicación",
+  "Restaurar revisión",
+  "REINICIAR HISTORIAL",
+  "REINICIAR INICIO",
+  "revisión recuperable",
+];
+
+
 const adminPages = [
   {
     id: "admin-dashboard",
     pathname: "/admin",
     expectedSelector: "main#main-content",
     expectedText: "Resumen",
+  },
+  {
+    id: "admin-game-current",
+    pathname: "/admin/juegos/elden-ring?seccion=ficha",
+    expectedSelector: "main#main-content",
+    expectedText: "JUEGO · REVISIÓN",
+  },
+  {
+    id: "admin-game-publication",
+    pathname: "/admin/juegos/elden-ring/publicacion",
+    expectedSelector: "main#main-content",
+    expectedText: "PUBLICACIÓN · REVISIÓN",
+  },
+  {
+    id: "admin-catalog-publication",
+    pathname: "/admin/catalogos?seccion=publicacion",
+    expectedSelector: "main#main-content",
+    expectedText: "Clasificaciones y etiquetas",
+  },
+  {
+    id: "admin-configuration-publication",
+    pathname: "/admin/configuracion?seccion=publicacion",
+    expectedSelector: "main#main-content",
+    expectedText: "Publicación de marca y apariencia",
+  },
+  {
+    id: "admin-pages-publication",
+    pathname: "/admin/paginas/presentacion?seccion=publicacion",
+    expectedSelector: "main#main-content",
+    expectedText: "Textos y cabeceras públicas",
+  },
+  {
+    id: "admin-about-publication",
+    pathname: "/admin/paginas/quienes-somos?seccion=publicacion",
+    expectedSelector: "main#main-content",
+    expectedText: "Quiénes somos",
   },
   {
     id: "admin-home-hero",
@@ -82,15 +134,16 @@ const adminPages = [
     id: "admin-home-publication",
     pathname: "/admin/portada?seccion=publicacion",
     expectedSelector: "main#main-content",
-    expectedText: "Historial de publicaciones",
+    expectedText: "INICIO · REVISIÓN",
   },
   {
-    id: "admin-home-history",
-    pathname: "/admin/portada?seccion=historial",
+    id: "admin-maintenance",
+    pathname: "/admin/mantenimiento",
     expectedSelector: "main#main-content",
-    expectedText: "Historial de revisiones",
+    expectedText: "Mantenimiento",
   },
 ];
+
 
 function findChrome() {
   const candidates = [
@@ -100,6 +153,7 @@ function findChrome() {
     "chromium",
     "chromium-browser",
   ].filter(Boolean);
+
 
   for (const candidate of candidates) {
     const result = spawnSync(
@@ -114,15 +168,18 @@ function findChrome() {
     if (result.status === 0 && resolved) return resolved;
   }
 
+
   throw new Error(
     "Visual smoke necesita Chrome/Chromium disponible en PATH."
   );
 }
 
+
 async function waitForDebugger(profileDir, browser) {
   const activePortPath = path.join(profileDir, "DevToolsActivePort");
   const deadline = Date.now() + 30_000;
   let lastError = null;
+
 
   while (Date.now() < deadline) {
     if (browser.exitCode !== null) {
@@ -130,6 +187,7 @@ async function waitForDebugger(profileDir, browser) {
         `Chrome terminó antes de exponer DevTools (exit ${browser.exitCode}).`
       );
     }
+
 
     try {
       const raw = await readFile(activePortPath, "utf8");
@@ -153,8 +211,10 @@ async function waitForDebugger(profileDir, browser) {
       lastError = error;
     }
 
+
     await delay(100);
   }
+
 
   throw new Error(
     `Chrome no expuso DevTools a tiempo.${
@@ -165,6 +225,7 @@ async function waitForDebugger(profileDir, browser) {
   );
 }
 
+
 function openWebSocket(url) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
@@ -172,6 +233,7 @@ function openWebSocket(url) {
       () => reject(new Error("Timeout conectando con Chrome DevTools.")),
       10_000
     );
+
 
     socket.addEventListener(
       "open",
@@ -192,6 +254,7 @@ function openWebSocket(url) {
   });
 }
 
+
 class CdpSession {
   constructor(socket) {
     this.socket = socket;
@@ -199,13 +262,16 @@ class CdpSession {
     this.pending = new Map();
     this.listeners = new Map();
 
+
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data));
+
 
       if (message.id) {
         const pending = this.pending.get(message.id);
         if (!pending) return;
         this.pending.delete(message.id);
+
 
         if (message.error) {
           pending.reject(
@@ -219,6 +285,7 @@ class CdpSession {
         return;
       }
 
+
       if (!message.method) return;
       const listeners = this.listeners.get(message.method);
       if (!listeners) return;
@@ -228,8 +295,10 @@ class CdpSession {
     });
   }
 
+
   send(method, params = {}) {
     const id = this.nextId++;
+
 
     return new Promise((resolve, reject) => {
       this.pending.set(id, {
@@ -247,10 +316,12 @@ class CdpSession {
     });
   }
 
+
   on(method, listener) {
     const listeners = this.listeners.get(method) ?? new Set();
     listeners.add(listener);
     this.listeners.set(method, listeners);
+
 
     return () => {
       listeners.delete(listener);
@@ -259,6 +330,7 @@ class CdpSession {
       }
     };
   }
+
 
   waitFor(method, predicate = () => true, timeoutMs = 15_000) {
     return new Promise((resolve, reject) => {
@@ -275,6 +347,7 @@ class CdpSession {
     });
   }
 
+
   async evaluate(expression) {
     const result = await this.send("Runtime.evaluate", {
       expression,
@@ -282,6 +355,7 @@ class CdpSession {
       returnByValue: true,
       userGesture: true,
     });
+
 
     if (result.exceptionDetails) {
       throw new Error(
@@ -291,17 +365,21 @@ class CdpSession {
       );
     }
 
+
     return result.result?.value;
   }
+
 
   close() {
     this.socket.close();
   }
 }
 
+
 async function navigate(cdp, url) {
   const loaded = cdp.waitFor("Page.loadEventFired");
   const navigation = await cdp.send("Page.navigate", { url });
+
 
   if (navigation.errorText) {
     throw new Error(
@@ -309,8 +387,10 @@ async function navigate(cdp, url) {
     );
   }
 
+
   await loaded;
 }
+
 
 async function waitForApplication(cdp) {
   await cdp.evaluate(`
@@ -322,6 +402,7 @@ async function waitForApplication(cdp) {
         ]);
       }
 
+
       const freeze = document.createElement("style");
       freeze.setAttribute("data-visual-smoke", "true");
       freeze.textContent = [
@@ -332,8 +413,10 @@ async function waitForApplication(cdp) {
         "scroll-behavior:auto!important;",
         "caret-color:transparent!important;",
         "}",
+        "nextjs-portal{display:none!important;}",
       ].join("");
       document.head.appendChild(freeze);
+
 
       const step = Math.max(240, Math.floor(window.innerHeight * 0.8));
       const maximum = Math.max(
@@ -341,11 +424,13 @@ async function waitForApplication(cdp) {
         document.body?.scrollHeight ?? 0
       );
 
+
       for (let y = 0; y < maximum; y += step) {
         window.scrollTo(0, y);
         await new Promise((resolve) => setTimeout(resolve, 45));
       }
       window.scrollTo(0, 0);
+
 
       const images = Array.from(document.images);
       await Promise.race([
@@ -362,14 +447,17 @@ async function waitForApplication(cdp) {
         new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
 
+
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve))
       );
     })()
   `);
 
+
   await delay(180);
 }
+
 
 async function setViewport(cdp, viewport) {
   await cdp.send("Emulation.setDeviceMetricsOverride", {
@@ -386,16 +474,19 @@ async function setViewport(cdp, viewport) {
   });
 }
 
+
 async function auditLayout(
   cdp,
   expectedSelector,
   expectedText,
-  mobile
+  mobile,
+  forbiddenTexts = []
 ) {
   return cdp.evaluate(`
     (() => {
       const expectedSelector = ${JSON.stringify(expectedSelector)};
       const expectedText = ${JSON.stringify(expectedText)};
+      const forbiddenTexts = ${JSON.stringify(forbiddenTexts)};
       const viewportWidth = window.innerWidth;
       const root = document.documentElement;
       const body = document.body;
@@ -403,6 +494,7 @@ async function auditLayout(
         root.scrollWidth,
         body?.scrollWidth ?? 0
       );
+
 
       function isVisible(element) {
         const style = getComputedStyle(element);
@@ -415,6 +507,7 @@ async function auditLayout(
           rect.height > 0
         );
       }
+
 
       function isInsideHorizontalOverflow(element) {
         let parent = element.parentElement;
@@ -431,6 +524,7 @@ async function auditLayout(
         }
         return false;
       }
+
 
       const interactive = Array.from(
         document.querySelectorAll(
@@ -475,6 +569,7 @@ async function auditLayout(
           };
         });
 
+
       return {
         url: location.href,
         title: document.title,
@@ -494,10 +589,14 @@ async function auditLayout(
         expectedTextPresent:
           expectedText === null ||
           (body?.innerText ?? "").includes(expectedText),
+        forbiddenTextsPresent: forbiddenTexts.filter((text) =>
+          (body?.innerText ?? "").includes(text)
+        ),
       };
     })()
   `);
 }
+
 
 async function captureScreenshot(
   cdp,
@@ -525,7 +624,9 @@ async function captureScreenshot(
     },
   });
 
+
   await writeFile(filePath, Buffer.from(capture.data, "base64"));
+
 
   return {
     contentHeight,
@@ -533,6 +634,7 @@ async function captureScreenshot(
     truncated: contentHeight > screenshotHeight,
   };
 }
+
 
 function issueText(event) {
   if (event.kind === "exception") return event.text;
@@ -543,6 +645,7 @@ function issueText(event) {
   return String(event.text ?? "Error visual desconocido.");
 }
 
+
 async function loginAdmin(cdp) {
   if (!adminUsername || !adminPassword) {
     throw new Error(
@@ -550,9 +653,11 @@ async function loginAdmin(cdp) {
     );
   }
 
+
   await setViewport(cdp, viewports[0]);
   await navigate(cdp, `${baseUrl}/admin/login`);
   await waitForApplication(cdp);
+
 
   const prepared = await cdp.evaluate(`
     (() => {
@@ -563,6 +668,7 @@ async function loginAdmin(cdp) {
       if (!(password instanceof HTMLInputElement)) return false;
       if (!(form instanceof HTMLFormElement)) return false;
 
+
       username.value = ${JSON.stringify(adminUsername)};
       password.value = ${JSON.stringify(adminPassword)};
       username.dispatchEvent(new Event("input", { bubbles: true }));
@@ -571,9 +677,11 @@ async function loginAdmin(cdp) {
     })()
   `);
 
+
   if (!prepared) {
     throw new Error("No se encontró el formulario real de login del Admin.");
   }
+
 
   const loaded = cdp.waitFor("Page.loadEventFired");
   await cdp.evaluate(`
@@ -586,8 +694,10 @@ async function loginAdmin(cdp) {
     })()
   `);
 
+
   await loaded;
   await delay(250);
+
 
   const pathname = await cdp.evaluate("location.pathname");
   if (pathname === "/admin/login") {
@@ -598,6 +708,7 @@ async function loginAdmin(cdp) {
   }
 }
 
+
 function htmlEscape(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -605,6 +716,7 @@ function htmlEscape(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
 
 async function writeReport(results, failures) {
   const report = {
@@ -614,11 +726,13 @@ async function writeReport(results, failures) {
     failures,
   };
 
+
   await writeFile(
     path.join(outputDir, "report.json"),
     `${JSON.stringify(report, null, 2)}\n`,
     "utf8"
   );
+
 
   const cards = results.map((result) => `
     <article>
@@ -629,11 +743,13 @@ async function writeReport(results, failures) {
         horizontalOverflow: result.audit.horizontalOverflow,
         outsideViewport: result.audit.outsideViewport,
         smallTouchTargets: result.audit.smallTouchTargets,
+        forbiddenTextsPresent: result.audit.forbiddenTextsPresent,
         runtimeIssues: result.runtimeIssues,
         truncated: result.capture.truncated,
       }, null, 2))}</pre>
     </article>
   `).join("\n");
+
 
   await writeFile(
     path.join(outputDir, "index.html"),
@@ -660,6 +776,7 @@ ${cards}
     "utf8"
   );
 }
+
 
 async function main() {
   await mkdir(outputDir, { recursive: true });
@@ -693,9 +810,11 @@ async function main() {
     }
   });
 
+
   const results = [];
   const failures = [];
   let cdp = null;
+
 
   try {
     const target = await waitForDebugger(profileDir, browser);
@@ -704,14 +823,17 @@ async function main() {
     );
     cdp = new CdpSession(socket);
 
+
     await Promise.all([
       cdp.send("Page.enable"),
       cdp.send("Runtime.enable"),
       cdp.send("Network.enable"),
     ]);
 
+
     let currentContext = "browser";
     const runtimeEvents = [];
+
 
     cdp.on("Runtime.exceptionThrown", (event) => {
       runtimeEvents.push({
@@ -772,6 +894,7 @@ async function main() {
       });
     });
 
+
     for (const page of publicPages) {
       for (const viewport of viewports) {
         currentContext = `${page.id}-${viewport.id}`;
@@ -783,7 +906,8 @@ async function main() {
           cdp,
           page.expectedSelector,
           page.expectedText,
-          viewport.mobile
+          viewport.mobile,
+          []
         );
         const file = `${page.id}-${viewport.id}.png`;
         const capture = await captureScreenshot(
@@ -796,6 +920,7 @@ async function main() {
           .slice(start)
           .map(issueText);
 
+
         results.push({
           page: page.id,
           viewport: viewport.id,
@@ -807,8 +932,10 @@ async function main() {
       }
     }
 
+
     currentContext = "admin-login";
     await loginAdmin(cdp);
+
 
     for (const page of adminPages) {
       for (const viewport of viewports) {
@@ -821,7 +948,8 @@ async function main() {
           cdp,
           page.expectedSelector,
           page.expectedText,
-          viewport.mobile
+          viewport.mobile,
+          retiredEditorialHistoryTexts
         );
         const file = `${page.id}-${viewport.id}.png`;
         const capture = await captureScreenshot(
@@ -834,6 +962,7 @@ async function main() {
           .slice(start)
           .map(issueText);
 
+
         results.push({
           page: page.id,
           viewport: viewport.id,
@@ -845,6 +974,7 @@ async function main() {
       }
     }
 
+
     for (const result of results) {
       const prefix = `${result.page}/${result.viewport}`;
       if (!result.audit.expectedSelectorPresent) {
@@ -855,6 +985,11 @@ async function main() {
       if (!result.audit.expectedTextPresent) {
         failures.push(
           `${prefix}: falta el texto de identidad esperado.`
+        );
+      }
+      if (result.audit.forbiddenTextsPresent.length > 0) {
+        failures.push(
+          `${prefix}: todavía expone contratos editoriales retirados: ${result.audit.forbiddenTextsPresent.join(", ")}.`
         );
       }
       if (result.audit.horizontalOverflow) {
@@ -874,7 +1009,9 @@ async function main() {
       }
     }
 
+
     await writeReport(results, failures);
+
 
     for (const result of results) {
       console.log(
@@ -885,6 +1022,7 @@ async function main() {
         `${result.capture.truncated ? "captura truncada" : "captura completa"}`
       );
     }
+
 
     if (failures.length > 0) {
       console.error("\nVisual smoke: BLOQUEADO\n");
@@ -916,5 +1054,6 @@ async function main() {
     }).catch(() => {});
   }
 }
+
 
 await main();

@@ -48,27 +48,6 @@ type EditorialItemRow = EditorialListRow & {
   source_checksum: string;
 };
 
-type EditorialRevisionRow = {
-  id: string;
-  revision: number;
-  action:
-    | "imported"
-    | "source_refreshed"
-    | "draft_saved"
-    | "draft_restored"
-    | "baseline";
-  created_at: Date;
-};
-
-type RestoreRevisionRow = {
-  revision_id: string;
-  payload: unknown;
-  item_id: string;
-  item_type: EditorialItemType;
-  item_key: string;
-  source_checksum: string;
-  current_revision: number;
-};
 
 type EditorialOverviewRow = {
   games: string;
@@ -87,19 +66,12 @@ export type EditorialListItem<
   updatedAt: Date;
 };
 
-export type EditorialRevision = {
-  id: string;
-  revision: number;
-  action: EditorialRevisionRow["action"];
-  createdAt: Date;
-};
 
 export type EditorialItem<
   Type extends EditorialItemType,
 > = EditorialListItem<Type> & {
   id: string;
   type: Type;
-  revisions: EditorialRevision[];
 };
 
 export type EditorialMutationResult =
@@ -278,31 +250,10 @@ export async function getEditorialItem<
 
   if (!row) return null;
 
-  const revisions = type === "game"
-    ? { rows: [] as EditorialRevisionRow[] }
-    : await adminQuery<EditorialRevisionRow>(
-        `SELECT
-           id::text,
-           revision,
-           action,
-           created_at
-         FROM deuna_admin.editorial_revisions
-         WHERE item_id = $1
-         ORDER BY revision DESC
-         LIMIT 10`,
-        [row.id]
-      );
-
   return {
     id: row.id,
     type,
     ...mapListRow(type, row),
-    revisions: revisions.rows.map((revision) => ({
-      id: revision.id,
-      revision: revision.revision,
-      action: revision.action,
-      createdAt: revision.created_at,
-    })),
   };
 }
 
@@ -311,7 +262,7 @@ async function writeRevision(
   item: EditorialItemRow,
   payload: EditorialPayloadByType[EditorialItemType],
   actorUserId: string,
-  action: "draft_saved" | "draft_restored",
+  action: "draft_saved",
   details: Record<string, unknown>
 ) {
   const nextRevision = item.revision + 1;
@@ -341,20 +292,6 @@ async function writeRevision(
       actorUserId,
     ]
   );
-  if (item.item_type !== "game") {
-    await client.query(
-      `INSERT INTO deuna_admin.editorial_revisions
-         (item_id, revision, payload, action, actor_user_id)
-       VALUES ($1, $2, $3::jsonb, $4, $5)`,
-      [
-        item.id,
-        nextRevision,
-        serialized,
-        action,
-        actorUserId,
-      ]
-    );
-  }
   await client.query(
     `INSERT INTO deuna_admin.admin_audit_log
        (user_id, action, entity_type, entity_id, details)
@@ -636,90 +573,4 @@ export function saveAboutManifestoDraft(
       ...input,
     })
   );
-}
-
-export async function restoreEditorialRevision(
-  revisionId: string,
-  expectedRevision: number,
-  actorUserId: string
-): Promise<
-  EditorialMutationResult & {
-    type?: EditorialItemType;
-    key?: string;
-  }
-> {
-  const session = await verifyAdminSession();
-
-  if (session.userId !== actorUserId) {
-    throw new Error(
-      "La sesión administrativa no coincide con el actor."
-    );
-  }
-
-  return withAdminTransaction(async (client) => {
-    const result = await client.query<RestoreRevisionRow>(
-      `SELECT
-         revision_row.id::text AS revision_id,
-         revision_row.payload,
-         item.id AS item_id,
-         item.item_type,
-         item.item_key,
-         item.source_checksum,
-         item.revision AS current_revision
-       FROM deuna_admin.editorial_revisions AS revision_row
-       INNER JOIN deuna_admin.editorial_items AS item
-         ON item.id = revision_row.item_id
-       WHERE revision_row.id = $1
-       LIMIT 1
-       FOR UPDATE OF item`,
-      [revisionId]
-    );
-    const row = result.rows[0];
-
-    if (!row || row.item_type === "game") {
-      return { outcome: "not_found" };
-    }
-
-    if (row.current_revision !== expectedRevision) {
-      return {
-        outcome: "conflict",
-        revision: row.current_revision,
-        type: row.item_type,
-        key: row.item_key,
-      };
-    }
-
-    const item: EditorialItemRow = {
-      id: row.item_id,
-      item_type: row.item_type,
-      item_key: row.item_key,
-      source_checksum: row.source_checksum,
-      draft_payload: row.payload,
-      draft_status: "modified",
-      revision: row.current_revision,
-      source_present: true,
-      updated_at: new Date(),
-    };
-    const payload = parseEditorialPayload(
-      row.item_type,
-      row.payload
-    );
-    const revision = await writeRevision(
-      client,
-      item,
-      payload,
-      actorUserId,
-      "draft_restored",
-      {
-        restoredFromRevisionId: row.revision_id,
-      }
-    );
-
-    return {
-      outcome: "saved",
-      revision,
-      type: row.item_type,
-      key: row.item_key,
-    };
-  });
 }

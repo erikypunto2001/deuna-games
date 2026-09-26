@@ -6,7 +6,6 @@ import {
   Download,
   FileClock,
   Gauge,
-  History,
   ImageIcon,
   ListTree,
   MonitorCog,
@@ -35,14 +34,12 @@ import ux from "./AdminShellUx.module.css";
 const updateSections = [
   { id: "editar", label: "Editar", icon: SquarePen },
   { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
 const catalogSections = [
   { id: "clasificaciones", label: "Clasificaciones", icon: ListTree },
   { id: "etiquetas", label: "Etiquetas", icon: Tags },
   { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
 const homeSections = homeAdminSectionContract.map((section) => ({
@@ -52,9 +49,7 @@ const homeSections = homeAdminSectionContract.map((section) => ({
       ? PanelTop
       : section.id === "contenido"
         ? SquarePen
-        : section.id === "publicacion"
-          ? Rocket
-          : FileClock,
+        : Rocket,
 }));
 
 const publicPageSections = [
@@ -62,14 +57,12 @@ const publicPageSections = [
   { id: "actualizaciones", label: "Actualizaciones", icon: SquarePen },
   { id: "compatibilidad", label: "¿Qué puedo jugar?", icon: MonitorCog },
   { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
 const configurationSections = [
   { id: "identidad", label: "Identidad", icon: UserRound },
   { id: "apariencia", label: "Apariencia", icon: Palette },
   { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: History },
 ] as const;
 
 const aboutSections = [
@@ -78,7 +71,6 @@ const aboutSections = [
   { id: "proposito", label: "Propósito", icon: SquarePen },
   { id: "cierre", label: "Cierre", icon: FileClock },
   { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: History },
 ] as const;
 
 type ContextIcon = typeof PanelTop;
