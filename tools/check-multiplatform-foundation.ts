@@ -14,6 +14,9 @@ import {
   resolveGameReleases,
   resolvePcRelease,
 } from "../src/lib/games/releases.ts";
+import {
+  orderPublicSoftware,
+} from "../src/lib/software/software-presentation.ts";
 
 function assert(
   condition: unknown,
@@ -278,4 +281,37 @@ assert(
           "ps4|ps5"
     ),
   "Las colecciones automáticas deben agruparse por familias activas y respetar el orden del catálogo."
+);
+
+const orderedSoftware =
+  orderPublicSoftware([
+    {
+      ...software,
+      id: "alpha",
+      slug: "alpha",
+      name: "Alpha",
+      featured: false,
+    },
+    {
+      ...software,
+      id: "zeta",
+      slug: "zeta",
+      name: "Zeta",
+      featured: true,
+    },
+    {
+      ...software,
+      id: "beta",
+      slug: "beta",
+      name: "Beta",
+      featured: false,
+    },
+  ]);
+
+assert(
+  orderedSoftware
+    .map((item) => item.slug)
+    .join("|") ===
+    "zeta|alpha|beta",
+  "Programas destacados deben aparecer primero y el resto conservar orden alfabético."
 );

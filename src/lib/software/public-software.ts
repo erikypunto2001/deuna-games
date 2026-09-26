@@ -13,6 +13,9 @@ import {
 import {
   parseEditorialPayload,
 } from "@/lib/admin/content-validation";
+import {
+  orderPublicSoftware,
+} from "@/lib/software/software-presentation";
 import type {
   Software,
 } from "@/types/software";
@@ -61,23 +64,19 @@ export const getPublicSoftware =
                published_payload,
                public_visible
              FROM deuna_admin.editorial_items
-             WHERE item_type = 'software'
-             ORDER BY lower(
-               COALESCE(
-                 published_payload ->> 'name',
-                 item_key
-               )
-             ) ASC`
+             WHERE item_type = 'software'`
           );
 
-        return result.rows
-          .map(parseRow)
-          .filter(
-            (
-              item
-            ): item is Software =>
-              item !== null
-          );
+        return orderPublicSoftware(
+          result.rows
+            .map(parseRow)
+            .filter(
+              (
+                item
+              ): item is Software =>
+                item !== null
+            )
+        );
       } catch {
         return [];
       }

@@ -234,10 +234,30 @@ export default async function ProgramsPage() {
                         styles.meta
                       }
                     >
+                      {item.runsOnPlatformIds
+                        .slice(0, 3)
+                        .map(
+                          (
+                            platformId
+                          ) => (
+                            <span
+                              key={
+                                "runs-" +
+                                platformId
+                              }
+                            >
+                              Se ejecuta en{" "}
+                              {labels.get(
+                                platformId
+                              ) ??
+                                platformId}
+                            </span>
+                          )
+                        )}
                       {item.emulatesPlatformIds
                         ?.slice(
                           0,
-                          4
+                          3
                         )
                         .map(
                           (
@@ -245,9 +265,11 @@ export default async function ProgramsPage() {
                           ) => (
                             <span
                               key={
+                                "emulates-" +
                                 platformId
                               }
                             >
+                              Emula{" "}
                               {labels.get(
                                 platformId
                               ) ??

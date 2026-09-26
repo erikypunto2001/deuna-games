@@ -170,6 +170,25 @@ export default async function ProgramDetailPage({
                 }
               </span>
             )}
+            {software.runsOnPlatformIds
+              .map(
+                (
+                  platformId
+                ) => (
+                  <span
+                    key={
+                      "runs-" +
+                      platformId
+                    }
+                  >
+                    Se ejecuta en{" "}
+                    {labels.get(
+                      platformId
+                    ) ??
+                      platformId}
+                  </span>
+                )
+              )}
             {software.emulatesPlatformIds
               ?.map(
                 (
@@ -177,6 +196,7 @@ export default async function ProgramDetailPage({
                 ) => (
                   <span
                     key={
+                      "emulates-" +
                       platformId
                     }
                   >
@@ -184,6 +204,7 @@ export default async function ProgramDetailPage({
                       size={13}
                       aria-hidden="true"
                     />{" "}
+                    Emula{" "}
                     {labels.get(
                       platformId
                     ) ??
