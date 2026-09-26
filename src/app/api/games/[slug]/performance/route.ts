@@ -1,6 +1,9 @@
 import {
   getPublicGameBySlug,
 } from "@/lib/games/public-catalog";
+import {
+  resolvePcRelease,
+} from "@/lib/games/releases";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,10 +44,19 @@ export async function GET(
     );
   }
 
+  const pcRelease =
+    resolvePcRelease(
+      game
+    );
+
   return Response.json(
     {
-      calibration: game.performance ?? null,
-      metadata: game.performanceMetadata ?? null,
+      calibration:
+        pcRelease?.performance ??
+        null,
+      metadata:
+        pcRelease?.performanceMetadata ??
+        null,
     },
     {
       headers: {
