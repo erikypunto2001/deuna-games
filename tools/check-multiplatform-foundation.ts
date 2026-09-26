@@ -1,0 +1,214 @@
+import {
+  sourcePlatformCatalog,
+} from "../src/data/platform-catalog.ts";
+import { games } from "../src/data/games.ts";
+import {
+  parseEditorialPayload,
+} from "../src/lib/admin/content-validation.ts";
+import {
+  gamePlatformIds,
+  resolveGameReleases,
+  resolvePcRelease,
+} from "../src/lib/games/releases.ts";
+
+function assert(
+  condition: unknown,
+  message: string
+): asserts condition {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+const catalog =
+  parseEditorialPayload(
+    "platform_catalog",
+    sourcePlatformCatalog
+  );
+
+assert(
+  catalog.platforms.some(
+    (platform) =>
+      platform.id ===
+      "pc-windows"
+  ),
+  "El catálogo debe conservar PC / Windows."
+);
+
+for (const game of games) {
+  const releases =
+    resolveGameReleases(
+      game
+    );
+  const pc =
+    resolvePcRelease(game);
+
+  assert(
+    releases.length >= 1,
+    game.slug +
+      ": el contenido legacy debe resolver al menos un release."
+  );
+  assert(
+    pc?.platformId ===
+      "pc-windows",
+    game.slug +
+      ": el juego PC fuente debe migrar en lectura a pc-windows."
+  );
+  assert(
+    gamePlatformIds(
+      game
+    ).includes(
+      "pc-windows"
+    ),
+    game.slug +
+      ": la plataforma resuelta debe incluir PC."
+  );
+  assert(
+    pc.requirements !==
+      undefined,
+    game.slug +
+      ": los requisitos PC deben conservarse dentro del release resuelto."
+  );
+}
+
+const sampleGame =
+  parseEditorialPayload(
+    "game",
+    {
+      id:
+        "sample-multiplatform",
+      slug:
+        "sample-multiplatform",
+      title:
+        "Sample Multiplatform",
+      description:
+        "Fixture de validación.",
+      category:
+        "Acción",
+      imageAlt:
+        "Portada de ejemplo",
+      releases: [
+        {
+          id: "pc",
+          platformId:
+            "pc-windows",
+          version: "1.0",
+          requirements: {
+            minimum: {
+              system:
+                "Windows",
+            },
+          },
+          packages: [
+            {
+              id:
+                "pc-main",
+              kind:
+                "installer",
+              sources: [
+                {
+                  id:
+                    "mirror",
+                  name:
+                    "Mirror",
+                  href:
+                    "https://example.com/pc",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "ps2",
+          platformId: "ps2",
+          packages: [
+            {
+              id: "disc",
+              kind: "iso",
+              sources: [
+                {
+                  id:
+                    "mirror",
+                  name:
+                    "Mirror",
+                  href:
+                    "https://example.com/ps2",
+                },
+              ],
+            },
+          ],
+          recommendedSoftwareSlugs: [
+            "pcsx2",
+          ],
+        },
+      ],
+    }
+  );
+
+assert(
+  sampleGame.releases?.[1]
+    ?.packages?.[0]
+    ?.kind === "iso",
+  "El schema debe conservar paquetes ISO por release."
+);
+
+const software =
+  parseEditorialPayload(
+    "software",
+    {
+      id: "pcsx2",
+      slug: "pcsx2",
+      name: "PCSX2",
+      description:
+        "Fixture de emulador.",
+      kind: "emulator",
+      runsOnPlatformIds: [
+        "pc-windows",
+      ],
+      emulatesPlatformIds: [
+        "ps2",
+      ],
+      imageAlt: "PCSX2",
+    }
+  );
+
+assert(
+  software
+    .emulatesPlatformIds
+    ?.includes("ps2"),
+  "Software debe poder declarar plataformas emuladas."
+);
+
+const collection =
+  parseEditorialPayload(
+    "game_collection",
+    {
+      id:
+        "mortal-kombat",
+      slug:
+        "mortal-kombat",
+      title:
+        "Mortal Kombat",
+      description:
+        "Fixture de colección.",
+      gameSlugs: [
+        "sample-multiplatform",
+      ],
+      imageAlt:
+        "Colección Mortal Kombat",
+    }
+  );
+
+assert(
+  collection.gameSlugs
+    .length === 1,
+  "Las colecciones deben conservar sus juegos."
+);
+
+console.log(
+  "Fundación multiplataforma: OK (" +
+    games.length +
+    " juegos legacy -> PC, " +
+    catalog.platforms.length +
+    " plataformas base, releases/ISO/software/colecciones validados)."
+);
