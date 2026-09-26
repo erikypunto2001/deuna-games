@@ -314,18 +314,33 @@ export function saveGameCompatibilitySection(
         input.platforms?.length || minimum || recommended
       );
 
-      return {
-        ...game,
-        platforms: input.platforms?.length
-          ? input.platforms
-          : undefined,
-        requirements: minimum || recommended
+      const requirements =
+        minimum || recommended
           ? {
               ...(minimum ?? {}),
               ...(minimum ? { minimum } : {}),
               ...(recommended ? { recommended } : {}),
             }
+          : undefined;
+      const releases = game.releases?.map(
+        (release) =>
+          release.platformId === "pc-windows"
+            ? {
+                ...release,
+                requirements,
+              }
+            : release
+      );
+
+      return {
+        ...game,
+        platforms: input.platforms?.length
+          ? input.platforms
           : undefined,
+        requirements,
+        ...(game.releases
+          ? { releases }
+          : {}),
         compatibilityMetadata: hasCompatibilityData
           ? metadata
           : undefined,
