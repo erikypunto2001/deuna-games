@@ -33,13 +33,15 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
+  "releaseId",
+  "packageId",
+  "packageKind",
   "version",
   "type",
   "summary",
   "featured",
   "sizeGb",
   "fileCount",
-  "platform",
   "channel",
   "checksumSha256",
   "sourcesJson",
@@ -47,6 +49,29 @@ const fields = [
 
 const updateMetadataSchema = z
   .object({
+    releaseId: z
+      .string()
+      .min(1)
+      .max(160)
+      .regex(/^[a-z0-9][a-z0-9._-]*$/),
+    packageId: z
+      .string()
+      .min(1)
+      .max(160)
+      .regex(/^[a-z0-9][a-z0-9._-]*$/),
+    packageKind: z.enum([
+      "installer",
+      "archive",
+      "portable",
+      "iso",
+      "chd",
+      "cso",
+      "rvz",
+      "gdi",
+      "pkg",
+      "patch",
+      "other",
+    ]),
     version: z.string().trim().min(1).max(80),
     type: z.enum([
       "update",
@@ -94,6 +119,12 @@ export async function POST(
 
   const raw = Object.fromEntries(authorized.form);
   const metadata = updateMetadataSchema.safeParse({
+    releaseId:
+      raw.releaseId,
+    packageId:
+      raw.packageId,
+    packageKind:
+      raw.packageKind,
     version: raw.version,
     type: raw.type,
     summary: raw.summary,
@@ -103,7 +134,7 @@ export async function POST(
     expectedRevision: raw.expectedRevision,
     sizeGb: raw.sizeGb,
     fileCount: raw.fileCount,
-    platform: raw.platform,
+    platform: "",
     channel: raw.channel,
     checksumSha256: raw.checksumSha256,
     sourcesJson: raw.sourcesJson,
@@ -166,6 +197,8 @@ export async function POST(
       authorized.session.userId,
       {
         expectedRevision: download.data.expectedRevision,
+        releaseId:
+          metadata.data.releaseId,
         version: metadata.data.version,
         type: metadata.data.type,
         summary: metadata.data.summary,
@@ -178,10 +211,15 @@ export async function POST(
             ? { checksumSha256: download.data.checksumSha256 }
             : {}),
         },
-        download: {
-          sizeGb: download.data.sizeGb,
-          fileCount: download.data.fileCount,
-          platform: download.data.platform,
+        package: {
+          id:
+            metadata.data.packageId,
+          kind:
+            metadata.data.packageKind,
+          sizeGb:
+            download.data.sizeGb,
+          fileCount:
+            download.data.fileCount,
           sources:
             download.data.sourcesJson.length > 0
               ? download.data.sourcesJson
