@@ -1,15 +1,12 @@
 "use client";
 
 import {
+  useEffect,
   useState,
 } from "react";
 
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
-import {
-  useDocumentVisible,
-  useMediaQuery,
-} from "@/lib/browser/client-signals";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
   GameImageViewport,
@@ -44,9 +41,7 @@ function PreviewVideo({
   viewport,
   unscaled,
 }: PreviewVideoProps) {
-  const documentVisible = useDocumentVisible();
-  const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
-  const playbackAllowed = documentVisible && !reducedMotion;
+  const [playbackAllowed, setPlaybackAllowed] = useState(false);
   const [playing, setPlaying] = useState(false);
 
   function ensurePlayback(video: HTMLVideoElement) {
@@ -58,6 +53,36 @@ function PreviewVideo({
       });
     }, AUTOPLAY_RETRY_DELAY_MS);
   }
+
+  useEffect(() => {
+    const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+    const syncPlaybackPolicy = () => {
+      const allowed = !document.hidden && !motionQuery.matches;
+      setPlaybackAllowed(allowed);
+      if (!allowed) setPlaying(false);
+    };
+
+    syncPlaybackPolicy();
+    document.addEventListener(
+      "visibilitychange",
+      syncPlaybackPolicy
+    );
+    motionQuery.addEventListener(
+      "change",
+      syncPlaybackPolicy
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        syncPlaybackPolicy
+      );
+      motionQuery.removeEventListener(
+        "change",
+        syncPlaybackPolicy
+      );
+    };
+  }, []);
 
   if (!playbackAllowed) return null;
 
