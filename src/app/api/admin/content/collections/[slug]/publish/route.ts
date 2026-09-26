@@ -89,6 +89,17 @@ export async function POST(
 
     if (
       result.outcome ===
+      "invalid_relations"
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=relacion-publica"
+      );
+    }
+
+    if (
+      result.outcome ===
       "not_found"
     ) {
       return adminRedirect(
