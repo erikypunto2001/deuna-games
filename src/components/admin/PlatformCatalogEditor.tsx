@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   PlatformCatalog,
@@ -46,11 +46,21 @@ export default function PlatformCatalogEditor({
   const [platforms, setPlatforms] = useState<PlatformDefinition[]>(
     () => structuredClone(initialCatalog.platforms)
   );
-  const lockedFamilyIds = useRef(
-    new Set(initialCatalog.families.map((item) => item.id))
+  const [lockedFamilyIds] = useState(
+    () =>
+      new Set(
+        initialCatalog.families.map(
+          (item) => item.id
+        )
+      )
   );
-  const lockedPlatformIds = useRef(
-    new Set(initialCatalog.platforms.map((item) => item.id))
+  const [lockedPlatformIds] = useState(
+    () =>
+      new Set(
+        initialCatalog.platforms.map(
+          (item) => item.id
+        )
+      )
   );
 
   const serialized = useMemo(
@@ -146,7 +156,7 @@ export default function PlatformCatalogEditor({
 
           <div className={styles.list}>
             {families.map((family, index) => {
-              const locked = lockedFamilyIds.current.has(family.id);
+              const locked = lockedFamilyIds.has(family.id);
               return (
                 <div
                   key={family.id + ":" + index}
@@ -248,7 +258,7 @@ export default function PlatformCatalogEditor({
           {platforms.length ? (
             <div className={styles.list}>
               {platforms.map((platform, index) => {
-                const locked = lockedPlatformIds.current.has(platform.id);
+                const locked = lockedPlatformIds.has(platform.id);
                 return (
                   <div
                     key={platform.id + ":" + index}
