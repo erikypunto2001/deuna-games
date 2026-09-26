@@ -10,6 +10,7 @@ import type {
   GameHardwareRequirements,
   GameMediaAccessibility,
   GamePlatform,
+  GameRelease,
 } from "@/types/game";
 import {
   resolveGameCardBaseImage,
@@ -371,5 +372,26 @@ export function saveGameValuationSection(
       rating: input.rating,
     }),
     auditDetails
+  );
+}
+
+export function saveGameReleasesSection(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  releases: GameRelease[]
+) {
+  return updateGameSection(
+    key,
+    expectedRevision,
+    actorUserId,
+    "releases",
+    (game) => ({
+      ...game,
+      releases:
+        releases.length > 0
+          ? releases
+          : undefined,
+    })
   );
 }
