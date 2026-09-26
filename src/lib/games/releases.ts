@@ -88,22 +88,10 @@ export function resolveGameReleases(
       legacyPlatformIds[platform]
   );
 
-  const inferredIds =
-    platformIds.length > 0
-      ? platformIds
-      : (
-          game.requirements ||
-          game.performance ||
-          game.download ||
-          game.version
-        )
-        ? ["pc-windows"]
-        : [];
-
   const download =
     legacyPackage(game);
 
-  return inferredIds.map(
+  return platformIds.map(
     (platformId, index) => ({
       id: platformId,
       platformId,
