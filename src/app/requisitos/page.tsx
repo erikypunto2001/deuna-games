@@ -16,6 +16,9 @@ import {
 import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
+import {
+  resolvePcRelease,
+} from "@/lib/games/releases";
 import { safeJsonLd } from "@/lib/safe-json-ld";
 import {
   buildBreadcrumbJsonLd,
@@ -55,7 +58,12 @@ export async function generateMetadata({
   const title = `${page.title} ${page.highlight}`;
   const description = page.description;
   const pcGames = games.filter(
-    (game) => game.platforms?.includes("PC") === true
+    (game) =>
+      Boolean(
+        resolvePcRelease(
+          game
+        )
+      )
   );
   const hasFocusedGame =
     typeof params.juego === "string" &&
@@ -107,7 +115,12 @@ export default async function RequirementsPage({
     readAccountSession(),
   ]);
   const pcGames = games.filter(
-    (game) => game.platforms?.includes("PC") === true
+    (game) =>
+      Boolean(
+        resolvePcRelease(
+          game
+        )
+      )
   );
   const accountHardware = accountSession
     ? await getAccountHardwareSelection(accountSession.userId)
