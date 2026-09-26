@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin/managed-editorial-forms";
 import {
   validatePlatformCatalogRemoval,
+  validatePlatformCollectionNamespace,
 } from "@/lib/admin/managed-editorial-relations";
 import {
   saveManagedEditorialDraft,
@@ -82,10 +83,25 @@ export async function POST(
           .catalogJson
       );
 
-    const relations =
-      await validatePlatformCatalogRemoval(
+    const [
+      namespace,
+      relations,
+    ] = await Promise.all([
+      validatePlatformCollectionNamespace(
         payload
+      ),
+      validatePlatformCatalogRemoval(
+        payload
+      ),
+    ]);
+
+    if (!namespace.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=coleccion-en-conflicto"
       );
+    }
 
     if (!relations.ok) {
       return adminRedirect(
