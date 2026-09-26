@@ -32,7 +32,6 @@ const fields = [
   "expectedRevision",
   "title",
   "description",
-  "imageAlt",
   "featured",
   "gameSlugsJson",
 ] as const;
@@ -102,8 +101,6 @@ export async function POST(
             data.description,
           gameSlugs:
             data.gameSlugsJson,
-          imageAlt:
-            data.imageAlt,
           featured:
             data.featured,
         }
