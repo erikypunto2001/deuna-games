@@ -1,6 +1,12 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import path from "node:path";
@@ -13,6 +19,8 @@ const nextCli = require.resolve(
 );
 const argumentsForNext = process.argv.slice(2);
 const isDevelopment = argumentsForNext[0] === "dev";
+const isProductionStart =
+  argumentsForNext[0] === "start";
 const MEDIA_ENV_KEYS = [
   "DEUNA_FFMPEG_PATH",
   "DEUNA_YTDLP_PATH",
@@ -27,6 +35,197 @@ const MEDIA_ENV_KEYS = [
   "DEUNA_MEDIA_IMPORT_WORKER_URL",
   "DEUNA_MEDIA_IMPORT_WORKER_TOKEN",
 ];
+
+function standaloneStartConfig() {
+  let hostname =
+    process.env.HOSTNAME?.trim() ||
+    "127.0.0.1";
+  let port =
+    process.env.PORT?.trim() ||
+    "3000";
+
+  for (
+    let index = 1;
+    index <
+    argumentsForNext.length;
+    index += 1
+  ) {
+    const argument =
+      argumentsForNext[index];
+
+    if (
+      argument === "--hostname" ||
+      argument === "-H"
+    ) {
+      const value =
+        argumentsForNext[
+          index + 1
+        ]?.trim();
+      if (!value) {
+        throw new Error(
+          "Falta el valor de --hostname."
+        );
+      }
+      hostname = value;
+      index += 1;
+      continue;
+    }
+
+    if (
+      argument === "--port" ||
+      argument === "-p"
+    ) {
+      const value =
+        argumentsForNext[
+          index + 1
+        ]?.trim();
+      if (!value) {
+        throw new Error(
+          "Falta el valor de --port."
+        );
+      }
+      port = value;
+      index += 1;
+      continue;
+    }
+
+    if (
+      argument.startsWith(
+        "--hostname="
+      )
+    ) {
+      hostname =
+        argument.slice(
+          "--hostname=".length
+        ).trim();
+      continue;
+    }
+
+    if (
+      argument.startsWith(
+        "--port="
+      )
+    ) {
+      port =
+        argument.slice(
+          "--port=".length
+        ).trim();
+      continue;
+    }
+
+    throw new Error(
+      `Argumento no soportado por el runtime standalone: ${argument}`
+    );
+  }
+
+  const portNumber =
+    Number(port);
+  if (
+    !hostname ||
+    !Number.isInteger(
+      portNumber
+    ) ||
+    portNumber < 1 ||
+    portNumber > 65_535
+  ) {
+    throw new Error(
+      "HOSTNAME/PORT no son válidos para el runtime standalone."
+    );
+  }
+
+  return {
+    hostname,
+    port:
+      String(portNumber),
+  };
+}
+
+function prepareStandaloneRuntime() {
+  const standaloneRoot =
+    path.resolve(
+      ".next",
+      "standalone"
+    );
+  const serverPath =
+    path.join(
+      standaloneRoot,
+      "server.js"
+    );
+  const staticSource =
+    path.resolve(
+      ".next",
+      "static"
+    );
+  const staticTarget =
+    path.join(
+      standaloneRoot,
+      ".next",
+      "static"
+    );
+  const publicSource =
+    path.resolve("public");
+  const publicTarget =
+    path.join(
+      standaloneRoot,
+      "public"
+    );
+
+  if (
+    !existsSync(serverPath) ||
+    !existsSync(staticSource)
+  ) {
+    throw new Error(
+      "Falta el runtime standalone. Ejecuta npm run build antes de npm run start."
+    );
+  }
+
+  mkdirSync(
+    path.dirname(
+      staticTarget
+    ),
+    {
+      recursive: true,
+    }
+  );
+
+  rmSync(
+    staticTarget,
+    {
+      recursive: true,
+      force: true,
+    }
+  );
+  cpSync(
+    staticSource,
+    staticTarget,
+    {
+      recursive: true,
+    }
+  );
+
+  rmSync(
+    publicTarget,
+    {
+      recursive: true,
+      force: true,
+    }
+  );
+  if (
+    existsSync(
+      publicSource
+    )
+  ) {
+    cpSync(
+      publicSource,
+      publicTarget,
+      {
+        recursive: true,
+      }
+    );
+  }
+
+  return serverPath;
+}
 
 function developmentMediaEnvFromFiles() {
   if (!isDevelopment) return {};
@@ -302,15 +501,42 @@ async function main() {
     }
   }
 
+  const startConfig =
+    isProductionStart
+      ? standaloneStartConfig()
+      : null;
+  const standaloneServer =
+    isProductionStart
+      ? prepareStandaloneRuntime()
+      : null;
+  const childArguments =
+    standaloneServer
+      ? [standaloneServer]
+      : [
+          nextCli,
+          ...argumentsForNext,
+        ];
+
   const child = spawn(
     process.execPath,
-    [nextCli, ...argumentsForNext],
+    childArguments,
     {
       stdio: "inherit",
+      cwd: process.cwd(),
       env: {
         ...process.env,
         ...runtimeEnvironment,
         ...workerEnvironment,
+        ...(startConfig
+          ? {
+              NODE_ENV:
+                "production",
+              HOSTNAME:
+                startConfig.hostname,
+              PORT:
+                startConfig.port,
+            }
+          : {}),
         NEXT_TELEMETRY_DISABLED: "1",
       },
     }
