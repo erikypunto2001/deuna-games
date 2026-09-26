@@ -760,7 +760,7 @@
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 18px;
-  background: var(--surface-1);
+  background: var(--surface);
 }
 
 .releaseCardHeader {
