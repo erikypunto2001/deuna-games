@@ -405,6 +405,11 @@ jobs:
           DEUNA_ADMIN_HISTORICAL_UPDATE_FIXTURE: "1"
         run: npm run visual:admin-historical-update-fixture
 
+      - name: Create multiplatform visual fixtures
+        env:
+          DEUNA_MULTIPLATFORM_VISUAL_FIXTURE: "1"
+        run: npm run visual:multiplatform-fixture
+
       - name: Build visual runtime
         env:
           NODE_ENV: production
