@@ -117,6 +117,7 @@ export default async function ProgramsPage() {
           }
         >
           <PublicBreadcrumb
+            className=""
             currentLabel="Programas"
           />
           <span
