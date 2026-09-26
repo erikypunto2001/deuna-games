@@ -73,8 +73,7 @@ export function resolveGameDetailPresentation(
   const download = resolveGameDownload(game);
   const pcRelease = resolvePcRelease(game);
   const requirements =
-    pcRelease?.requirements ??
-    game.requirements;
+    pcRelease?.requirements;
   const minimum =
     requirements?.minimum ??
     legacyMinimumRequirements(requirements);
