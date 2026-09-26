@@ -11,6 +11,9 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
 import {
+  groupCollectionPlatforms,
+} from "@/lib/collections/collection-presentation";
+import {
   getPublicGameCollections,
 } from "@/lib/collections/public-game-collections";
 import {
@@ -72,13 +75,10 @@ export default async function CollectionsPage() {
     }
   }
 
-  const visiblePlatforms =
-    catalog.platforms.filter(
-      (platform) =>
-        platform.active &&
-        (counts.get(
-          platform.id
-        ) ?? 0) > 0
+  const platformGroups =
+    groupCollectionPlatforms(
+      catalog,
+      counts
     );
 
   return (
@@ -241,67 +241,150 @@ export default async function CollectionsPage() {
             </p>
           </div>
 
-          {visiblePlatforms.length ? (
-            <div
-              className={
-                styles.grid
-              }
-            >
-              {visiblePlatforms.map(
-                (platform) => (
-                  <Link
-                    key={
-                      platform.id
-                    }
-                    href={
-                      "/colecciones/" +
-                      platform.id
-                    }
-                    className={
-                      styles.card
-                    }
-                  >
-                    <div
-                      className={
-                        styles.cardTop
+          {platformGroups.length ? (
+            <>
+              <nav
+                className={
+                  styles.familyNav
+                }
+                aria-label="Familias de plataformas"
+              >
+                {platformGroups.map(
+                  ({ family }) => (
+                    <a
+                      key={
+                        family.id
+                      }
+                      href={
+                        "#familia-" +
+                        family.id
                       }
                     >
-                      <span
+                      {family.name}
+                    </a>
+                  )
+                )}
+              </nav>
+
+              <div
+                className={
+                  styles.familyList
+                }
+              >
+                {platformGroups.map(
+                  ({
+                    family,
+                    platforms,
+                  }) => (
+                    <section
+                      key={
+                        family.id
+                      }
+                      id={
+                        "familia-" +
+                        family.id
+                      }
+                      className={
+                        styles.familySection
+                      }
+                      aria-labelledby={
+                        "familia-" +
+                        family.id +
+                        "-title"
+                      }
+                    >
+                      <div
                         className={
-                          styles.icon
+                          styles.familyHeading
                         }
                       >
-                        <Gamepad2
-                          size={22}
-                          aria-hidden="true"
-                        />
-                      </span>
-                      <span
+                        <span>
+                          FAMILIA
+                        </span>
+                        <h3
+                          id={
+                            "familia-" +
+                            family.id +
+                            "-title"
+                          }
+                        >
+                          {family.name}
+                        </h3>
+                      </div>
+
+                      <div
                         className={
-                          styles.count
+                          styles.grid
                         }
                       >
-                        {counts.get(
-                          platform.id
-                        ) ?? 0}{" "}
-                        juegos
-                      </span>
-                    </div>
-                    <strong>
-                      {platform.name}
-                    </strong>
-                    <p>
-                      Colección
-                      automática de
-                      títulos con un
-                      release publicado
-                      para esta
-                      plataforma.
-                    </p>
-                  </Link>
-                )
-              )}
-            </div>
+                        {platforms.map(
+                          (
+                            platform
+                          ) => (
+                            <Link
+                              key={
+                                platform.id
+                              }
+                              href={
+                                "/colecciones/" +
+                                platform.id
+                              }
+                              className={
+                                styles.card
+                              }
+                            >
+                              <div
+                                className={
+                                  styles.cardTop
+                                }
+                              >
+                                <span
+                                  className={
+                                    styles.icon
+                                  }
+                                >
+                                  <Gamepad2
+                                    size={
+                                      22
+                                    }
+                                    aria-hidden="true"
+                                  />
+                                </span>
+                                <span
+                                  className={
+                                    styles.count
+                                  }
+                                >
+                                  {counts.get(
+                                    platform.id
+                                  ) ?? 0}{" "}
+                                  juegos
+                                </span>
+                              </div>
+                              <strong>
+                                {
+                                  platform.name
+                                }
+                              </strong>
+                              <p>
+                                Colección
+                                automática
+                                de títulos
+                                con un
+                                release
+                                publicado
+                                para esta
+                                plataforma.
+                              </p>
+                            </Link>
+                          )
+                        )}
+                      </div>
+                    </section>
+                  )
+                )}
+              </div>
+            </>
           ) : (
             <p
               className={

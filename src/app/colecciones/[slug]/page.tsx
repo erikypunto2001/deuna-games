@@ -10,6 +10,9 @@ import Header from "@/components/layout/Header";
 import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import {
+  orderCollectionGames,
+} from "@/lib/collections/collection-presentation";
+import {
   getPublicGameCollectionBySlug,
 } from "@/lib/collections/public-game-collections";
 import {
@@ -51,10 +54,6 @@ async function resolveCollection(
   ]);
 
   if (editorial) {
-    const allowed = new Set(
-      editorial.gameSlugs
-    );
-
     return {
       title:
         editorial.title,
@@ -63,11 +62,9 @@ async function resolveCollection(
       eyebrow:
         "SAGA / FRANQUICIA",
       games:
-        games.filter(
-          (game) =>
-            allowed.has(
-              game.slug
-            )
+        orderCollectionGames(
+          games,
+          editorial.gameSlugs
         ),
     };
   }

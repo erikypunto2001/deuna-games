@@ -1,6 +1,10 @@
 import {
   sourcePlatformCatalog,
 } from "../src/data/platform-catalog.ts";
+import {
+  groupCollectionPlatforms,
+  orderCollectionGames,
+} from "../src/lib/collections/collection-presentation.ts";
 import { games } from "../src/data/games.ts";
 import {
   parseEditorialPayload,
@@ -211,4 +215,67 @@ console.log(
     " juegos legacy -> PC, " +
     catalog.platforms.length +
     " plataformas base, releases/ISO/software/colecciones validados)."
+);
+
+const orderedCollectionGames =
+  orderCollectionGames(
+    [
+      games[0],
+      games[1],
+      games[2],
+    ],
+    [
+      games[2].slug,
+      games[0].slug,
+      "missing-game",
+      games[1].slug,
+    ]
+  );
+
+assert(
+  orderedCollectionGames
+    .map((game) => game.slug)
+    .join("|") ===
+    [
+      games[2].slug,
+      games[0].slug,
+      games[1].slug,
+    ].join("|"),
+  "Las colecciones editoriales deben respetar gameSlugs y omitir referencias no públicas sin reordenar."
+);
+
+const platformGroups =
+  groupCollectionPlatforms(
+    catalog,
+    new Map([
+      ["pc-windows", 3],
+      ["ps4", 2],
+      ["ps5", 1],
+    ])
+  );
+
+assert(
+  platformGroups.some(
+    (group) =>
+      group.family.id ===
+        "pc" &&
+      group.platforms.some(
+        (platform) =>
+          platform.id ===
+          "pc-windows"
+      )
+  ) &&
+    platformGroups.some(
+      (group) =>
+        group.family.id ===
+          "playstation" &&
+        group.platforms
+          .map(
+            (platform) =>
+              platform.id
+          )
+          .join("|") ===
+          "ps4|ps5"
+    ),
+  "Las colecciones automáticas deben agruparse por familias activas y respetar el orden del catálogo."
 );
