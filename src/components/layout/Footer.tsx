@@ -55,6 +55,12 @@ export default async function Footer() {
         <div className={styles.column}>
           <h3>Explorar</h3>
 
+          <Link href="/colecciones">
+            Colecciones
+          </Link>
+          <Link href="/programas">
+            Programas
+          </Link>
           <Link href="/requisitos">
             Por requisitos
           </Link>
