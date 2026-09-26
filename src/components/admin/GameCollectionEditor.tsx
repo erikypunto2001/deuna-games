@@ -192,12 +192,15 @@ export default function GameCollectionEditor({
               const game = bySlug.get(gameSlug);
               return (
                 <div key={gameSlug} className={styles.item}>
-                  <input
-                    type="checkbox"
-                    checked
-                    onChange={() => toggle(gameSlug)}
-                    aria-label={"Quitar " + (game?.title ?? gameSlug)}
-                  />
+                  <label className={styles.removeToggle}>
+                    <input
+                      type="checkbox"
+                      checked
+                      onChange={() => toggle(gameSlug)}
+                      aria-label={"Quitar " + (game?.title ?? gameSlug)}
+                    />
+                    <span aria-hidden="true" />
+                  </label>
                   <div>
                     <strong>{game?.title ?? gameSlug}</strong>
                     <span>{gameSlug}</span>
