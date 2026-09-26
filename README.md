@@ -191,12 +191,13 @@ función transaccional y cada archivo se revalida inmediatamente antes del
 `unlink`. Si el estado cambió, la operación aborta o informa una limpieza
 parcial y obliga a revisar el diagnóstico actualizado.
 
-Los juegos creados exclusivamente desde Admin pueden eliminarse de forma
-definitiva sólo después de ocultarlos y cuando Inicio no los referencia; los
-juegos respaldados por `src/data/games.ts` se retiran mediante visibilidad o
-cambios versionados de la fuente. El hard-delete registra en PostgreSQL una
-limpieza multimedia pendiente dentro de la misma transacción que elimina el
-juego. El identificador queda bloqueado hasta que el namespace físico
+Los juegos pueden eliminarse definitivamente desde Admin después de ocultarlos
+y cuando Inicio no los referencia. Si un juego proviene de `src/data/games.ts`,
+el hard-delete registra además un retiro persistente para impedir que futuras
+importaciones lo recreen. El catálogo público con PostgreSQL configurado consume
+exclusivamente publicaciones vigentes y no resucita juegos retirados mediante
+fallback de archivos. El hard-delete registra en PostgreSQL una limpieza
+multimedia pendiente dentro de la misma transacción que elimina el juego. El identificador queda bloqueado hasta que el namespace físico
 desaparece por completo; si el filesystem falla, Mantenimiento permite al
 Owner reintentarlo y una limpieza exitosa elimina también el directorio vacío
 antes de liberar el slug.

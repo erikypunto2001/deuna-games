@@ -124,13 +124,6 @@ export async function POST(
       );
     }
 
-    if (result.outcome === "source_managed") {
-      return adminRedirect(
-        authorized.adminOrigin,
-        `${target}?estado=eliminacion-fuente`
-      );
-    }
-
     if (result.outcome === "still_public") {
       return adminRedirect(
         authorized.adminOrigin,
