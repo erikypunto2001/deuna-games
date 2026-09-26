@@ -27,6 +27,7 @@ import {
 import type {
   HomeCardRevealMode,
 } from "@/lib/home/card-row-reveal";
+import { useMediaQuery } from "@/lib/browser/client-signals";
 import { resolveGameCardPresentation } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
@@ -236,9 +237,9 @@ export default function UniversalGameCardBase({
   const slotRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [detailVisible, setDetailVisible] = useState(staticDetail);
-  const [directDetailVisible, setDirectDetailVisible] = useState(false);
+  const directDetailVisible = useMediaQuery(DIRECT_DETAIL_MEDIA);
   const [previewActive, setPreviewActive] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const reducedMotion = useMediaQuery(REDUCED_MOTION_MEDIA);
   const [automaticVideoInViewport, setAutomaticVideoInViewport] = useState(false);
   const [expandedGeometry, setExpandedGeometry] =
     useState<ExpandedCardGeometry | null>(null);
@@ -254,22 +255,6 @@ export default function UniversalGameCardBase({
   const isRecent = variant === "recent";
   const isLowSpec = variant === "lowSpec";
   const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
-
-  useEffect(() => {
-    const motionMedia = window.matchMedia(REDUCED_MOTION_MEDIA);
-    const directDetailMedia = window.matchMedia(DIRECT_DETAIL_MEDIA);
-    const sync = () => {
-      setReducedMotion(motionMedia.matches);
-      setDirectDetailVisible(directDetailMedia.matches);
-    };
-    sync();
-    motionMedia.addEventListener("change", sync);
-    directDetailMedia.addEventListener("change", sync);
-    return () => {
-      motionMedia.removeEventListener("change", sync);
-      directDetailMedia.removeEventListener("change", sync);
-    };
-  }, []);
 
   useEffect(() => {
     if (
@@ -429,9 +414,7 @@ export default function UniversalGameCardBase({
   function activatePointerEffects(event: ReactPointerEvent<HTMLElement>) {
     const pointerSupportsEffects =
       event.pointerType === "mouse" || event.pointerType === "pen";
-    const motionReduced = window.matchMedia(REDUCED_MOTION_MEDIA).matches;
-
-    if (!pointerSupportsEffects || motionReduced) {
+    if (!pointerSupportsEffects || reducedMotion) {
       if (pointerEffectsEnabled.current) {
         cancelTiltFrame();
         cardRect.current = null;
@@ -510,15 +493,13 @@ export default function UniversalGameCardBase({
   }
 
   function focusCard() {
-    const directDetail = window.matchMedia(DIRECT_DETAIL_MEDIA).matches;
-
     if (staticDetail) {
-      if (!directDetail) schedulePreview();
+      if (!directDetailVisible) schedulePreview();
       return;
     }
 
     setDetailVisible(true);
-    if (!directDetail) {
+    if (!directDetailVisible) {
       expandCard();
       schedulePreview();
     }
