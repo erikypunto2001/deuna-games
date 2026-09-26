@@ -80,6 +80,17 @@ export async function POST(
 
     if (
       result.outcome ===
+      "invalid_relations"
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=plataforma-publicada-en-uso"
+      );
+    }
+
+    if (
+      result.outcome ===
       "conflict"
     ) {
       return adminRedirect(
