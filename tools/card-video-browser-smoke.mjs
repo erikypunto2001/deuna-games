@@ -545,28 +545,83 @@ function firstHomeCarouselCardStateExpression(expectedSlug) {
 async function verifyHomeInteractionFirstCard(cdp, fixture) {
   await navigate(cdp, `${baseUrl}/`);
   const expectedHref = `/juegos/${fixture.slug}`;
+  const lookup = firstHomeCarouselCardLookup();
 
   const restState = await waitFor(
     cdp,
-    firstHomeCarouselCardStateExpression(fixture.slug),
-    "No se encontró la primera Card del primer carrusel de Home"
+    `(() => {
+      const card = ${lookup};
+      if (
+        !(card instanceof HTMLElement) ||
+        document.readyState !== "complete"
+      ) {
+        return false;
+      }
+      const hydrated = Object.keys(card).some((key) =>
+        key.startsWith("__reactProps$") ||
+        key.startsWith("__reactFiber$")
+      );
+      if (!hydrated) return false;
+
+      const firstCarousel = card.closest(
+        '[role="region"][aria-roledescription="carrusel"]'
+      );
+      const link = card.querySelector('a[href^="/juegos/"]');
+      const heading = firstCarousel
+        ?.closest("section")
+        ?.querySelector("h2")
+        ?.textContent
+        ?.trim() ?? null;
+
+      return {
+        found: true,
+        hydrated,
+        carouselLabel: firstCarousel?.getAttribute("aria-label") ?? null,
+        sectionHeading: heading,
+        href: link instanceof HTMLAnchorElement ? link.getAttribute("href") : null,
+        expectedHref: "/juegos/" + ${JSON.stringify(fixture.slug)},
+        revealMode: card.dataset.cardRevealMode ?? null,
+        mediaMode: card.dataset.cardMediaMode ?? null,
+        detailVisible: card.dataset.detailVisible ?? null,
+        hasVideo: Boolean(card.querySelector("video")),
+        fineHover: matchMedia("(hover: hover) and (pointer: fine)").matches,
+        coarse: matchMedia("(pointer: coarse)").matches,
+        reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      };
+    })()`,
+    "No se hidrató la primera Card del primer carrusel de Home"
   );
 
   if (
     !restState.found ||
+    !restState.hydrated ||
     restState.href !== expectedHref ||
     restState.revealMode !== "interaction" ||
     restState.mediaMode !== "video" ||
     restState.detailVisible !== "false" ||
-    restState.hasVideo
+    restState.hasVideo ||
+    !restState.fineHover ||
+    restState.coarse ||
+    restState.reduced
   ) {
     throw new Error(
       `El primer carrusel de Home no reproduce el contrato real de la captura: ${JSON.stringify(restState)}.`
     );
   }
 
-  const lookup = firstHomeCarouselCardLookup();
+  await delay(300);
   await hoverCard(cdp, lookup);
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      return Boolean(
+        card instanceof HTMLElement &&
+        card.dataset.cardVideoActive === "true"
+      );
+    })()`,
+    "El hover de la primera Card de Home no activó la capa de video"
+  );
 
   const playing = await waitFor(
     cdp,
