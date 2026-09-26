@@ -320,8 +320,6 @@ export const softwareCreateFormSchema =
       optionalText(240),
     website:
       optionalText(2_048),
-    imageAlt:
-      requiredText(240),
     featured:
       booleanText,
     runsOnJson:
