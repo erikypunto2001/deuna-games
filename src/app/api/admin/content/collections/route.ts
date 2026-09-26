@@ -14,6 +14,7 @@ import {
   collectionCreateFormSchema,
 } from "@/lib/admin/managed-editorial-forms";
 import {
+  validateCollectionSlugNamespace,
   validateGameSlugs,
 } from "@/lib/admin/managed-editorial-relations";
 import {
@@ -101,10 +102,25 @@ export async function POST(
         }
       );
 
-    const relations =
-      await validateGameSlugs(
+    const [
+      namespace,
+      relations,
+    ] = await Promise.all([
+      validateCollectionSlugNamespace(
+        payload.slug
+      ),
+      validateGameSlugs(
         payload.gameSlugs
+      ),
+    ]);
+
+    if (!namespace.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        target +
+          "?estado=slug-plataforma"
       );
+    }
 
     if (!relations.ok) {
       return adminRedirect(
