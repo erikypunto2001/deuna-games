@@ -182,6 +182,11 @@ const notices = {
     message:
       "La publicación fue bloqueada porque una plataforma, un juego o un programa relacionado todavía no existe en el estado público vigente. Publica primero esas dependencias y vuelve a intentarlo.",
   },
+  "relacion-publica-en-uso": {
+    kind: "warning",
+    message:
+      "No se ocultó el contenido porque todavía está referenciado por otra publicación visible. Retíralo primero de los juegos o colecciones que lo usan y publica esos cambios antes de volver a intentarlo.",
+  },
   "plataforma-publicada-en-uso": {
     kind: "error",
     message:
