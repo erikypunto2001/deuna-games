@@ -133,10 +133,22 @@ export default async function RequirementsPage({
       ? juego
       : undefined;
   const performanceCalibrations = Object.fromEntries(
-    pcGames.flatMap((game) =>
-      game.performance
-        ? [[game.slug, game.performance] as const]
-        : []
+    pcGames.flatMap(
+      (game) => {
+        const calibration =
+          resolvePcRelease(
+            game
+          )?.performance;
+
+        return calibration
+          ? [
+              [
+                game.slug,
+                calibration,
+              ] as const,
+            ]
+          : [];
+      }
     )
   );
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(
